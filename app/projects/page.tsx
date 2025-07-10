@@ -20,11 +20,15 @@ import { getProjects, createProject, generateDocuments } from '@/lib/api'
 
 interface Project {
   projectId: string
-  name: string
-  description: string
-  requirements: string[]
-  budget?: number
+  projectName: string
+  status: string
+  currentStep: string
   createdAt: string
+  updatedAt: string
+  documentCount: number
+  hasDocuments: boolean
+  projectInfo: any
+  lastMessage: string
 }
 
 export default function ProjectsPage() {
@@ -99,8 +103,10 @@ export default function ProjectsPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+  const formatDate = (timestamp: string) => {
+    // Handle both timestamp formats (Unix timestamp and ISO string)
+    const date = timestamp.includes('-') ? new Date(timestamp) : new Date(parseInt(timestamp) * 1000)
+    return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -229,58 +235,56 @@ export default function ProjectsPage() {
               <Card key={project.projectId} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between">
-                    <span className="line-clamp-2">{project.name}</span>
-                    <Badge variant="secondary" className="ml-2">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {formatDate(project.createdAt)}
-                    </Badge>
+                    <span className="line-clamp-2">{project.projectName}</span>
+                    <div className="flex flex-col gap-1 ml-2">
+                      <Badge variant={project.status === 'completed' ? 'default' : 'secondary'}>
+                        {project.status === 'completed' ? 'Completado' : 'En Progreso'}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {formatDate(project.createdAt)}
+                      </Badge>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-gray-600 text-sm line-clamp-3">
-                    {project.description}
+                    {project.lastMessage || 'Sin mensajes recientes'}
                   </p>
                   
-                  {project.requirements.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Requisitos:</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {project.requirements.slice(0, 3).map((req, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {req}
-                          </Badge>
-                        ))}
-                        {project.requirements.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{project.requirements.length - 3} más
-                          </Badge>
-                        )}
-                      </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      <span>{project.documentCount} documentos</span>
                     </div>
-                  )}
+                    <Badge variant={project.hasDocuments ? 'default' : 'secondary'}>
+                      {project.hasDocuments ? 'Con documentos' : 'Sin documentos'}
+                    </Badge>
+                  </div>
 
-                  {project.budget && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">
-                        ${project.budget.toLocaleString()} USD
-                      </span>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={() => handleGenerateDocuments(project.projectId)}
-                    disabled={generatingDocs === project.projectId}
-                    className="w-full flex items-center gap-2"
-                    size="sm"
-                  >
-                    {generatingDocs === project.projectId ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
-                    {generatingDocs === project.projectId ? 'Generando...' : 'Generar Documentos'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => router.push(`/arquitecto?projectId=${project.projectId}`)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Continuar Chat
+                    </Button>
+                    <Button
+                      onClick={() => handleGenerateDocuments(project.projectId)}
+                      disabled={generatingDocs === project.projectId}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      {generatingDocs === project.projectId ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileText className="h-4 w-4" />
+                      )}
+                      {generatingDocs === project.projectId ? 'Generando...' : 'Documentos'}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

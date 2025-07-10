@@ -47,11 +47,15 @@ export interface ProjectRequest {
 
 export interface ProjectResponse {
   projectId: string
-  name: string
-  description: string
-  requirements: string[]
-  budget?: number
+  projectName: string  // API returns projectName, not name
+  status: string
+  currentStep: string
   createdAt: string
+  updatedAt: string
+  documentCount: number
+  hasDocuments: boolean
+  projectInfo: any
+  lastMessage: string
 }
 
 // API functions
@@ -115,7 +119,21 @@ export async function getProjects(): Promise<ProjectResponse[]> {
     throw new Error(`Projects API error: ${response.status} ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+  
+  // Handle the API response structure that includes projects array
+  if (data.projects && Array.isArray(data.projects)) {
+    return data.projects
+  }
+  
+  // Fallback: if it's already an array, return it directly
+  if (Array.isArray(data)) {
+    return data
+  }
+  
+  // If neither, return empty array to prevent errors
+  console.warn('Unexpected API response structure:', data)
+  return []
 }
 
 export async function generateDocuments(projectId: string): Promise<any> {
