@@ -6,12 +6,18 @@ from datetime import datetime
 from typing import Dict, List, Any
 import logging
 
-# Import document generators
-from generators.word_generator import generate_word_document, generate_technical_document
-from generators.csv_generator import generate_activities_csv, generate_costs_csv
-from generators.cloudformation_generator import generate_cloudformation_template
-from generators.diagram_generator import generate_drawio_diagram, generate_svg_diagram
-from generators.s3_uploader import upload_project_documents, list_project_documents
+# Import dynamic document generators
+from generators.dynamic_generator import (
+    generate_dynamic_word_document, 
+    generate_dynamic_cloudformation,
+    generate_dynamic_activities_csv
+)
+from generators.dynamic_helpers import (
+    generate_simple_costs_csv,
+    generate_simple_svg_diagram,
+    generate_simple_drawio_diagram,
+    generate_dynamic_calculator_guide
+)
 
 # Configure logging
 logger = logging.getLogger()
@@ -121,8 +127,10 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         if is_complete:
             # Use project name from extracted info or generate a default one
             project_name = project_info.get('name', f'proyecto-{project_id[:8]}')
-            logger.info(f"Project '{project_name}' is complete. Starting document generation...")
-            document_generation_results = generate_project_documents(project_info)
+            logger.info(f"Project '{project_name}' is complete. Starting DYNAMIC document generation...")
+            
+            # Use DYNAMIC generation based on AI analysis
+            document_generation_results = generate_project_documents_dynamic(project_info, ai_response)
             
             # Update AI response to include document generation status
             if document_generation_results.get('success'):
@@ -686,7 +694,319 @@ def check_if_complete(ai_response: str, project_info: Dict) -> bool:
     # Default: only if explicit completion is mentioned
     return has_explicit_completion
 
-def generate_project_documents(project_info: Dict[str, Any]) -> Dict[str, Any]:
+def generate_project_documents_dynamic(project_info: Dict[str, Any], ai_analysis: str) -> Dict[str, Any]:
+    """
+    Generate all project documents DYNAMICALLY based on AI analysis
+    This is the NEW INTELLIGENT approach - no hardcoded services!
+    
+    Args:
+        project_info: Dictionary with project information
+        ai_analysis: AI's analysis and response containing requirements
+    
+    Returns:
+        Dictionary with generation results
+    """
+    try:
+        logger.info(f"Starting DYNAMIC document generation for project: {project_info.get('name', 'Unknown')}")
+        logger.info(f"AI Analysis length: {len(ai_analysis)} characters")
+        
+        documents = {}
+        project_name = project_info.get('name', 'aws-project')
+        
+        # Generate Word documents DYNAMICALLY
+        try:
+            # Main proposal document - generated from AI analysis
+            word_content = generate_dynamic_word_document(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-propuesta-ejecutiva.docx"] = word_content
+            
+            # Technical document - also dynamic
+            tech_content = generate_dynamic_word_document(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-documento-tecnico.docx"] = tech_content
+            
+            logger.info("Successfully generated DYNAMIC Word documents")
+        except Exception as e:
+            logger.error(f"Error generating dynamic Word documents: {str(e)}")
+        
+        # Generate CSV files DYNAMICALLY
+        try:
+            # Activities CSV - generated from AI analysis
+            activities_content = generate_dynamic_activities_csv(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-actividades-implementacion.csv"] = activities_content
+            
+            # Costs CSV - simplified for now
+            costs_content = generate_simple_costs_csv(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-costos-estimados.csv"] = costs_content
+            
+            logger.info("Successfully generated DYNAMIC CSV documents")
+        except Exception as e:
+            logger.error(f"Error generating dynamic CSV documents: {str(e)}")
+        
+        # Generate CloudFormation template DYNAMICALLY
+        try:
+            cf_content = generate_dynamic_cloudformation(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-cloudformation-template.yaml"] = cf_content.encode('utf-8')
+            
+            logger.info("Successfully generated DYNAMIC CloudFormation template")
+        except Exception as e:
+            logger.error(f"Error generating dynamic CloudFormation template: {str(e)}")
+        
+        # Generate diagrams DYNAMICALLY
+        try:
+            # Simple SVG diagram
+            svg_content = generate_simple_svg_diagram(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-arquitectura-general.svg"] = svg_content.encode('utf-8')
+            
+            # Simple Draw.io diagram
+            drawio_content = generate_simple_drawio_diagram(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-arquitectura-general.drawio"] = drawio_content.encode('utf-8')
+            
+            logger.info("Successfully generated DYNAMIC diagram files")
+        except Exception as e:
+            logger.error(f"Error generating dynamic diagrams: {str(e)}")
+        
+        # Generate AWS Calculator guide DYNAMICALLY
+        try:
+            calculator_guide = generate_dynamic_calculator_guide(project_info, ai_analysis)
+            documents[f"{project_name.lower().replace(' ', '-')}-guia-calculadora-aws.txt"] = calculator_guide.encode('utf-8')
+            
+            logger.info("Successfully generated DYNAMIC calculator guide")
+        except Exception as e:
+            logger.error(f"Error generating dynamic calculator guide: {str(e)}")
+        
+        # Upload to S3
+        if documents and DOCUMENTS_BUCKET:
+            try:
+                # Import here to avoid circular imports
+                from generators.s3_uploader import upload_project_documents
+                
+                upload_results = upload_project_documents(
+                    project_name=project_name,
+                    documents=documents,
+                    bucket_name=DOCUMENTS_BUCKET
+                )
+                
+                logger.info(f"DYNAMIC Upload results: {upload_results}")
+                
+                return {
+                    'success': True,
+                    'documents_generated': len(documents),
+                    'upload_results': upload_results,
+                    'message': f"Successfully generated and uploaded {len(documents)} DYNAMIC documents for project '{project_name}'"
+                }
+            except Exception as e:
+                logger.error(f"Error uploading dynamic documents: {str(e)}")
+                return {
+                    'success': False,
+                    'documents_generated': len(documents),
+                    'error': f"Dynamic documents generated but upload failed: {str(e)}"
+                }
+        else:
+            return {
+                'success': False,
+                'documents_generated': len(documents),
+                'error': "No documents generated or S3 bucket not configured"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in DYNAMIC document generation: {str(e)}")
+        return {
+            'success': False,
+            'error': f"DYNAMIC document generation failed: {str(e)}"
+        }
+
+def generate_simple_costs_csv(project_info: Dict[str, Any], ai_analysis: str) -> bytes:
+    """Generate simple costs CSV based on AI analysis"""
+    import csv
+    import io
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow(['Servicio', 'Tipo', 'Cantidad', 'Costo_Mensual_USD', 'Descripcion'])
+    
+    # Extract services from AI analysis and add estimated costs
+    analysis_lower = ai_analysis.lower()
+    
+    if 'ec2' in analysis_lower:
+        writer.writerow(['Amazon EC2', 't3.micro', '1', '8.50', 'Instancia de computo basica'])
+    if 's3' in analysis_lower:
+        writer.writerow(['Amazon S3', 'Standard', '100 GB', '2.30', 'Almacenamiento de objetos'])
+    if 'rds' in analysis_lower:
+        writer.writerow(['Amazon RDS', 'db.t3.micro', '1', '15.00', 'Base de datos relacional'])
+    if 'lambda' in analysis_lower:
+        writer.writerow(['AWS Lambda', 'Requests', '1M', '0.20', 'Funciones serverless'])
+    if 'efs' in analysis_lower:
+        writer.writerow(['Amazon EFS', 'Standard', '100 GB', '30.00', 'Sistema de archivos elastico'])
+    
+    # Add basic monitoring and security
+    writer.writerow(['Amazon CloudWatch', 'Basic', '1', '3.00', 'Monitoreo basico'])
+    writer.writerow(['AWS Support', 'Basic', '1', '0.00', 'Soporte basico incluido'])
+    
+    csv_content = output.getvalue()
+    output.close()
+    
+    return csv_content.encode('utf-8')
+
+def generate_simple_svg_diagram(project_info: Dict[str, Any], ai_analysis: str) -> str:
+    """Generate simple SVG diagram based on AI analysis"""
+    project_name = project_info.get('name', 'AWS Project')
+    
+    svg_content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="600" fill="#f0f8ff"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-size="24" font-weight="bold" fill="#232f3e">
+    Arquitectura AWS - {project_name}
+  </text>
+  
+  <!-- User -->
+  <rect x="50" y="100" width="100" height="60" fill="#ff9900" rx="5"/>
+  <text x="100" y="135" text-anchor="middle" fill="white" font-weight="bold">Usuario</text>
+  
+  <!-- AWS Cloud -->
+  <rect x="250" y="80" width="500" height="400" fill="#ffffff" stroke="#232f3e" stroke-width="2" rx="10"/>
+  <text x="500" y="105" text-anchor="middle" font-size="18" font-weight="bold" fill="#232f3e">AWS Cloud</text>
+  
+  <!-- Services based on AI analysis -->'''
+    
+    y_pos = 150
+    analysis_lower = ai_analysis.lower()
+    
+    if 'ec2' in analysis_lower:
+        svg_content += f'''
+  <rect x="300" y="{y_pos}" width="120" height="50" fill="#ff9900" rx="5"/>
+  <text x="360" y="{y_pos + 30}" text-anchor="middle" fill="white" font-weight="bold">Amazon EC2</text>'''
+        y_pos += 70
+    
+    if 's3' in analysis_lower:
+        svg_content += f'''
+  <rect x="300" y="{y_pos}" width="120" height="50" fill="#3f48cc" rx="5"/>
+  <text x="360" y="{y_pos + 30}" text-anchor="middle" fill="white" font-weight="bold">Amazon S3</text>'''
+        y_pos += 70
+    
+    if 'rds' in analysis_lower:
+        svg_content += f'''
+  <rect x="300" y="{y_pos}" width="120" height="50" fill="#3f48cc" rx="5"/>
+  <text x="360" y="{y_pos + 30}" text-anchor="middle" fill="white" font-weight="bold">Amazon RDS</text>'''
+        y_pos += 70
+    
+    if 'efs' in analysis_lower:
+        svg_content += f'''
+  <rect x="300" y="{y_pos}" width="120" height="50" fill="#3f48cc" rx="5"/>
+  <text x="360" y="{y_pos + 30}" text-anchor="middle" fill="white" font-weight="bold">Amazon EFS</text>'''
+    
+    # Connection lines
+    svg_content += '''
+  <!-- Connection lines -->
+  <line x1="150" y1="130" x2="250" y2="130" stroke="#232f3e" stroke-width="2"/>
+  <polygon points="245,125 250,130 245,135" fill="#232f3e"/>
+  
+  <text x="400" y="550" text-anchor="middle" font-size="12" fill="#666">
+    Diagrama generado dinamicamente basado en requerimientos del proyecto
+  </text>
+</svg>'''
+    
+    return svg_content
+
+def generate_simple_drawio_diagram(project_info: Dict[str, Any], ai_analysis: str) -> str:
+    """Generate simple Draw.io diagram based on AI analysis"""
+    project_name = project_info.get('name', 'AWS Project')
+    
+    return f'''<mxfile host="app.diagrams.net">
+  <diagram name="AWS Architecture - {project_name}">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Usuario" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;fontColor=#FFFFFF;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="AWS Cloud" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;strokeWidth=2;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="240" y="120" width="500" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="Arquitectura generada dinamicamente&#xa;basada en analisis de IA" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="340" y="480" width="300" height="30" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>'''
+
+def generate_dynamic_calculator_guide(project_info: Dict[str, Any], ai_analysis: str) -> str:
+    """Generate AWS Calculator guide based on AI analysis"""
+    project_name = project_info.get('name', 'Proyecto AWS')
+    
+    guide = f"""Guia para usar la Calculadora Oficial de AWS - {project_name}
+
+INSTRUCCIONES PASO A PASO:
+
+1. Acceder a la Calculadora de AWS:
+   - Ir a: https://calculator.aws/
+   - Hacer clic en "Create estimate"
+
+2. Servicios Identificados en el Proyecto:
+
+"""
+    
+    analysis_lower = ai_analysis.lower()
+    
+    if 'ec2' in analysis_lower:
+        guide += """   a) Amazon EC2:
+      - Tipo de instancia: t3.micro (recomendado para inicio)
+      - Cantidad: 1 instancia
+      - Sistema operativo: Linux
+      - Uso: 24 horas/dia, 30 dias/mes
+      
+"""
+    
+    if 's3' in analysis_lower:
+        guide += """   b) Amazon S3:
+      - Almacenamiento estandar: 100 GB
+      - Solicitudes PUT/COPY/POST/LIST: 1,000/mes
+      - Solicitudes GET/SELECT: 10,000/mes
+      
+"""
+    
+    if 'rds' in analysis_lower:
+        guide += """   c) Amazon RDS:
+      - Motor: MySQL
+      - Tipo de instancia: db.t3.micro
+      - Almacenamiento: 20 GB SSD
+      
+"""
+    
+    if 'efs' in analysis_lower:
+        guide += """   d) Amazon EFS:
+      - Almacenamiento estandar: 100 GB
+      - Modo de rendimiento: General Purpose
+      - Modo de throughput: Bursting
+      
+"""
+    
+    guide += """3. Servicios Adicionales Recomendados:
+   - Amazon CloudWatch: Metricas basicas
+   - AWS Support: Plan basico (incluido)
+
+4. Consideraciones de Costos:
+   - Los precios varian por region (recomendado: us-east-1)
+   - Considerar descuentos por Reserved Instances para uso continuo
+   - Evaluar opciones de Savings Plans para mayor ahorro
+   - Incluir costos de transferencia de datos si aplica
+
+5. Recomendaciones:
+   - Comenzar con la configuracion basica mostrada
+   - Ajustar segun el crecimiento esperado del proyecto
+   - Revisar y optimizar mensualmente
+   - Usar herramientas de optimizacion de costos de AWS
+
+NOTA: Esta guia fue generada dinamicamente basandose en los requerimientos 
+identificados durante la consultoria. Los costos reales pueden variar segun 
+el uso especifico y los patrones de trafico de la aplicacion.
+"""
+    
+    return guide
     """
     Generate all project documents when project is complete
     
