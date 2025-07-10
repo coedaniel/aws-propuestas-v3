@@ -178,4 +178,4 @@ graph TD
 - Busca en [GitHub Issues](https://github.com/coedaniel/aws-propuestas-v3/issues)
 - Crea una nueva [discusión](https://github.com/coedaniel/aws-propuestas-v3/discussions)
 
-**Última actualización**: Julio 2024 | **Versión de documentación**: 3.0.0
+**Última actualización**: Julio 2025 | **Versión de documentación**: 3.0.0

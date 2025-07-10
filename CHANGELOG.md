@@ -12,7 +12,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Guías de despliegue y troubleshooting
 - Plantillas de contribución
 
-## [3.0.0] - 2024-01-15
+## [3.0.0] - 2025-07-10
 
 ### 🚀 Major Release - Sistema Completamente Rediseñado
 
@@ -53,7 +53,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - **Optimización de Consultas**: Consultas eficientes a DynamoDB con índices apropiados
 - **Generación Paralela**: Generación simultánea de múltiples documentos
 
-## [2.1.0] - 2023-12-01
+## [2.1.0] - 2024-12-01
 
 ### Added
 - Soporte básico para API Gateway
@@ -64,7 +64,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Correcciones menores en la detección de servicios
 - Mejoras en la estabilidad del sistema
 
-## [2.0.0] - 2023-11-15
+## [2.0.0] - 2024-11-15
 
 ### Added
 - Sistema de chat básico
@@ -75,7 +75,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Migración de CLI a interfaz web
 - Nuevo sistema de almacenamiento local
 
-## [1.0.0] - 2023-10-01
+## [1.0.0] - 2024-10-01
 
 ### Added
 - Versión inicial del sistema
@@ -184,9 +184,9 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para detalles sobre cómo contribuir al p
 | Versión | Soporte | Fin de Soporte |
 |---------|---------|----------------|
 | 3.0.x   | ✅ Activo | TBD |
-| 2.1.x   | 🔶 Mantenimiento | 2024-06-01 |
-| 2.0.x   | ❌ No soportado | 2024-01-01 |
-| 1.x     | ❌ No soportado | 2023-12-01 |
+| 2.1.x   | 🔶 Mantenimiento | 2025-06-01 |
+| 2.0.x   | ❌ No soportado | 2025-01-01 |
+| 1.x     | ❌ No soportado | 2024-12-01 |
 
 ### Reportar Issues
 - **Bugs**: Usar template de bug report en GitHub Issues
