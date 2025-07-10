@@ -188,19 +188,54 @@ def generate_word_document(project_info: Dict[str, Any], document_type: str = "p
     doc_io.seek(0)
     
     return doc_io.getvalue()
+
+def generate_technical_document(project_info: Dict[str, Any]) -> bytes:
+    """Generate detailed technical document"""
+    doc = Document()
+    
+    # Get project details
+    project_name = project_info.get('name', 'Proyecto AWS')
+    service_type = project_info.get('service_type', 'general')
+    
+    # Title
+    doc.add_heading(f'Documento Técnico - {project_name}', 0)
+    
+    # Technical Overview
+    doc.add_heading('Resumen Técnico', level=1)
+    doc.add_paragraph(
+        f'Este documento presenta los detalles técnicos de implementación '
+        f'para el proyecto "{project_name}". Incluye especificaciones técnicas, '
+        f'configuraciones y procedimientos de despliegue.'
     )
     
-    # Implementation Timeline
-    doc.add_heading('Cronograma de Implementacion', level=1)
-    doc.add_paragraph(
-        'El proyecto se ejecutara en fases bien definidas, con entregables claros '
-        'y puntos de control para asegurar el exito de la implementacion.'
-    )
+    # Technical Specifications
+    doc.add_heading('Especificaciones Técnicas', level=1)
     
-    # Cost Estimation
-    doc.add_heading('Estimacion de Costos', level=1)
-    doc.add_paragraph(
-        'Los costos estimados incluyen los servicios AWS necesarios para la solucion, '
+    if service_type == 'ec2':
+        instance_type = project_info.get('instance_type', 't2.micro')
+        doc.add_paragraph(f'Tipo de instancia: {instance_type}')
+        doc.add_paragraph('Sistema operativo: Amazon Linux 2')
+        doc.add_paragraph('Configuración de red: VPC por defecto')
+        doc.add_paragraph('Almacenamiento: EBS gp3')
+    elif service_type == 'vpc':
+        doc.add_paragraph('Configuración de red personalizada')
+        doc.add_paragraph('Subredes públicas y privadas')
+        doc.add_paragraph('Internet Gateway y NAT Gateway')
+    
+    # Implementation Steps
+    doc.add_heading('Pasos de Implementación', level=1)
+    doc.add_paragraph('1. Preparación del entorno')
+    doc.add_paragraph('2. Configuración de recursos')
+    doc.add_paragraph('3. Despliegue de la solución')
+    doc.add_paragraph('4. Pruebas y validación')
+    doc.add_paragraph('5. Documentación y entrega')
+    
+    # Save to bytes
+    doc_io = io.BytesIO()
+    doc.save(doc_io)
+    doc_io.seek(0)
+    
+    return doc_io.getvalue()
         'calculados con base en el uso proyectado y las mejores practicas de optimizacion.'
     )
     
