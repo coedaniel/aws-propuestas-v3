@@ -236,23 +236,6 @@ def generate_technical_document(project_info: Dict[str, Any]) -> bytes:
     doc_io.seek(0)
     
     return doc_io.getvalue()
-        'calculados con base en el uso proyectado y las mejores practicas de optimizacion.'
-    )
-    
-    # Next Steps
-    doc.add_heading('Proximos Pasos', level=1)
-    doc.add_paragraph('1. Revision y aprobacion de la propuesta')
-    doc.add_paragraph('2. Definicion del cronograma detallado')
-    doc.add_paragraph('3. Inicio de la fase de implementacion')
-    doc.add_paragraph('4. Configuracion del entorno de desarrollo')
-    doc.add_paragraph('5. Despliegue en ambiente de produccion')
-    
-    # Save to bytes
-    doc_io = io.BytesIO()
-    doc.save(doc_io)
-    doc_io.seek(0)
-    
-    return doc_io.getvalue()
 
 def generate_technical_document(project_info: Dict[str, Any]) -> bytes:
     """Generate detailed technical document"""
