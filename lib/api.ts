@@ -24,13 +24,17 @@ export interface ChatResponse {
 }
 
 export interface ArquitectoRequest {
-  prompt: string
+  messages: ChatMessage[]
   modelId?: string
+  projectId?: string
 }
 
 export interface ArquitectoResponse {
   response: string
   modelId: string
+  projectId?: string
+  currentStep?: number
+  isComplete?: boolean
   usage?: any
 }
 
@@ -77,7 +81,7 @@ export async function sendArquitectoRequest(request: ArquitectoRequest): Promise
   })
 
   if (!response.ok) {
-    throw new Error(`Arquitecto API error: ${response.status} ${response.statusText}`)
+    throw new Error(`Arquitecto API error: ${response.status}`)
   }
 
   return response.json()

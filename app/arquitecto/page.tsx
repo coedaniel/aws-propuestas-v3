@@ -12,29 +12,48 @@ import { AVAILABLE_MODELS } from '@/lib/types'
 
 export default function ArquitectoPage() {
   const router = useRouter()
-  const [prompt, setPrompt] = useState('')
+  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
+  const [currentInput, setCurrentInput] = useState('')
   const [response, setResponse] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState('amazon.nova-pro-v1:0')
+  const [projectId, setProjectId] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [isComplete, setIsComplete] = useState(false)
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
   const handleSubmit = async () => {
-    if (!prompt.trim() || isLoading) return
+    if (!currentInput.trim() || isLoading) return
 
     setIsLoading(true)
-    setResponse('')
+    
+    // Add user message to conversation
+    const newMessages = [...messages, { role: 'user' as const, content: currentInput.trim() }]
+    setMessages(newMessages)
+    setCurrentInput('')
 
     try {
       const data = await sendArquitectoRequest({
-        prompt: prompt.trim(),
-        modelId: selectedModel
+        messages: newMessages,
+        modelId: selectedModel,
+        projectId: projectId || undefined
       })
 
+      // Add assistant response
+      setMessages([...newMessages, { role: 'assistant' as const, content: data.response }])
       setResponse(data.response)
+      
+      // Update project state
+      if (data.projectId) setProjectId(data.projectId)
+      if (data.currentStep) setCurrentStep(data.currentStep)
+      if (data.isComplete !== undefined) setIsComplete(data.isComplete)
+      
     } catch (error) {
       console.error('Error calling arquitecto:', error)
-      setResponse('Lo siento, hubo un error al procesar tu solicitud. Por favor, inténtalo de nuevo.')
+      const errorMessage = 'Lo siento, hubo un error al procesar tu solicitud. Por favor, inténtalo de nuevo.'
+      setMessages([...newMessages, { role: 'assistant' as const, content: errorMessage }])
+      setResponse(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -93,8 +112,8 @@ export default function ArquitectoPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              value={currentInput}
+              onChange={(e) => setCurrentInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Escribe 'Hola' o 'Iniciar' para comenzar la consultoría..."
               className="min-h-[120px] resize-none"
@@ -106,7 +125,7 @@ export default function ArquitectoPage() {
               </span>
               <Button
                 onClick={handleSubmit}
-                disabled={!prompt.trim() || isLoading}
+                disabled={!currentInput.trim() || isLoading}
                 className="flex items-center gap-2"
               >
                 {isLoading ? (
@@ -120,8 +139,55 @@ export default function ArquitectoPage() {
           </CardContent>
         </Card>
 
+        {/* Conversation History */}
+        {messages.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Conversación con el Arquitecto
+                {projectId && (
+                  <span className="text-sm font-normal text-gray-500">
+                    (Proyecto: {projectId.slice(0, 8)}... - Paso {currentStep})
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-blue-50 border-l-4 border-blue-500 ml-8'
+                        : 'bg-gray-50 border-l-4 border-gray-500 mr-8'
+                    }`}
+                  >
+                    <div className="text-sm font-medium mb-1">
+                      {message.role === 'user' ? 'Tú' : 'Arquitecto AWS'}
+                    </div>
+                    <div className="whitespace-pre-wrap text-gray-800">
+                      {message.content}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="bg-gray-50 border-l-4 border-gray-500 mr-8 p-3 rounded-lg">
+                    <div className="text-sm font-medium mb-1">Arquitecto AWS</div>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-gray-600">Analizando tu proyecto...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Response Section */}
-        {(response || isLoading) && (
+        {(response || isLoading) && messages.length === 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -152,7 +218,7 @@ export default function ArquitectoPage() {
         )}
 
         {/* Examples */}
-        {!response && !isLoading && (
+        {messages.length === 0 && !isLoading && (
           <Card>
             <CardHeader>
               <CardTitle>Ejemplos de Proyectos</CardTitle>
