@@ -1,10 +1,12 @@
 import json
 import boto3
 import os
+import uuid
 from datetime import datetime
 from typing import Dict, List, Any
 import logging
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 # Configure logging
 logger = logging.getLogger()
@@ -30,9 +32,19 @@ def lambda_handler(event, context):
             return create_response(200, {})
         
         method = event.get('httpMethod', 'GET')
+        path_parameters = event.get('pathParameters') or {}
+        query_parameters = event.get('queryStringParameters') or {}
         
         if method == 'GET':
-            return get_projects(event, context)
+            # Check if requesting specific project documents
+            if query_parameters.get('action') == 'documents':
+                project_name = query_parameters.get('project_name')
+                if project_name:
+                    return get_project_documents(project_name)
+                else:
+                    return create_response(400, {'error': 'project_name parameter required'})
+            else:
+                return get_projects(event, context)
         elif method == 'POST':
             return create_or_update_project(event, context)
         else:
@@ -47,6 +59,183 @@ def lambda_handler(event, context):
 
 def get_projects(event, context) -> Dict:
     """Get projects for a user"""
+    try:
+        query_params = event.get('queryStringParameters') or {}
+        user_id = query_params.get('userId', 'anonymous')
+        status_filter = query_params.get('status')  # 'completed', 'in_progress', 'all'
+        
+        if not projects_table:
+            return create_response(500, {'error': 'Projects table not configured'})
+        
+        # Scan projects table (in production, consider using GSI for better performance)
+        scan_params = {}
+        if status_filter and status_filter != 'all':
+            if status_filter == 'completed':
+                scan_params['FilterExpression'] = 'isComplete = :completed'
+                scan_params['ExpressionAttributeValues'] = {':completed': True}
+            elif status_filter == 'in_progress':
+                scan_params['FilterExpression'] = 'isComplete = :completed'
+                scan_params['ExpressionAttributeValues'] = {':completed': False}
+        
+        response = projects_table.scan(**scan_params)
+        projects = response.get('Items', [])
+        
+        # Enrich projects with S3 document information
+        enriched_projects = []
+        for project in projects:
+            project_name = project.get('projectInfo', {}).get('name', project.get('projectId', ''))
+            
+            # Get document count from S3
+            document_count = 0
+            documents = []
+            if DOCUMENTS_BUCKET and project_name:
+                try:
+                    documents = list_project_documents_from_s3(project_name)
+                    document_count = len(documents)
+                except Exception as e:
+                    logger.warning(f"Could not get documents for project {project_name}: {str(e)}")
+            
+            enriched_project = {
+                'projectId': project.get('projectId'),
+                'projectName': project_name,
+                'status': 'completed' if project.get('isComplete') else 'in_progress',
+                'currentStep': project.get('currentStep', 0),
+                'createdAt': project.get('createdAt'),
+                'updatedAt': project.get('updatedAt'),
+                'documentCount': document_count,
+                'hasDocuments': document_count > 0,
+                'projectInfo': project.get('projectInfo', {}),
+                'lastMessage': get_last_message(project.get('messages', []))
+            }
+            
+            enriched_projects.append(enriched_project)
+        
+        # Sort by updatedAt descending
+        enriched_projects.sort(key=lambda x: x.get('updatedAt', ''), reverse=True)
+        
+        return create_response(200, {
+            'projects': enriched_projects,
+            'total': len(enriched_projects),
+            'completed': len([p for p in enriched_projects if p['status'] == 'completed']),
+            'in_progress': len([p for p in enriched_projects if p['status'] == 'in_progress'])
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting projects: {str(e)}")
+        return create_response(500, {'error': f'Failed to get projects: {str(e)}'})
+
+def get_project_documents(project_name: str) -> Dict:
+    """Get documents for a specific project"""
+    try:
+        if not DOCUMENTS_BUCKET:
+            return create_response(500, {'error': 'Documents bucket not configured'})
+        
+        documents = list_project_documents_from_s3(project_name)
+        
+        return create_response(200, {
+            'projectName': project_name,
+            'documents': documents,
+            'documentCount': len(documents)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting project documents: {str(e)}")
+        return create_response(500, {'error': f'Failed to get project documents: {str(e)}'})
+
+def list_project_documents_from_s3(project_name: str) -> List[Dict[str, Any]]:
+    """List documents for a project from S3"""
+    try:
+        # Clean project name for folder
+        folder_name = project_name.lower().replace(' ', '-').replace('_', '-')
+        
+        response = s3.list_objects_v2(
+            Bucket=DOCUMENTS_BUCKET,
+            Prefix=f"{folder_name}/",
+            Delimiter='/'
+        )
+        
+        documents = []
+        for obj in response.get('Contents', []):
+            # Skip the folder itself
+            if obj['Key'].endswith('/'):
+                continue
+                
+            filename = obj['Key'].split('/')[-1]
+            
+            # Generate presigned URL for download
+            download_url = generate_presigned_url(obj['Key'])
+            
+            documents.append({
+                'filename': filename,
+                's3_key': obj['Key'],
+                'size': obj['Size'],
+                'lastModified': obj['LastModified'].isoformat(),
+                'downloadUrl': download_url,
+                'fileType': get_file_type(filename)
+            })
+        
+        return documents
+        
+    except ClientError as e:
+        logger.error(f"S3 error listing documents for {project_name}: {str(e)}")
+        return []
+    except Exception as e:
+        logger.error(f"Error listing documents for {project_name}: {str(e)}")
+        return []
+
+def generate_presigned_url(s3_key: str, expiration: int = 3600) -> str:
+    """Generate presigned URL for document download"""
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': DOCUMENTS_BUCKET, 'Key': s3_key},
+            ExpiresIn=expiration
+        )
+        return url
+    except ClientError as e:
+        logger.error(f"Failed to generate presigned URL for {s3_key}: {str(e)}")
+        return ""
+
+def get_file_type(filename: str) -> str:
+    """Get file type based on extension"""
+    extension = filename.lower().split('.')[-1] if '.' in filename else ''
+    
+    file_types = {
+        'docx': 'Word Document',
+        'doc': 'Word Document',
+        'pdf': 'PDF Document',
+        'csv': 'CSV Spreadsheet',
+        'xlsx': 'Excel Spreadsheet',
+        'xls': 'Excel Spreadsheet',
+        'yaml': 'CloudFormation Template',
+        'yml': 'CloudFormation Template',
+        'json': 'JSON File',
+        'txt': 'Text File',
+        'svg': 'SVG Diagram',
+        'png': 'PNG Image',
+        'jpg': 'JPEG Image',
+        'jpeg': 'JPEG Image',
+        'drawio': 'Draw.io Diagram',
+        'xml': 'XML File'
+    }
+    
+    return file_types.get(extension, 'Unknown File')
+
+def get_last_message(messages: List[Dict]) -> str:
+    """Get the last message content for preview"""
+    if not messages:
+        return ""
+    
+    # Get the last assistant message
+    for message in reversed(messages):
+        if message.get('role') == 'assistant':
+            content = message.get('content', '')
+            # Return first 100 characters
+            return content[:100] + '...' if len(content) > 100 else content
+    
+    return ""
+
+def create_or_update_project(event, context) -> Dict:
     
     query_params = event.get('queryStringParameters') or {}
     user_id = query_params.get('userId', 'anonymous')
@@ -188,4 +377,62 @@ def create_response(status_code: int, body: Dict) -> Dict:
             'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
         },
         'body': json.dumps(body, ensure_ascii=False)
+    }
+    return file_types.get(extension, 'Unknown File')
+
+def get_last_message(messages: List[Dict]) -> str:
+    """Get the last message content for preview"""
+    if not messages:
+        return ""
+    
+    # Get the last assistant message
+    for message in reversed(messages):
+        if message.get('role') == 'assistant':
+            content = message.get('content', '')
+            # Return first 100 characters
+            return content[:100] + '...' if len(content) > 100 else content
+    
+    return ""
+
+def create_or_update_project(event, context) -> Dict:
+    """Create or update a project"""
+    try:
+        body = json.loads(event.get('body', '{}'))
+        
+        # This endpoint is mainly for manual project creation
+        # Most projects are created automatically by the arquitecto
+        
+        project_data = {
+            'projectId': body.get('projectId', str(uuid.uuid4())),
+            'projectInfo': body.get('projectInfo', {}),
+            'createdAt': datetime.utcnow().isoformat(),
+            'updatedAt': datetime.utcnow().isoformat(),
+            'isComplete': body.get('isComplete', False),
+            'currentStep': body.get('currentStep', 0),
+            'messages': body.get('messages', [])
+        }
+        
+        if projects_table:
+            projects_table.put_item(Item=project_data)
+        
+        return create_response(200, {
+            'message': 'Project created/updated successfully',
+            'projectId': project_data['projectId']
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating/updating project: {str(e)}")
+        return create_response(500, {'error': f'Failed to create/update project: {str(e)}'})
+
+def create_response(status_code: int, body: Dict) -> Dict:
+    """Create HTTP response with CORS headers"""
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token'
+        },
+        'body': json.dumps(body, default=str)
     }

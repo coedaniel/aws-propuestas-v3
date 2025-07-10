@@ -6,6 +6,13 @@ from datetime import datetime
 from typing import Dict, List, Any
 import logging
 
+# Import document generators
+from generators.word_generator import generate_word_document, generate_technical_document
+from generators.csv_generator import generate_activities_csv, generate_costs_csv
+from generators.cloudformation_generator import generate_cloudformation_template
+from generators.diagram_generator import generate_drawio_diagram, generate_svg_diagram
+from generators.s3_uploader import upload_project_documents, list_project_documents
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -106,6 +113,30 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         # Check if project is complete
         is_complete = check_if_complete(ai_response, project_info)
         
+        # Generate documents if project is complete
+        document_generation_results = None
+        if is_complete and project_info.get('name'):
+            logger.info(f"Project '{project_info.get('name')}' is complete. Starting document generation...")
+            document_generation_results = generate_project_documents(project_info)
+            
+            # Update AI response to include document generation status
+            if document_generation_results.get('success'):
+                ai_response += f"\n\n✅ **DOCUMENTOS GENERADOS EXITOSAMENTE**\n\n"
+                ai_response += f"He generado y subido {document_generation_results.get('documents_generated', 0)} documentos al bucket S3:\n"
+                ai_response += f"- Propuesta ejecutiva (Word)\n"
+                ai_response += f"- Documento tecnico (Word)\n"
+                ai_response += f"- Plan de actividades (CSV)\n"
+                ai_response += f"- Estimacion de costos (CSV)\n"
+                ai_response += f"- Template CloudFormation (YAML)\n"
+                ai_response += f"- Diagramas de arquitectura (SVG, Draw.io)\n"
+                ai_response += f"- Guia de calculadora AWS (TXT)\n\n"
+                ai_response += f"Todos los archivos estan organizados en la carpeta '{project_info.get('name')}' del bucket S3.\n\n"
+                ai_response += f"¿Deseas agregar algun comentario o ajuste final antes de cerrar este proyecto?"
+            else:
+                ai_response += f"\n\n⚠️ **ERROR EN GENERACION DE DOCUMENTOS**\n\n"
+                ai_response += f"Hubo un problema generando los documentos: {document_generation_results.get('error', 'Error desconocido')}\n"
+                ai_response += f"Por favor, intenta nuevamente o contacta al administrador del sistema."
+        
         # Save project progress
         if projects_table:
             save_project_progress(project_id, user_id, messages, ai_response, project_info, 
@@ -117,7 +148,8 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
             'projectId': project_id,
             'currentStep': current_step + 1,
             'isComplete': is_complete,
-            'usage': usage
+            'usage': usage,
+            'documentGeneration': document_generation_results
         }
         
         logger.info(f"✅ ARQUITECTO SUCCESS - Response length: {len(ai_response)}")
@@ -145,12 +177,12 @@ def get_arquitecto_system_prompt() -> str:
     
     return f"""Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible. Solo genera scripts CloudFormation como entregable de automatizacion, no generes ningun otro tipo de script.
 
-IMPORTANTE: Cuando el usuario inicie la conversacion (con cualquier mensaje inicial), comienza INMEDIATAMENTE con la entrevista guiada. NO pidas que diga "hola" o "iniciar". Si menciona un proyecto especifico, usalo como contexto inicial.
+IMPORTANTE: Cuando el usuario inicie la conversacion, pregunta INMEDIATAMENTE por el nombre del proyecto. No pidas que describa el proyecto primero.
 
-1. **Primero pregunta:**
-Cual es el nombre del proyecto
+1. **PRIMERA PREGUNTA OBLIGATORIA:**
+¿Cual es el nombre del proyecto?
 
-2. **Despues pregunta:**
+2. **SEGUNDA PREGUNTA:**
 El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.)
 o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)
 
@@ -326,6 +358,195 @@ def check_if_complete(ai_response: str, project_info: Dict) -> bool:
     ])
     
     return has_completion_indicator or (has_minimum_info and mentions_deliverables)
+
+def generate_project_documents(project_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Generate all project documents when project is complete
+    
+    Args:
+        project_info: Dictionary with project information
+    
+    Returns:
+        Dictionary with generation results
+    """
+    try:
+        logger.info(f"Starting document generation for project: {project_info.get('name', 'Unknown')}")
+        
+        documents = {}
+        project_name = project_info.get('name', 'aws-project')
+        
+        # Generate Word documents
+        try:
+            # Main proposal document
+            word_content = generate_word_document(project_info, "propuesta")
+            documents[f"{project_name.lower().replace(' ', '-')}-propuesta-ejecutiva.docx"] = word_content
+            
+            # Technical document
+            tech_content = generate_technical_document(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-documento-tecnico.docx"] = tech_content
+            
+            logger.info("Successfully generated Word documents")
+        except Exception as e:
+            logger.error(f"Error generating Word documents: {str(e)}")
+        
+        # Generate CSV files
+        try:
+            # Activities CSV
+            activities_content = generate_activities_csv(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-actividades-implementacion.csv"] = activities_content
+            
+            # Costs CSV
+            costs_content = generate_costs_csv(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-costos-estimados.csv"] = costs_content
+            
+            logger.info("Successfully generated CSV documents")
+        except Exception as e:
+            logger.error(f"Error generating CSV documents: {str(e)}")
+        
+        # Generate CloudFormation template
+        try:
+            cf_content = generate_cloudformation_template(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-cloudformation-template.yaml"] = cf_content.encode('utf-8')
+            
+            logger.info("Successfully generated CloudFormation template")
+        except Exception as e:
+            logger.error(f"Error generating CloudFormation template: {str(e)}")
+        
+        # Generate diagrams
+        try:
+            # Draw.io diagram
+            drawio_content = generate_drawio_diagram(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-arquitectura-general.drawio"] = drawio_content.encode('utf-8')
+            
+            # SVG diagram
+            svg_content = generate_svg_diagram(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-arquitectura-general.svg"] = svg_content.encode('utf-8')
+            
+            logger.info("Successfully generated diagram files")
+        except Exception as e:
+            logger.error(f"Error generating diagrams: {str(e)}")
+        
+        # Generate AWS Calculator guide
+        try:
+            calculator_guide = generate_calculator_guide(project_info)
+            documents[f"{project_name.lower().replace(' ', '-')}-guia-calculadora-aws.txt"] = calculator_guide.encode('utf-8')
+            
+            logger.info("Successfully generated calculator guide")
+        except Exception as e:
+            logger.error(f"Error generating calculator guide: {str(e)}")
+        
+        # Upload to S3
+        if documents and DOCUMENTS_BUCKET:
+            try:
+                upload_results = upload_project_documents(
+                    project_name=project_name,
+                    documents=documents,
+                    bucket_name=DOCUMENTS_BUCKET
+                )
+                
+                logger.info(f"Upload results: {upload_results}")
+                
+                return {
+                    'success': True,
+                    'documents_generated': len(documents),
+                    'upload_results': upload_results,
+                    'message': f"Successfully generated and uploaded {len(documents)} documents for project '{project_name}'"
+                }
+            except Exception as e:
+                logger.error(f"Error uploading documents: {str(e)}")
+                return {
+                    'success': False,
+                    'documents_generated': len(documents),
+                    'error': f"Documents generated but upload failed: {str(e)}"
+                }
+        else:
+            return {
+                'success': False,
+                'documents_generated': len(documents),
+                'error': "No documents generated or S3 bucket not configured"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in document generation: {str(e)}")
+        return {
+            'success': False,
+            'error': f"Document generation failed: {str(e)}"
+        }
+
+def generate_calculator_guide(project_info: Dict[str, Any]) -> str:
+    """Generate AWS Calculator guide text"""
+    project_name = project_info.get('name', 'Proyecto AWS')
+    project_type = project_info.get('type', 'general')
+    
+    guide = f"""Guia para usar la Calculadora Oficial de AWS - {project_name}
+
+INSTRUCCIONES PASO A PASO:
+
+1. Acceder a la Calculadora de AWS:
+   - Ir a: https://calculator.aws/
+   - Hacer clic en "Create estimate"
+
+2. Servicios Principales a Configurar:
+
+"""
+    
+    if 'web' in project_type.lower() or 'app' in project_type.lower():
+        guide += """   a) Amazon EC2:
+      - Tipo de instancia: t3.medium
+      - Cantidad: 2 instancias
+      - Sistema operativo: Linux
+      - Uso: 24 horas/dia, 30 dias/mes
+      
+   b) Application Load Balancer:
+      - Cantidad: 1 ALB
+      - Datos procesados: 1 GB/mes
+      
+   c) Amazon RDS:
+      - Motor: MySQL
+      - Tipo de instancia: db.t3.micro
+      - Almacenamiento: 20 GB SSD
+      
+"""
+    
+    if 'data' in project_type.lower() or 'analitica' in project_type.lower():
+        guide += """   a) Amazon S3:
+      - Almacenamiento estandar: 1 TB
+      - Solicitudes PUT/COPY/POST/LIST: 10,000/mes
+      - Solicitudes GET/SELECT: 100,000/mes
+      
+   b) AWS Glue:
+      - DPU-horas: 100/mes
+      - Trabajos de ETL: 10/mes
+      
+   c) Amazon Redshift:
+      - Tipo de nodo: dc2.large
+      - Cantidad de nodos: 2
+      - Uso: 24 horas/dia
+      
+"""
+    
+    guide += """3. Servicios Adicionales:
+   - VPC NAT Gateway: 1 gateway
+   - CloudWatch: Metricas personalizadas y alarmas
+   - AWS Backup: 100 GB de respaldos
+   - Route 53: 1 hosted zone
+
+4. Consideraciones de Costos:
+   - Los precios varian por region
+   - Considerar descuentos por Reserved Instances
+   - Evaluar opciones de Savings Plans
+   - Incluir costos de transferencia de datos si aplica
+
+5. Recomendaciones:
+   - Comenzar con la configuracion basica
+   - Ajustar segun el crecimiento esperado
+   - Revisar y optimizar mensualmente
+   - Considerar herramientas de optimizacion de costos
+
+NOTA: Esta es una estimacion base. Los costos reales pueden variar segun el uso especifico y los patrones de trafico de la aplicacion.
+"""
+    
+    return guide
 
 def save_project_progress(project_id: str, user_id: str, messages: List[Dict], 
                          ai_response: str, project_info: Dict, current_step: int,
