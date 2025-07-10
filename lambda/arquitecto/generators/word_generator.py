@@ -52,7 +52,7 @@ def generate_word_document(project_info: Dict[str, Any], document_type: str = "p
     elif project_type == 'solucion_integral':
         doc.add_paragraph('Este es un proyecto de solución integral que abarca múltiples servicios y componentes de AWS.')
     
-    # Service-specific details
+    # Service-specific details - COMPREHENSIVE SUPPORT FOR ALL SERVICES
     if service_type == 'vpc':
         doc.add_heading('Configuración de VPC', level=1)
         doc.add_paragraph('La solución incluye la configuración de una Virtual Private Cloud (VPC) con las siguientes características:')
@@ -115,6 +115,171 @@ def generate_word_document(project_info: Dict[str, Any], document_type: str = "p
         rds_details.add_run('Alta disponibilidad con Multi-AZ\n')
         rds_details.add_run('• ').bold = True
         rds_details.add_run('Cifrado en reposo y en tránsito\n')
+    
+    elif service_type == 's3':
+        doc.add_heading('Configuración de Amazon S3', level=1)
+        doc.add_paragraph('La solución incluye la configuración de buckets Amazon S3 con las siguientes características:')
+        
+        s3_details = doc.add_paragraph()
+        bucket_name = project_info.get('bucket_name', f'{project_name.lower().replace(" ", "-")}-bucket')
+        s3_details.add_run('• ').bold = True
+        s3_details.add_run(f'Bucket principal: {bucket_name}\n')
+        
+        storage_type = project_info.get('storage_type', 'Standard')
+        s3_details.add_run('• ').bold = True
+        s3_details.add_run(f'Clase de almacenamiento: {storage_type}\n')
+        
+        aws_region = project_info.get('aws_region', project_info.get('region', 'us-east-1'))
+        s3_details.add_run('• ').bold = True
+        s3_details.add_run(f'Región: {aws_region}\n')
+        
+        versioning = project_info.get('versioning', 'enabled')
+        s3_details.add_run('• ').bold = True
+        s3_details.add_run(f'Versionado: {versioning}\n')
+        
+        encryption = project_info.get('encryption', 'enabled')
+        s3_details.add_run('• ').bold = True
+        s3_details.add_run(f'Cifrado: {encryption}\n')
+        
+        access_policy = project_info.get('access_policy', 'private')
+        s3_details.add_run('• ').bold = True
+        s3_details.add_run(f'Política de acceso: {access_policy}\n')
+    
+    elif service_type == 'efs':
+        doc.add_heading('Configuración de Amazon EFS', level=1)
+        doc.add_paragraph('La solución incluye la configuración de Amazon Elastic File System (EFS) con las siguientes características:')
+        
+        efs_details = doc.add_paragraph()
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run('Sistema de archivos elástico y escalable\n')
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run('Acceso concurrente desde múltiples instancias EC2\n')
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run('Cifrado en reposo y en tránsito\n')
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run('Respaldos automáticos configurados\n')
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run('Políticas de ciclo de vida para optimización de costos\n')
+        
+        performance_mode = project_info.get('performance_mode', 'General Purpose')
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run(f'Modo de rendimiento: {performance_mode}\n')
+        
+        throughput_mode = project_info.get('throughput_mode', 'Bursting')
+        efs_details.add_run('• ').bold = True
+        efs_details.add_run(f'Modo de throughput: {throughput_mode}\n')
+    
+    elif service_type == 'lambda':
+        doc.add_heading('Configuración de AWS Lambda', level=1)
+        doc.add_paragraph('La solución incluye funciones AWS Lambda con las siguientes características:')
+        
+        lambda_details = doc.add_paragraph()
+        runtime = project_info.get('runtime', 'python3.9')
+        lambda_details.add_run('• ').bold = True
+        lambda_details.add_run(f'Runtime: {runtime}\n')
+        lambda_details.add_run('• ').bold = True
+        lambda_details.add_run('Ejecución serverless sin gestión de infraestructura\n')
+        lambda_details.add_run('• ').bold = True
+        lambda_details.add_run('Escalado automático basado en demanda\n')
+        lambda_details.add_run('• ').bold = True
+        lambda_details.add_run('Integración con otros servicios AWS\n')
+        lambda_details.add_run('• ').bold = True
+        lambda_details.add_run('Monitoreo con CloudWatch integrado\n')
+    
+    elif service_type == 'cloudfront':
+        doc.add_heading('Configuración de Amazon CloudFront', level=1)
+        doc.add_paragraph('La solución incluye una distribución CloudFront con las siguientes características:')
+        
+        cf_details = doc.add_paragraph()
+        cf_details.add_run('• ').bold = True
+        cf_details.add_run('Red de distribución de contenido global\n')
+        cf_details.add_run('• ').bold = True
+        cf_details.add_run('Reducción de latencia para usuarios finales\n')
+        cf_details.add_run('• ').bold = True
+        cf_details.add_run('Certificado SSL/TLS incluido\n')
+        cf_details.add_run('• ').bold = True
+        cf_details.add_run('Compresión automática de contenido\n')
+        cf_details.add_run('• ').bold = True
+        cf_details.add_run('Protección DDoS integrada\n')
+    
+    elif service_type == 'elb':
+        doc.add_heading('Configuración de Elastic Load Balancer', level=1)
+        doc.add_paragraph('La solución incluye un balanceador de carga con las siguientes características:')
+        
+        elb_details = doc.add_paragraph()
+        elb_details.add_run('• ').bold = True
+        elb_details.add_run('Distribución automática de tráfico\n')
+        elb_details.add_run('• ').bold = True
+        elb_details.add_run('Health checks automáticos\n')
+        elb_details.add_run('• ').bold = True
+        elb_details.add_run('Alta disponibilidad multi-AZ\n')
+        elb_details.add_run('• ').bold = True
+        elb_details.add_run('Terminación SSL/TLS\n')
+        elb_details.add_run('• ').bold = True
+        elb_details.add_run('Integración con Auto Scaling\n')
+    
+    elif service_type == 'ses':
+        doc.add_heading('Configuración de Amazon SES', level=1)
+        doc.add_paragraph('La solución incluye Amazon Simple Email Service con las siguientes características:')
+        
+        ses_details = doc.add_paragraph()
+        ses_details.add_run('• ').bold = True
+        ses_details.add_run('Envío de correos electrónicos escalable\n')
+        ses_details.add_run('• ').bold = True
+        ses_details.add_run('Verificación de dominios y direcciones\n')
+        ses_details.add_run('• ').bold = True
+        ses_details.add_run('Métricas de entrega y rebotes\n')
+        ses_details.add_run('• ').bold = True
+        ses_details.add_run('Configuración de DKIM y SPF\n')
+        ses_details.add_run('• ').bold = True
+        ses_details.add_run('Gestión de listas de supresión\n')
+    
+    elif service_type == 'vpn':
+        doc.add_heading('Configuración de AWS VPN', level=1)
+        doc.add_paragraph('La solución incluye una conexión VPN con las siguientes características:')
+        
+        vpn_details = doc.add_paragraph()
+        vpn_details.add_run('• ').bold = True
+        vpn_details.add_run('Conexión segura site-to-site\n')
+        vpn_details.add_run('• ').bold = True
+        vpn_details.add_run('Cifrado IPSec estándar de la industria\n')
+        vpn_details.add_run('• ').bold = True
+        vpn_details.add_run('Redundancia con múltiples túneles\n')
+        vpn_details.add_run('• ').bold = True
+        vpn_details.add_run('Monitoreo de conectividad\n')
+        vpn_details.add_run('• ').bold = True
+        vpn_details.add_run('Configuración de rutas automática\n')
+    
+    elif service_type == 'backup':
+        doc.add_heading('Configuración de AWS Backup', level=1)
+        doc.add_paragraph('La solución incluye un sistema de respaldos con las siguientes características:')
+        
+        backup_details = doc.add_paragraph()
+        backup_details.add_run('• ').bold = True
+        backup_details.add_run('Respaldos automáticos programados\n')
+        backup_details.add_run('• ').bold = True
+        backup_details.add_run('Políticas de retención configurables\n')
+        backup_details.add_run('• ').bold = True
+        backup_details.add_run('Cifrado de respaldos\n')
+        backup_details.add_run('• ').bold = True
+        backup_details.add_run('Restauración point-in-time\n')
+        backup_details.add_run('• ').bold = True
+        backup_details.add_run('Monitoreo y alertas de respaldos\n')
+    
+    else:
+        # Generic service handling
+        doc.add_heading(f'Configuración de {service_type.upper()}', level=1)
+        doc.add_paragraph(f'La solución incluye la configuración de {service_type.upper()} con características optimizadas para el proyecto {project_name}.')
+        
+        generic_details = doc.add_paragraph()
+        generic_details.add_run('• ').bold = True
+        generic_details.add_run('Configuración siguiendo mejores prácticas de AWS\n')
+        generic_details.add_run('• ').bold = True
+        generic_details.add_run('Seguridad y cifrado implementados\n')
+        generic_details.add_run('• ').bold = True
+        generic_details.add_run('Monitoreo y alertas configurados\n')
+        generic_details.add_run('• ').bold = True
+        generic_details.add_run('Escalabilidad y alta disponibilidad\n')
     
     # AWS Services
     aws_services = project_info.get('aws_services', [])

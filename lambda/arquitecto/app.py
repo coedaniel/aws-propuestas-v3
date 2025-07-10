@@ -478,9 +478,79 @@ def extract_project_info_from_conversation(messages: List[Dict], ai_response: st
                 elif 'no' in user_msg_lower or 'deshabilitar' in user_msg_lower:
                     project_info['encryption'] = 'disabled'
     
+    if 'efs' in conversation_lower:
+        services_mentioned.append('EFS')
+        aws_services.append('Amazon EFS')
+        project_info['service_type'] = 'efs'
+        project_info['description'] = 'Sistema de archivos elástico Amazon EFS'
+        
+        # Extract EFS specific details
+        for user_msg in user_messages:
+            user_msg_lower = user_msg.lower()
+            
+            # Look for performance mode
+            if 'general purpose' in user_msg_lower or 'general' in user_msg_lower:
+                project_info['performance_mode'] = 'General Purpose'
+            elif 'max io' in user_msg_lower or 'maxio' in user_msg_lower:
+                project_info['performance_mode'] = 'Max I/O'
+            
+            # Look for throughput mode
+            if 'bursting' in user_msg_lower:
+                project_info['throughput_mode'] = 'Bursting'
+            elif 'provisioned' in user_msg_lower:
+                project_info['throughput_mode'] = 'Provisioned'
+    
     if 'lambda' in conversation_lower:
         services_mentioned.append('Lambda')
         aws_services.append('AWS Lambda')
+        project_info['service_type'] = 'lambda'
+        project_info['description'] = 'Funciones serverless con AWS Lambda'
+        
+        # Extract Lambda specific details
+        for user_msg in user_messages:
+            user_msg_lower = user_msg.lower()
+            
+            # Look for runtime
+            runtimes = ['python', 'nodejs', 'java', 'dotnet', 'go', 'ruby']
+            for runtime in runtimes:
+                if runtime in user_msg_lower:
+                    if runtime == 'python':
+                        project_info['runtime'] = 'python3.9'
+                    elif runtime == 'nodejs':
+                        project_info['runtime'] = 'nodejs18.x'
+                    else:
+                        project_info['runtime'] = runtime
+                    break
+    
+    if 'cloudfront' in conversation_lower:
+        services_mentioned.append('CloudFront')
+        aws_services.append('Amazon CloudFront')
+        project_info['service_type'] = 'cloudfront'
+        project_info['description'] = 'Red de distribución de contenido CloudFront'
+    
+    if 'elb' in conversation_lower or 'load balancer' in conversation_lower or 'balanceador' in conversation_lower:
+        services_mentioned.append('ELB')
+        aws_services.append('Elastic Load Balancer')
+        project_info['service_type'] = 'elb'
+        project_info['description'] = 'Balanceador de carga elástico'
+    
+    if 'ses' in conversation_lower or 'email' in conversation_lower or 'correo' in conversation_lower:
+        services_mentioned.append('SES')
+        aws_services.append('Amazon SES')
+        project_info['service_type'] = 'ses'
+        project_info['description'] = 'Servicio de correo electrónico Amazon SES'
+    
+    if 'vpn' in conversation_lower:
+        services_mentioned.append('VPN')
+        aws_services.append('AWS VPN')
+        project_info['service_type'] = 'vpn'
+        project_info['description'] = 'Conexión VPN segura'
+    
+    if 'backup' in conversation_lower or 'respaldo' in conversation_lower:
+        services_mentioned.append('Backup')
+        aws_services.append('AWS Backup')
+        project_info['service_type'] = 'backup'
+        project_info['description'] = 'Sistema de respaldos automáticos'
     
     # Store extracted services
     if services_mentioned:
