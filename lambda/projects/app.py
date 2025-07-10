@@ -98,7 +98,7 @@ def get_projects(event, context) -> Dict:
             enriched_project = {
                 'projectId': project.get('projectId'),
                 'projectName': project_name,
-                'status': 'completed' if project.get('isComplete') else 'in_progress',
+                'status': 'completed' if (project.get('status') == 'COMPLETED' or project.get('isComplete')) else 'in_progress',
                 'currentStep': project.get('currentStep', 0),
                 'createdAt': project.get('createdAt'),
                 'updatedAt': project.get('updatedAt'),

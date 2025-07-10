@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
   ArrowLeft, 
   Plus, 
@@ -14,7 +15,12 @@ import {
   Calendar,
   DollarSign,
   FileText,
-  Loader2
+  Loader2,
+  Download,
+  Eye,
+  Trash2,
+  CheckCircle,
+  Clock
 } from 'lucide-react'
 import { getProjects, createProject, generateDocuments } from '@/lib/api'
 
@@ -38,6 +44,8 @@ export default function ProjectsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [generatingDocs, setGeneratingDocs] = useState<string | null>(null)
+  const [deletingProject, setDeletingProject] = useState<string | null>(null)
+  const [previewProject, setPreviewProject] = useState<Project | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -93,13 +101,41 @@ export default function ProjectsPage() {
     setGeneratingDocs(projectId)
     try {
       await generateDocuments(projectId)
-      // Aquí podrías mostrar un mensaje de éxito o descargar los documentos
       alert('Documentos generados exitosamente')
+      // Reload projects to update document count
+      await loadProjects()
     } catch (error) {
       console.error('Error generating documents:', error)
       alert('Error al generar documentos')
     } finally {
       setGeneratingDocs(null)
+    }
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este proyecto?')) return
+    
+    setDeletingProject(projectId)
+    try {
+      // TODO: Implement delete API call
+      console.log('Delete project:', projectId)
+      alert('Funcionalidad de eliminación pendiente de implementar')
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      alert('Error al eliminar proyecto')
+    } finally {
+      setDeletingProject(null)
+    }
+  }
+
+  const handleDownloadDocuments = async (project: Project) => {
+    try {
+      // TODO: Implement download functionality
+      console.log('Download documents for:', project.projectName)
+      alert('Funcionalidad de descarga pendiente de implementar')
+    } catch (error) {
+      console.error('Error downloading documents:', error)
+      alert('Error al descargar documentos')
     }
   }
 
@@ -111,6 +147,18 @@ export default function ProjectsPage() {
       month: 'short',
       day: 'numeric'
     })
+  }
+
+  const getStatusIcon = (status: string) => {
+    return status === 'completed' ? (
+      <CheckCircle className="h-4 w-4 text-green-600" />
+    ) : (
+      <Clock className="h-4 w-4 text-yellow-600" />
+    )
+  }
+
+  const getStatusColor = (status: string) => {
+    return status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
   }
 
   return (
@@ -134,80 +182,13 @@ export default function ProjectsPage() {
             </div>
           </div>
           <Button
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => router.push('/arquitecto')}
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Nuevo Proyecto
           </Button>
         </div>
-
-        {/* Create Project Form */}
-        {showCreateForm && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Crear Nuevo Proyecto</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Nombre del Proyecto</label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ej: Sistema de E-commerce"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Descripción</label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe brevemente el proyecto..."
-                  className="min-h-[80px]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Requisitos (uno por línea)</label>
-                <Textarea
-                  value={formData.requirements}
-                  onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-                  placeholder="Alta disponibilidad&#10;Escalabilidad automática&#10;Seguridad avanzada"
-                  className="min-h-[100px]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Presupuesto (USD) - Opcional</label>
-                <Input
-                  type="number"
-                  value={formData.budget}
-                  onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                  placeholder="10000"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleCreateProject}
-                  disabled={isCreating || !formData.name.trim() || !formData.description.trim()}
-                  className="flex items-center gap-2"
-                >
-                  {isCreating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  {isCreating ? 'Creando...' : 'Crear Proyecto'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowCreateForm(false)}
-                  disabled={isCreating}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Projects List */}
         {isLoading ? (
@@ -223,7 +204,7 @@ export default function ProjectsPage() {
               <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay proyectos</h3>
               <p className="text-gray-600 mb-4">Crea tu primer proyecto para comenzar</p>
-              <Button onClick={() => setShowCreateForm(true)}>
+              <Button onClick={() => router.push('/arquitecto')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Crear Proyecto
               </Button>
@@ -237,7 +218,8 @@ export default function ProjectsPage() {
                   <CardTitle className="flex items-start justify-between">
                     <span className="line-clamp-2">{project.projectName}</span>
                     <div className="flex flex-col gap-1 ml-2">
-                      <Badge variant={project.status === 'completed' ? 'default' : 'secondary'}>
+                      <Badge className={`flex items-center gap-1 ${getStatusColor(project.status)}`}>
+                        {getStatusIcon(project.status)}
                         {project.status === 'completed' ? 'Completado' : 'En Progreso'}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
@@ -248,9 +230,9 @@ export default function ProjectsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-gray-600 text-sm line-clamp-3">
+                  <div className="text-gray-600 text-sm line-clamp-3 font-mono bg-gray-50 p-2 rounded">
                     {project.lastMessage || 'Sin mensajes recientes'}
-                  </p>
+                  </div>
                   
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
@@ -262,28 +244,96 @@ export default function ProjectsPage() {
                     </Badge>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => router.push(`/arquitecto?projectId=${project.projectId}`)}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      Continuar Chat
-                    </Button>
-                    <Button
-                      onClick={() => handleGenerateDocuments(project.projectId)}
-                      disabled={generatingDocs === project.projectId}
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {generatingDocs === project.projectId ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <FileText className="h-4 w-4" />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => router.push(`/arquitecto?projectId=${project.projectId}`)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Continuar Chat
+                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPreviewProject(project)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Vista Previa - {project.projectName}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-semibold mb-2">Estado del Proyecto:</h4>
+                              <Badge className={getStatusColor(project.status)}>
+                                {project.status === 'completed' ? 'Completado' : 'En Progreso'}
+                              </Badge>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-2">Información del Proyecto:</h4>
+                              <pre className="bg-gray-100 p-3 rounded text-sm font-mono whitespace-pre-wrap">
+                                {JSON.stringify(project.projectInfo, null, 2)}
+                              </pre>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-2">Último Mensaje:</h4>
+                              <div className="bg-gray-50 p-3 rounded text-sm font-mono whitespace-pre-wrap">
+                                {project.lastMessage}
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-2">Documentos:</h4>
+                              <p>{project.documentCount} documentos generados</p>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {project.hasDocuments && (
+                        <Button
+                          onClick={() => handleDownloadDocuments(project)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Descargar
+                        </Button>
                       )}
-                      {generatingDocs === project.projectId ? 'Generando...' : 'Documentos'}
-                    </Button>
+                      <Button
+                        onClick={() => handleGenerateDocuments(project.projectId)}
+                        disabled={generatingDocs === project.projectId}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        {generatingDocs === project.projectId ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        {generatingDocs === project.projectId ? 'Generando...' : 'Documentos'}
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteProject(project.projectId)}
+                        disabled={deletingProject === project.projectId}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        {deletingProject === project.projectId ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

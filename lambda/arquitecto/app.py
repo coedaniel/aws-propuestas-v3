@@ -331,83 +331,169 @@ def extract_project_info_from_conversation(messages: List[Dict], ai_response: st
     
     # Combine all messages into a single text for analysis
     conversation_text = ""
-    for msg in messages:
-        conversation_text += f"{msg.get('role', '')}: {msg.get('content', '')}\n"
-    conversation_text += f"assistant: {ai_response}\n"
+    user_messages = []
+    assistant_messages = []
     
+    for msg in messages:
+        content = msg.get('content', '')
+        conversation_text += f"{msg.get('role', '')}: {content}\n"
+        if msg.get('role') == 'user':
+            user_messages.append(content.lower())
+        elif msg.get('role') == 'assistant':
+            assistant_messages.append(content.lower())
+    
+    conversation_text += f"assistant: {ai_response}\n"
+    assistant_messages.append(ai_response.lower())
     conversation_lower = conversation_text.lower()
     
     # Extract project name
     if not project_info.get('name'):
-        # Look for project name patterns
         import re
         
-        # Pattern 1: Direct name mention after "nombre del proyecto"
-        name_patterns = [
-            r'nombre del proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
-            r'proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
-            r'se llama[:\s]*["\']?([^"\'\n,\.]+)["\']?'
-        ]
-        
-        for pattern in name_patterns:
-            matches = re.findall(pattern, conversation_lower)
-            if matches:
-                # Get the last (most recent) match and clean it
-                name = matches[-1].strip()
-                if len(name) > 2 and name not in ['del', 'el', 'la', 'los', 'las', 'un', 'una']:
-                    project_info['name'] = name
+        # Look for project name patterns in user messages
+        for user_msg in user_messages:
+            # Skip common responses
+            if user_msg in ['hola', 'si', 'no', 'servicio rapido', 'solucion integral']:
+                continue
+            
+            # If it's a short meaningful response, it might be the project name
+            if len(user_msg.strip()) > 2 and len(user_msg.strip()) < 50:
+                # Check if it's not a common phrase
+                common_phrases = ['una instancia', 'una vpc', 'un rds', 'servicio', 'proyecto']
+                if not any(phrase in user_msg for phrase in common_phrases):
+                    project_info['name'] = user_msg.strip()
                     break
+        
+        # Fallback: look for explicit name patterns
+        if not project_info.get('name'):
+            name_patterns = [
+                r'nombre del proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
+                r'proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
+                r'se llama[:\s]*["\']?([^"\'\n,\.]+)["\']?'
+            ]
+            
+            for pattern in name_patterns:
+                matches = re.findall(pattern, conversation_lower)
+                if matches:
+                    name = matches[-1].strip()
+                    if len(name) > 2 and name not in ['del', 'el', 'la', 'los', 'las', 'un', 'una']:
+                        project_info['name'] = name
+                        break
     
-    # Extract project type
+    # Extract project type and specific requirements
     if not project_info.get('type'):
         if 'servicio rapido' in conversation_lower or 'servicio rápido' in conversation_lower:
             project_info['type'] = 'servicio_rapido'
         elif 'solucion integral' in conversation_lower or 'solución integral' in conversation_lower:
             project_info['type'] = 'solucion_integral'
-        elif 'vpc' in conversation_lower:
-            project_info['type'] = 'vpc'
-        elif 'ec2' in conversation_lower:
-            project_info['type'] = 'ec2'
-        elif 'rds' in conversation_lower:
-            project_info['type'] = 'rds'
-        elif 'migracion' in conversation_lower or 'migración' in conversation_lower:
-            project_info['type'] = 'migracion'
     
-    # Extract description from the conversation
-    if not project_info.get('description'):
-        # Look for descriptive content
-        if 'vpc' in conversation_lower and 'tres capas' in conversation_lower:
-            project_info['description'] = 'VPC estándar preparada para un sistema de tres capas'
-        elif 'vpc' in conversation_lower:
-            project_info['description'] = 'Configuración de VPC (Virtual Private Cloud)'
+    # Extract specific service requirements
+    services_mentioned = []
+    aws_services = []
     
-    # Extract requirements
-    if not project_info.get('requirements'):
-        requirements = []
-        if 'alta disponibilidad' in conversation_lower:
-            requirements.append('alta_disponibilidad')
-        if 'tres capas' in conversation_lower:
-            requirements.append('arquitectura_tres_capas')
-        if 'cidr' in conversation_lower:
-            requirements.append('configuracion_cidr')
-        if 'vpc' in conversation_lower:
-            requirements.append('vpc_configuration')
+    if 'vpc' in conversation_lower:
+        services_mentioned.append('VPC')
+        aws_services.append('Amazon VPC')
+        project_info['service_type'] = 'vpc'
         
-        if requirements:
-            project_info['requirements'] = requirements
+        # Extract VPC specific details
+        if 'tres capas' in conversation_lower:
+            project_info['architecture'] = 'tres_capas'
+            project_info['description'] = 'VPC estándar preparada para un sistema de tres capas'
+        
+        if 'cidr' in conversation_lower:
+            project_info['cidr_blocks'] = {
+                'vpc': '10.0.0.0/16',
+                'public_subnets': ['10.0.1.0/24', '10.0.2.0/24'],
+                'private_subnets': ['10.0.10.0/24', '10.0.11.0/24']
+            }
     
-    # Extract technical details
-    if 'cidr' in conversation_lower and not project_info.get('cidr_blocks'):
-        project_info['cidr_blocks'] = {
-            'vpc': '10.0.0.0/16',
-            'public_subnets': ['10.0.1.0/24', '10.0.2.0/24'],
-            'private_subnets': ['10.0.10.0/24', '10.0.11.0/24']
-        }
+    if 'ec2' in conversation_lower:
+        services_mentioned.append('EC2')
+        aws_services.append('Amazon EC2')
+        project_info['service_type'] = 'ec2'
+        
+        # Extract EC2 specific details
+        if 'basica' in conversation_lower or 'básica' in conversation_lower:
+            project_info['instance_type'] = 't2.micro'
+            project_info['description'] = 'Instancia EC2 básica para aplicaciones de bajo tráfico'
+        
+        # Look for specific instance types mentioned
+        instance_patterns = [r't[0-9]\.[a-z]+', r'm[0-9]\.[a-z]+', r'c[0-9]\.[a-z]+']
+        for pattern in instance_patterns:
+            matches = re.findall(pattern, conversation_lower)
+            if matches:
+                project_info['instance_type'] = matches[0]
+    
+    if 'rds' in conversation_lower:
+        services_mentioned.append('RDS')
+        aws_services.append('Amazon RDS')
+        project_info['service_type'] = 'rds'
+        project_info['description'] = 'Base de datos relacional administrada con Amazon RDS'
+    
+    if 's3' in conversation_lower:
+        services_mentioned.append('S3')
+        aws_services.append('Amazon S3')
+    
+    if 'lambda' in conversation_lower:
+        services_mentioned.append('Lambda')
+        aws_services.append('AWS Lambda')
+    
+    # Store extracted services
+    if services_mentioned:
+        project_info['services'] = services_mentioned
+        project_info['aws_services'] = aws_services
+    
+    # Extract requirements from conversation
+    requirements = []
+    if 'alta disponibilidad' in conversation_lower:
+        requirements.append('Alta disponibilidad')
+    if 'escalabilidad' in conversation_lower:
+        requirements.append('Escalabilidad automática')
+    if 'seguridad' in conversation_lower:
+        requirements.append('Seguridad avanzada')
+    if 'backup' in conversation_lower:
+        requirements.append('Respaldo automático')
+    if 'monitoreo' in conversation_lower:
+        requirements.append('Monitoreo y alertas')
+    
+    if requirements:
+        project_info['requirements'] = requirements
+    
+    # Extract technical specifications from user responses
+    technical_specs = {}
+    for user_msg in user_messages:
+        # Look for technical specifications
+        if 'gb' in user_msg or 'tb' in user_msg:
+            # Storage specifications
+            storage_match = re.search(r'(\d+)\s*(gb|tb)', user_msg)
+            if storage_match:
+                technical_specs['storage'] = f"{storage_match.group(1)} {storage_match.group(2).upper()}"
+        
+        if 'cpu' in user_msg or 'vcpu' in user_msg:
+            cpu_match = re.search(r'(\d+)\s*(cpu|vcpu)', user_msg)
+            if cpu_match:
+                technical_specs['cpu'] = f"{cpu_match.group(1)} {cpu_match.group(2)}"
+    
+    if technical_specs:
+        project_info['technical_specs'] = technical_specs
+    
+    # Generate objective based on extracted information
+    if not project_info.get('objective'):
+        service_type = project_info.get('service_type', 'general')
+        if service_type == 'vpc':
+            project_info['objective'] = 'Implementar una VPC segura y escalable para soportar aplicaciones empresariales'
+        elif service_type == 'ec2':
+            project_info['objective'] = 'Desplegar instancias EC2 optimizadas para las necesidades específicas del negocio'
+        elif service_type == 'rds':
+            project_info['objective'] = 'Establecer una base de datos relacional robusta y administrada'
+        else:
+            project_info['objective'] = 'Implementar una solución integral en AWS que cumpla con los requerimientos del negocio'
     
     # Set completion indicators
     if any(indicator in conversation_lower for indicator in [
         'generar documentos', 'subir al bucket', 'documentos listos', 
-        'archivos generados', 'carga exitosa'
+        'archivos generados', 'carga exitosa', 'procederé a generar'
     ]):
         project_info['ready_for_documents'] = True
     
