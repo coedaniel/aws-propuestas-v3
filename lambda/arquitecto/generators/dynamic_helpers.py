@@ -4,6 +4,10 @@ Helper functions for dynamic document generation
 import csv
 import io
 from typing import Dict, Any, List
+from datetime import datetime
+
+# Import the centralized service extraction function
+from .dynamic_generator import extract_services_from_analysis
 
 def generate_simple_costs_csv(project_info: Dict[str, Any], ai_analysis: str) -> bytes:
     """Generate a simple costs CSV based on AI analysis"""
@@ -333,52 +337,3 @@ Generado automáticamente el {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
     
     return guide
-
-def extract_services_from_analysis(ai_analysis: str) -> List[str]:
-    """Extract AWS services mentioned in AI analysis"""
-    services = []
-    analysis_lower = ai_analysis.lower()
-    
-    # Common AWS services - EXPANDED LIST TO MATCH DYNAMIC_GENERATOR
-    service_keywords = {
-        'ec2': 'Amazon EC2',
-        's3': 'Amazon S3', 
-        'rds': 'Amazon RDS',
-        'lambda': 'AWS Lambda',
-        'vpc': 'Amazon VPC',
-        'efs': 'Amazon EFS',
-        'cloudfront': 'Amazon CloudFront',
-        'elb': 'Elastic Load Balancer',
-        'ses': 'Amazon SES',
-        'sns': 'Amazon SNS',
-        'sqs': 'Amazon SQS',
-        'dynamodb': 'Amazon DynamoDB',
-        'cloudwatch': 'Amazon CloudWatch',
-        'iam': 'AWS IAM',
-        'route53': 'Amazon Route 53',
-        'api gateway': 'Amazon API Gateway',
-        'cognito': 'Amazon Cognito',
-        'guardduty': 'Amazon GuardDuty',
-        'guard duty': 'Amazon GuardDuty',
-        'security': 'Amazon GuardDuty',
-        'threat detection': 'Amazon GuardDuty',
-        'inspector': 'Amazon Inspector',
-        'macie': 'Amazon Macie',
-        'config': 'AWS Config',
-        'cloudtrail': 'AWS CloudTrail',
-        'waf': 'AWS WAF',
-        'shield': 'AWS Shield',
-        'secrets manager': 'AWS Secrets Manager',
-        'kms': 'AWS KMS',
-        'certificate manager': 'AWS Certificate Manager',
-        'acm': 'AWS Certificate Manager'
-    }
-    
-    for keyword, service_name in service_keywords.items():
-        if keyword in analysis_lower:
-            services.append(service_name)
-    
-    return list(set(services))  # Remove duplicates
-
-# Import datetime for the calculator guide
-from datetime import datetime
