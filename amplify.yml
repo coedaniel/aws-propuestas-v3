@@ -1,0 +1,21 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        - echo "Node version:" && node --version
+        - echo "NPM version:" && npm --version
+    build:
+      commands:
+        - echo "Building AWS Propuestas v3..."
+        - npm run build
+        - echo "Build completed successfully"
+  artifacts:
+    baseDirectory: out
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
