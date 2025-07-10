@@ -65,6 +65,7 @@ sam deploy \
     --capabilities CAPABILITY_IAM \
     --region ${REGION} \
     --parameter-overrides Environment=${ENVIRONMENT} \
+    --resolve-s3 \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
 

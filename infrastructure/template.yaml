@@ -36,9 +36,7 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
         MaxAge: "'600'"
-      ThrottleConfig:
-        RateLimit: 100
-        BurstLimit: 200
+      # Throttling configured at method level
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"
@@ -55,7 +53,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'aws-propuestas-v3-health-${Environment}'
-      CodeUri: lambda/health/
+      CodeUri: ../lambda/health/
       Handler: app.lambda_handler
       Description: Health check endpoint
       Events:
@@ -71,7 +69,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'aws-propuestas-v3-chat-${Environment}'
-      CodeUri: lambda/chat/
+      CodeUri: ../lambda/chat/
       Handler: app.lambda_handler
       Description: Chat libre con modelos IA
       Timeout: 60
@@ -97,7 +95,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'aws-propuestas-v3-arquitecto-${Environment}'
-      CodeUri: lambda/arquitecto/
+      CodeUri: ../lambda/arquitecto/
       Handler: app.lambda_handler
       Description: Modo arquitecto con generación de documentos
       Timeout: 300
@@ -127,7 +125,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'aws-propuestas-v3-projects-${Environment}'
-      CodeUri: lambda/projects/
+      CodeUri: ../lambda/projects/
       Handler: app.lambda_handler
       Description: Gestión de proyectos y dashboard
       Policies:
@@ -154,7 +152,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'aws-propuestas-v3-documents-${Environment}'
-      CodeUri: lambda/documents/
+      CodeUri: ../lambda/documents/
       Handler: app.lambda_handler
       Description: Generación y gestión de documentos
       Timeout: 300
@@ -282,53 +280,23 @@ Resources:
             NoncurrentVersionExpirationInDays: 30
           - Id: TransitionToIA
             Status: Enabled
-            TransitionInDays: 30
-            StorageClass: STANDARD_IA
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
           - Id: TransitionToGlacier
             Status: Enabled
-            TransitionInDays: 90
-            StorageClass: GLACIER
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt DocumentsFunction.Arn
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+      # NotificationConfiguration removed to avoid circular dependency
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Project
           Value: aws-propuestas-v3
 
-  # S3 Bucket Policy
-  DocumentsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref DocumentsBucket
-      PolicyDocument:
-        Statement:
-          - Sid: AllowLambdaAccess
-            Effect: Allow
-            Principal:
-              AWS: 
-                - !GetAtt ChatFunctionRole.Arn
-                - !GetAtt ArquitectoFunctionRole.Arn
-                - !GetAtt DocumentsFunctionRole.Arn
-                - !GetAtt ProjectsFunctionRole.Arn
-            Action:
-              - s3:GetObject
-              - s3:PutObject
-              - s3:DeleteObject
-            Resource: !Sub '${DocumentsBucket}/*'
-          - Sid: AllowLambdaListBucket
-            Effect: Allow
-            Principal:
-              AWS: 
-                - !GetAtt ChatFunctionRole.Arn
-                - !GetAtt ArquitectoFunctionRole.Arn
-                - !GetAtt DocumentsFunctionRole.Arn
-                - !GetAtt ProjectsFunctionRole.Arn
-            Action:
-              - s3:ListBucket
-            Resource: !Ref DocumentsBucket
+  # S3 Bucket Policy - Removed to avoid circular dependency
+  # Lambda functions will use their IAM roles to access S3
 
   # ============================================================================
   # CLOUDWATCH LOGS
