@@ -143,7 +143,7 @@ def extract_services_from_analysis(ai_analysis: str) -> List[str]:
     services = []
     analysis_lower = ai_analysis.lower()
     
-    # Common AWS services
+    # Common AWS services - EXPANDED LIST
     service_keywords = {
         'ec2': 'Amazon EC2',
         's3': 'Amazon S3',
@@ -161,7 +161,21 @@ def extract_services_from_analysis(ai_analysis: str) -> List[str]:
         'iam': 'AWS IAM',
         'route53': 'Amazon Route 53',
         'api gateway': 'Amazon API Gateway',
-        'cognito': 'Amazon Cognito'
+        'cognito': 'Amazon Cognito',
+        'guardduty': 'Amazon GuardDuty',
+        'guard duty': 'Amazon GuardDuty',
+        'security': 'Amazon GuardDuty',
+        'threat detection': 'Amazon GuardDuty',
+        'inspector': 'Amazon Inspector',
+        'macie': 'Amazon Macie',
+        'config': 'AWS Config',
+        'cloudtrail': 'AWS CloudTrail',
+        'waf': 'AWS WAF',
+        'shield': 'AWS Shield',
+        'secrets manager': 'AWS Secrets Manager',
+        'kms': 'AWS KMS',
+        'certificate manager': 'AWS Certificate Manager',
+        'acm': 'AWS Certificate Manager'
     }
     
     for keyword, service_name in service_keywords.items():
@@ -242,6 +256,13 @@ def generate_dynamic_parameters(services: List[str], ai_analysis: str) -> Dict[s
                 'Default': 'db.t3.micro',
                 'Description': 'RDS instance class'
             }
+        elif 'GuardDuty' in service:
+            parameters['EnableGuardDuty'] = {
+                'Type': 'String',
+                'Default': 'true',
+                'AllowedValues': ['true', 'false'],
+                'Description': 'Enable GuardDuty threat detection'
+            }
     
     return parameters
 
@@ -270,6 +291,18 @@ def generate_dynamic_resources(services: List[str], project_name: str, ai_analys
                     'BucketName': {'Ref': 'BucketName'},
                     'Tags': [
                         {'Key': 'Name', 'Value': f'{project_name}-s3'},
+                        {'Key': 'Project', 'Value': project_name}
+                    ]
+                }
+            }
+        elif 'GuardDuty' in service:
+            resources['GuardDutyDetector'] = {
+                'Type': 'AWS::GuardDuty::Detector',
+                'Properties': {
+                    'Enable': {'Ref': 'EnableGuardDuty'},
+                    'FindingPublishingFrequency': 'FIFTEEN_MINUTES',
+                    'Tags': [
+                        {'Key': 'Name', 'Value': f'{project_name}-guardduty'},
                         {'Key': 'Project', 'Value': project_name}
                     ]
                 }
@@ -313,6 +346,11 @@ def generate_dynamic_outputs(services: List[str], project_name: str) -> Dict[str
             outputs['S3BucketName'] = {
                 'Description': 'S3 Bucket Name',
                 'Value': {'Ref': 'S3Bucket'}
+            }
+        elif 'GuardDuty' in service:
+            outputs['GuardDutyDetectorId'] = {
+                'Description': 'GuardDuty Detector ID',
+                'Value': {'Ref': 'GuardDutyDetector'}
             }
         elif 'RDS' in service:
             outputs['RDSEndpoint'] = {

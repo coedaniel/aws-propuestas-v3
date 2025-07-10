@@ -24,6 +24,10 @@ def generate_simple_costs_csv(project_info: Dict[str, Any], ai_analysis: str) ->
         elif 'S3' in service:
             writer.writerow(['Amazon S3', 'Standard Storage', '100 GB', '2.30', 'Almacenamiento de objetos'])
             writer.writerow(['Amazon S3', 'Requests', '10,000', '0.40', 'Solicitudes GET/PUT'])
+        elif 'GuardDuty' in service:
+            writer.writerow(['Amazon GuardDuty', 'Threat Detection', '1 account', '4.50', 'Deteccion de amenazas por cuenta'])
+            writer.writerow(['Amazon GuardDuty', 'VPC Flow Logs', '1 GB', '1.00', 'Analisis de logs de VPC'])
+            writer.writerow(['Amazon GuardDuty', 'DNS Logs', '1 million queries', '0.40', 'Analisis de consultas DNS'])
         elif 'EFS' in service:
             writer.writerow(['Amazon EFS', 'Standard Storage', '100 GB', '30.00', 'Sistema de archivos elastico'])
             writer.writerow(['Amazon EFS', 'Throughput', 'Provisioned', '6.00', 'Throughput provisionado'])
@@ -33,6 +37,30 @@ def generate_simple_costs_csv(project_info: Dict[str, Any], ai_analysis: str) ->
         elif 'Lambda' in service:
             writer.writerow(['AWS Lambda', 'Requests', '1,000,000', '0.20', 'Invocaciones de funciones'])
             writer.writerow(['AWS Lambda', 'Duration', '100 GB-seconds', '1.67', 'Tiempo de ejecucion'])
+        elif 'Inspector' in service:
+            writer.writerow(['Amazon Inspector', 'EC2 Assessment', '1 instance', '1.30', 'Evaluacion de seguridad EC2'])
+            writer.writerow(['Amazon Inspector', 'Container Assessment', '1 image', '0.09', 'Evaluacion de contenedores'])
+        elif 'Config' in service:
+            writer.writerow(['AWS Config', 'Configuration Items', '1,000', '0.003', 'Items de configuracion'])
+            writer.writerow(['AWS Config', 'Rules Evaluations', '1,000', '0.001', 'Evaluaciones de reglas'])
+        elif 'CloudTrail' in service:
+            writer.writerow(['AWS CloudTrail', 'Management Events', 'First copy', '0.00', 'Eventos de gestion gratuitos'])
+            writer.writerow(['AWS CloudTrail', 'Data Events', '100,000', '0.10', 'Eventos de datos'])
+        elif 'WAF' in service:
+            writer.writerow(['AWS WAF', 'Web ACL', '1', '1.00', 'Lista de control de acceso web'])
+            writer.writerow(['AWS WAF', 'Rules', '10', '1.00', 'Reglas de firewall'])
+        elif 'Shield' in service:
+            writer.writerow(['AWS Shield', 'Standard', '1', '0.00', 'Proteccion DDoS basica'])
+            writer.writerow(['AWS Shield', 'Advanced', '1', '3000.00', 'Proteccion DDoS avanzada'])
+        elif 'Secrets Manager' in service:
+            writer.writerow(['AWS Secrets Manager', 'Secrets', '1', '0.40', 'Gestion de secretos'])
+            writer.writerow(['AWS Secrets Manager', 'API Calls', '10,000', '0.05', 'Llamadas a la API'])
+        elif 'KMS' in service:
+            writer.writerow(['AWS KMS', 'Customer Managed Keys', '1', '1.00', 'Claves administradas por cliente'])
+            writer.writerow(['AWS KMS', 'API Requests', '20,000', '0.03', 'Solicitudes de API'])
+        elif 'Certificate Manager' in service:
+            writer.writerow(['AWS Certificate Manager', 'Public Certificates', '1', '0.00', 'Certificados publicos gratuitos'])
+            writer.writerow(['AWS Certificate Manager', 'Private Certificates', '1', '0.75', 'Certificados privados'])
     
     # Add base costs
     writer.writerow(['AWS Support', 'Basic', '1', '0.00', 'Soporte basico incluido'])
@@ -217,6 +245,48 @@ CONFIGURACIÓN AMAZON S3:
   - Storage amount: Estima según tus necesidades
   - Requests: GET (10,000/mes), PUT (1,000/mes)
 """
+        elif 'GuardDuty' in service:
+            guide += """
+CONFIGURACIÓN AMAZON GUARDDUTY:
+• Busca "GuardDuty" en la calculadora
+• Selecciona "Amazon GuardDuty"
+• Configuración recomendada:
+  - Threat Detection: Habilitado por cuenta
+  - VPC Flow Logs analysis: Estima GB procesados por mes
+  - DNS Logs analysis: Estima millones de consultas por mes
+  - S3 Protection: Si tienes buckets S3 críticos
+  - EKS Protection: Si usas Kubernetes
+"""
+        elif 'Inspector' in service:
+            guide += """
+CONFIGURACIÓN AMAZON INSPECTOR:
+• Busca "Inspector" en la calculadora
+• Selecciona "Amazon Inspector"
+• Configuración recomendada:
+  - EC2 instance assessments: Número de instancias
+  - Container image assessments: Número de imágenes
+  - Lambda function assessments: Número de funciones
+"""
+        elif 'Config' in service:
+            guide += """
+CONFIGURACIÓN AWS CONFIG:
+• Busca "Config" en la calculadora
+• Selecciona "AWS Config"
+• Configuración recomendada:
+  - Configuration items: Estima recursos monitoreados
+  - Config rules evaluations: Número de evaluaciones
+  - Conformance packs: Si usas paquetes de conformidad
+"""
+        elif 'CloudTrail' in service:
+            guide += """
+CONFIGURACIÓN AWS CLOUDTRAIL:
+• Busca "CloudTrail" en la calculadora
+• Selecciona "AWS CloudTrail"
+• Configuración recomendada:
+  - Management events: Primera copia gratuita
+  - Data events: Estima eventos de S3/Lambda por mes
+  - Insights events: Si necesitas análisis de patrones
+"""
         elif 'EFS' in service:
             guide += """
 CONFIGURACIÓN AMAZON EFS:
@@ -269,7 +339,7 @@ def extract_services_from_analysis(ai_analysis: str) -> List[str]:
     services = []
     analysis_lower = ai_analysis.lower()
     
-    # Common AWS services
+    # Common AWS services - EXPANDED LIST TO MATCH DYNAMIC_GENERATOR
     service_keywords = {
         'ec2': 'Amazon EC2',
         's3': 'Amazon S3', 
@@ -287,7 +357,21 @@ def extract_services_from_analysis(ai_analysis: str) -> List[str]:
         'iam': 'AWS IAM',
         'route53': 'Amazon Route 53',
         'api gateway': 'Amazon API Gateway',
-        'cognito': 'Amazon Cognito'
+        'cognito': 'Amazon Cognito',
+        'guardduty': 'Amazon GuardDuty',
+        'guard duty': 'Amazon GuardDuty',
+        'security': 'Amazon GuardDuty',
+        'threat detection': 'Amazon GuardDuty',
+        'inspector': 'Amazon Inspector',
+        'macie': 'Amazon Macie',
+        'config': 'AWS Config',
+        'cloudtrail': 'AWS CloudTrail',
+        'waf': 'AWS WAF',
+        'shield': 'AWS Shield',
+        'secrets manager': 'AWS Secrets Manager',
+        'kms': 'AWS KMS',
+        'certificate manager': 'AWS Certificate Manager',
+        'acm': 'AWS Certificate Manager'
     }
     
     for keyword, service_name in service_keywords.items():

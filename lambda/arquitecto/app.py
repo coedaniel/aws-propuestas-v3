@@ -347,30 +347,42 @@ def extract_project_info_from_conversation(messages: List[Dict], ai_response: st
     assistant_messages.append(ai_response.lower())
     conversation_lower = conversation_text.lower()
     
-    # Extract project name
+    # Extract project name - IMPROVED LOGIC
     if not project_info.get('name'):
         import re
         
-        # Look for project name patterns in user messages
-        for user_msg in user_messages:
-            # Skip common responses
-            if user_msg in ['hola', 'si', 'no', 'servicio rapido', 'solucion integral']:
+        # Look for project name in the FIRST meaningful user response
+        # Skip the very first message if it's just a greeting
+        meaningful_user_messages = []
+        for i, user_msg in enumerate(user_messages):
+            # Skip greetings and common responses
+            if user_msg.strip() in ['hola', 'hi', 'hello', 'buenos dias', 'buenas tardes']:
                 continue
-            
-            # If it's a short meaningful response, it might be the project name
-            if len(user_msg.strip()) > 2 and len(user_msg.strip()) < 50:
-                # Check if it's not a common phrase
-                common_phrases = ['una instancia', 'una vpc', 'un rds', 'servicio', 'proyecto']
-                if not any(phrase in user_msg for phrase in common_phrases):
-                    project_info['name'] = user_msg.strip()
-                    break
+            meaningful_user_messages.append((i, user_msg.strip()))
         
-        # Fallback: look for explicit name patterns
+        # The first meaningful response is likely the project name
+        if meaningful_user_messages:
+            first_meaningful = meaningful_user_messages[0][1]
+            
+            # Check if it looks like a project name (not a service request)
+            service_indicators = [
+                'necesito', 'quiero', 'implementar', 'configurar', 'crear', 'instancia', 
+                'vpc', 'rds', 'ec2', 's3', 'lambda', 'guardduty', 'servicio', 'una ', 'un '
+            ]
+            
+            # If it doesn't contain service indicators and is reasonable length
+            if (not any(indicator in first_meaningful for indicator in service_indicators) and 
+                2 < len(first_meaningful) < 50 and
+                first_meaningful not in ['servicio rapido', 'solucion integral', 'si', 'no']):
+                project_info['name'] = first_meaningful
+        
+        # Fallback: look for explicit name patterns in conversation
         if not project_info.get('name'):
             name_patterns = [
                 r'nombre del proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
-                r'proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
-                r'se llama[:\s]*["\']?([^"\'\n,\.]+)["\']?'
+                r'proyecto[:\s]+["\']?([^"\'\n,\.]+)["\']?',
+                r'se llama[:\s]*["\']?([^"\'\n,\.]+)["\']?',
+                r'el proyecto es[:\s]*["\']?([^"\'\n,\.]+)["\']?'
             ]
             
             for pattern in name_patterns:
