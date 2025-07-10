@@ -110,13 +110,18 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
                 'modelId': model_id
             })
         
+        # Extract and update project information from conversation
+        project_info = extract_project_info_from_conversation(messages, ai_response, project_info)
+        
         # Check if project is complete
         is_complete = check_if_complete(ai_response, project_info)
         
         # Generate documents if project is complete
         document_generation_results = None
-        if is_complete and project_info.get('name'):
-            logger.info(f"Project '{project_info.get('name')}' is complete. Starting document generation...")
+        if is_complete:
+            # Use project name from extracted info or generate a default one
+            project_name = project_info.get('name', f'proyecto-{project_id[:8]}')
+            logger.info(f"Project '{project_name}' is complete. Starting document generation...")
             document_generation_results = generate_project_documents(project_info)
             
             # Update AI response to include document generation status
@@ -319,6 +324,95 @@ def extract_response(model_id: str, response_body: Dict) -> tuple:
     
     return ai_response, usage
 
+def extract_project_info_from_conversation(messages: List[Dict], ai_response: str, existing_info: Dict) -> Dict:
+    """Extract project information from conversation messages"""
+    
+    project_info = existing_info.copy()
+    
+    # Combine all messages into a single text for analysis
+    conversation_text = ""
+    for msg in messages:
+        conversation_text += f"{msg.get('role', '')}: {msg.get('content', '')}\n"
+    conversation_text += f"assistant: {ai_response}\n"
+    
+    conversation_lower = conversation_text.lower()
+    
+    # Extract project name
+    if not project_info.get('name'):
+        # Look for project name patterns
+        import re
+        
+        # Pattern 1: Direct name mention after "nombre del proyecto"
+        name_patterns = [
+            r'nombre del proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
+            r'proyecto[:\s]*["\']?([^"\'\n,\.]+)["\']?',
+            r'se llama[:\s]*["\']?([^"\'\n,\.]+)["\']?'
+        ]
+        
+        for pattern in name_patterns:
+            matches = re.findall(pattern, conversation_lower)
+            if matches:
+                # Get the last (most recent) match and clean it
+                name = matches[-1].strip()
+                if len(name) > 2 and name not in ['del', 'el', 'la', 'los', 'las', 'un', 'una']:
+                    project_info['name'] = name
+                    break
+    
+    # Extract project type
+    if not project_info.get('type'):
+        if 'servicio rapido' in conversation_lower or 'servicio rápido' in conversation_lower:
+            project_info['type'] = 'servicio_rapido'
+        elif 'solucion integral' in conversation_lower or 'solución integral' in conversation_lower:
+            project_info['type'] = 'solucion_integral'
+        elif 'vpc' in conversation_lower:
+            project_info['type'] = 'vpc'
+        elif 'ec2' in conversation_lower:
+            project_info['type'] = 'ec2'
+        elif 'rds' in conversation_lower:
+            project_info['type'] = 'rds'
+        elif 'migracion' in conversation_lower or 'migración' in conversation_lower:
+            project_info['type'] = 'migracion'
+    
+    # Extract description from the conversation
+    if not project_info.get('description'):
+        # Look for descriptive content
+        if 'vpc' in conversation_lower and 'tres capas' in conversation_lower:
+            project_info['description'] = 'VPC estándar preparada para un sistema de tres capas'
+        elif 'vpc' in conversation_lower:
+            project_info['description'] = 'Configuración de VPC (Virtual Private Cloud)'
+    
+    # Extract requirements
+    if not project_info.get('requirements'):
+        requirements = []
+        if 'alta disponibilidad' in conversation_lower:
+            requirements.append('alta_disponibilidad')
+        if 'tres capas' in conversation_lower:
+            requirements.append('arquitectura_tres_capas')
+        if 'cidr' in conversation_lower:
+            requirements.append('configuracion_cidr')
+        if 'vpc' in conversation_lower:
+            requirements.append('vpc_configuration')
+        
+        if requirements:
+            project_info['requirements'] = requirements
+    
+    # Extract technical details
+    if 'cidr' in conversation_lower and not project_info.get('cidr_blocks'):
+        project_info['cidr_blocks'] = {
+            'vpc': '10.0.0.0/16',
+            'public_subnets': ['10.0.1.0/24', '10.0.2.0/24'],
+            'private_subnets': ['10.0.10.0/24', '10.0.11.0/24']
+        }
+    
+    # Set completion indicators
+    if any(indicator in conversation_lower for indicator in [
+        'generar documentos', 'subir al bucket', 'documentos listos', 
+        'archivos generados', 'carga exitosa'
+    ]):
+        project_info['ready_for_documents'] = True
+    
+    return project_info
+
 def check_if_complete(ai_response: str, project_info: Dict) -> bool:
     """Check if project information gathering is complete"""
     
@@ -329,6 +423,7 @@ def check_if_complete(ai_response: str, project_info: Dict) -> bool:
         "generar documentos",
         "listo para crear",
         "proceder con la generación",
+        "procederé a generar",
         "subir al bucket",
         "carpeta con todos los documentos",
         "entregables generados",
@@ -339,7 +434,10 @@ def check_if_complete(ai_response: str, project_info: Dict) -> bool:
         "comentario final",
         "ajuste final",
         "cerrar la propuesta",
-        "proyecto terminado"
+        "proyecto terminado",
+        "todos los documentos",
+        "carga de los documentos",
+        "bucket s3"
     ]
     
     response_lower = ai_response.lower()
@@ -348,15 +446,16 @@ def check_if_complete(ai_response: str, project_info: Dict) -> bool:
     # Check if we have minimum required info for a complete project
     has_minimum_info = (
         project_info.get('name') and 
-        project_info.get('type') and
-        len(project_info) >= 5  # Increased minimum requirements
+        project_info.get('type')
     )
     
     # Check if response mentions document generation or file uploads
     mentions_deliverables = any(term in response_lower for term in [
-        "documento", "archivo", "diagrama", "cloudformation", "csv", "excel", "word"
+        "documento", "archivo", "diagrama", "cloudformation", "csv", "excel", "word",
+        "tabla de actividades", "script", "guia", "bucket"
     ])
     
+    # More lenient completion check
     return has_completion_indicator or (has_minimum_info and mentions_deliverables)
 
 def generate_project_documents(project_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -578,15 +677,6 @@ def save_project_progress(project_id: str, user_id: str, messages: List[Dict],
         logger.info(f"💾 Project progress saved: {project_id}")
     except Exception as e:
         logger.warning(f"Failed to save project progress: {str(e)}")
-
-def generate_project_documents(body: Dict, context) -> Dict:
-    """Generate project documents and upload to S3"""
-    # This would contain the document generation logic
-    # For now, return a placeholder
-    return create_response(200, {
-        'message': 'Document generation feature coming soon',
-        'status': 'pending'
-    })
 
 def save_project_data(body: Dict, context) -> Dict:
     """Save project data"""
