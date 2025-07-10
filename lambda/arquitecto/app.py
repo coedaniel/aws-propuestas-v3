@@ -177,12 +177,20 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
     return create_response(200, response_data)
 
 def get_arquitecto_system_prompt() -> str:
-    """Get system prompt for arquitecto mode"""
+    """Get system prompt for arquitecto mode - INTELLIGENT AND ADAPTIVE"""
     bucket_name = DOCUMENTS_BUCKET or 'aws-propuestas-v3-documents-prod'
     
     return f"""Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible. Solo genera scripts CloudFormation como entregable de automatizacion, no generes ningun otro tipo de script.
 
-IMPORTANTE: Cuando el usuario inicie la conversacion, pregunta INMEDIATAMENTE por el nombre del proyecto. No pidas que describa el proyecto primero.
+IMPORTANTE: Debes ser INTELIGENTE y ADAPTATIVO. Si el usuario da respuestas en otro orden, usa frases libres o menciona algo fuera del guion, debes:
+- Entender la intencion
+- Detectar que informacion ya tienes y cual falta
+- Hacer nuevas preguntas segun lo que el usuario diga
+- No repetir preguntas innecesarias
+- NO generar documentos hasta tener informacion suficiente
+- La conversacion debe sentirse natural, como con un arquitecto AWS real
+
+FLUJO MAESTRO (adaptable dinamicamente):
 
 1. **PRIMERA PREGUNTA OBLIGATORIA:**
 ¿Cual es el nombre del proyecto?
@@ -194,61 +202,46 @@ o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, 
 **Si elige "servicio rapido especifico":**
 
 1. Muestra un catalogo de servicios rapidos comunes y permite elegir uno o varios, o escribir el requerimiento.
-2. Haz solo las preguntas minimas necesarias para cada servicio elegido, de forma clara y una por una.
-3. Con la informacion, genera y entrega SIEMPRE:
-    - Tabla de actividades de implementacion (CSV o Excel, clara y lista para importar o compartir, SIN acentos ni caracteres especiales).
-    - Script CloudFormation para desplegar el servicio (SIN acentos ni caracteres especiales en recursos ni nombres).
-    - Diagrama de arquitectura en SVG, PNG y Draw.io editable (nombres y etiquetas SIN acentos ni caracteres especiales).
-    - Documento Word con el objetivo y la descripcion real del proyecto (texto plano, sin acentos, sin imagenes, sin tablas complejas, sin formato avanzado, solo texto claro y estructurado).
-    - Archivo de costos estimados (CSV o Excel, solo de servicios AWS, sin incluir data transfer, SIN acentos).
-    - Guia paso a paso de que parametros ingresar en la calculadora oficial de AWS (servicios, recomendaciones, supuestos, sin acentos).
-4. Al finalizar la entrevista, genera automaticamente todos los documentos y los sube al bucket S3 del sistema ({bucket_name}).
-5. Sube todos los archivos en una carpeta con el nombre del proyecto y confirma que la carga fue exitosa.
-6. Pregunta si deseas agregar algun comentario o ajuste final antes de terminar.
+2. Haz SOLO las preguntas minimas necesarias para cada servicio elegido, de forma clara y una por una.
+3. ESPERA las respuestas del usuario antes de continuar.
+4. Para S3: pregunta nombre del bucket, region, tipo de almacenamiento, politicas de acceso, versionado, cifrado.
+5. Para EC2: pregunta tipo de instancia, sistema operativo, region, configuracion de red, almacenamiento.
+6. Para VPC: pregunta CIDR, subredes, gateways, reglas de seguridad.
+7. SOLO cuando tengas respuestas suficientes, di explicitamente "Procederé a generar los documentos" y genera:
+    - Tabla de actividades de implementacion (CSV, SIN acentos)
+    - Script CloudFormation (SIN acentos)
+    - Diagrama de arquitectura (SVG, PNG, Draw.io, SIN acentos)
+    - Documento Word (texto plano, SIN acentos)
+    - Archivo de costos estimados (CSV, SIN acentos)
+    - Guia calculadora AWS (TXT, SIN acentos)
+8. Sube AUTOMATICAMENTE todos los archivos al bucket S3 del sistema ({bucket_name}) en una carpeta con el nombre del proyecto.
+9. Confirma que la carga fue exitosa.
+10. Pregunta si deseas agregar comentarios finales.
 
-**Si elige "solucion integral" (proyecto complejo):**
+**Si elige "solucion integral":**
 
-1. Haz una entrevista guiada, una pregunta a la vez, para capturar:
-    - Nombre del proyecto (si no lo has hecho ya)
-    - Tipo de solucion (puede ser varias: migracion, app nueva, modernizacion, etc.)
-    - Objetivo principal
-    - Descripcion detallada del proyecto
-    - Caracteristicas clave requeridas
-    - Componentes o servicios AWS deseados
-    - Cantidad y tipo de recursos principales
-    - Integraciones necesarias (on-premises, SaaS, APIs, IoT, etc.)
-    - Requisitos de seguridad y compliance
-    - Alta disponibilidad, DRP, continuidad (multi-AZ, multi-region, RTO, RPO, backups)
-    - Estimacion de usuarios, trafico, cargas
-    - Presupuesto disponible (opcional)
-    - Fechas de inicio y entrega deseadas
-    - Restricciones tecnicas, negocio o preferencias tecnologicas
-    - Comentarios o necesidades adicionales (opcional)
-2. Aplica logica condicional segun tipo de solucion para profundizar en temas especificos (por ejemplo: migracion, analitica, IoT, seguridad, networking, DRP).
-3. Con la informacion capturada, genera y entrega SIEMPRE:
-    - Tabla de actividades de implementacion (CSV o Excel, profesional y clara, SIN acentos ni caracteres especiales).
-    - Script CloudFormation para desplegar la solucion completa (SIN acentos ni caracteres especiales en recursos ni nombres).
-    - Dos diagramas de arquitectura (SVG, PNG, Draw.io editable, layout profesional, SIN acentos).
-    - Documento Word con objetivo, descripcion, actividades, diagramas y costos (solo texto plano, sin acentos, sin imagenes, sin tablas complejas, sin formato avanzado).
-    - Costos estimados (CSV o Excel, solo servicios AWS, sin data transfer, sin acentos).
-    - Guia paso a paso para la calculadora oficial de AWS (sin acentos).
-4. Al finalizar, genera automaticamente todos los documentos y los sube al bucket S3 del sistema ({bucket_name}).
-5. Sube todos los archivos generados a una carpeta con el nombre del proyecto y confirma la carga exitosa.
-6. Permite agregar comentarios o ajustes antes de cerrar la propuesta.
+1. Entrevista guiada, una pregunta a la vez:
+   - Tipo de solucion, objetivo, descripcion detallada
+   - Caracteristicas clave, servicios AWS deseados
+   - Recursos principales, integraciones necesarias
+   - Seguridad, alta disponibilidad, usuarios/trafico
+   - Presupuesto, fechas, restricciones tecnicas
+2. Aplica logica condicional segun tipo de solucion.
+3. SOLO cuando tengas informacion completa, di "Procederé a generar" y crea todos los entregables.
+4. Sube AUTOMATICAMENTE archivos al bucket S3 del sistema ({bucket_name}).
+5. Permite comentarios finales.
 
-**En todas las preguntas y entregas:**
+REGLAS CRITICAS:
+- Se claro, especifico, pregunta una cosa a la vez
+- Si respuesta es vaga, pide mas detalle antes de avanzar
+- NO generes documentos prematuramente
+- Flujo conversacional natural y adaptativo
+- SIN acentos ni caracteres especiales NUNCA
+- Documentos profesionales y compatibles
+- NUNCA preguntes donde subir archivos - usa SIEMPRE el bucket del sistema
+- Sube archivos automaticamente sin preguntar
 
-- Se claro, especifico y pregunta una cosa a la vez.
-- Si alguna respuesta es vaga o insuficiente, pide mas detalle o ejemplos antes de avanzar.
-- Todos los archivos deben conservar formato profesional y ser compatibles para edicion o firma.
-- El flujo es siempre guiado y conversacional.
-- No uses acentos ni caracteres especiales en ningun momento, en ningun archivo ni campo.
-
-**Nota:**
-
-- Los diagramas siempre deben entregarse en SVG, PNG y Draw.io editable, sin acentos ni caracteres especiales.
-- La carpeta final debe contener todos los entregables bien organizados, y estar subida automaticamente al bucket S3 del sistema ({bucket_name}).
-- Los documentos Word deben ser funcionales y abrirse correctamente en Microsoft Word o editores compatibles, solo texto plano, sin acentos ni caracteres especiales, sin imagenes, sin tablas complejas."""
+El sistema debe completar los entregables solo cuando tenga informacion suficiente y diga explicitamente que va a generar documentos."""
 
 def prepare_prompt(model_id: str, system_prompt: str, messages: List[Dict], 
                   project_info: Dict, current_step: int) -> Dict:
@@ -434,6 +427,56 @@ def extract_project_info_from_conversation(messages: List[Dict], ai_response: st
     if 's3' in conversation_lower:
         services_mentioned.append('S3')
         aws_services.append('Amazon S3')
+        project_info['service_type'] = 's3'
+        project_info['description'] = 'Configuracion de bucket S3 para almacenamiento'
+        
+        # Extract S3 specific details from user responses
+        for user_msg in user_messages:
+            user_msg_lower = user_msg.lower()
+            
+            # Look for bucket name
+            if 'bucket' in user_msg_lower and len(user_msg.strip()) > 5:
+                # Extract potential bucket name
+                words = user_msg.strip().split()
+                for word in words:
+                    if len(word) > 3 and word not in ['bucket', 'nombre', 'llamar', 'sera']:
+                        project_info['bucket_name'] = word.lower().replace(' ', '-')
+                        break
+            
+            # Look for region
+            regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1']
+            for region in regions:
+                if region in user_msg_lower:
+                    project_info['aws_region'] = region
+                    break
+            
+            # Look for storage type
+            if 'standard' in user_msg_lower:
+                project_info['storage_type'] = 'Standard'
+            elif 'infrequent' in user_msg_lower or 'ia' in user_msg_lower:
+                project_info['storage_type'] = 'Standard-IA'
+            elif 'glacier' in user_msg_lower:
+                project_info['storage_type'] = 'Glacier'
+            
+            # Look for access policies
+            if 'publico' in user_msg_lower or 'public' in user_msg_lower:
+                project_info['access_policy'] = 'public'
+            elif 'privado' in user_msg_lower or 'private' in user_msg_lower:
+                project_info['access_policy'] = 'private'
+            
+            # Look for versioning
+            if 'version' in user_msg_lower:
+                if 'si' in user_msg_lower or 'yes' in user_msg_lower or 'habilitar' in user_msg_lower:
+                    project_info['versioning'] = 'enabled'
+                elif 'no' in user_msg_lower or 'deshabilitar' in user_msg_lower:
+                    project_info['versioning'] = 'disabled'
+            
+            # Look for encryption
+            if 'cifr' in user_msg_lower or 'encrypt' in user_msg_lower:
+                if 'si' in user_msg_lower or 'yes' in user_msg_lower or 'habilitar' in user_msg_lower:
+                    project_info['encryption'] = 'enabled'
+                elif 'no' in user_msg_lower or 'deshabilitar' in user_msg_lower:
+                    project_info['encryption'] = 'disabled'
     
     if 'lambda' in conversation_lower:
         services_mentioned.append('Lambda')
@@ -500,49 +543,78 @@ def extract_project_info_from_conversation(messages: List[Dict], ai_response: st
     return project_info
 
 def check_if_complete(ai_response: str, project_info: Dict) -> bool:
-    """Check if project information gathering is complete"""
-    
-    # Enhanced completion indicators
-    completion_indicators = [
-        "proyecto está completo",
-        "información suficiente",
-        "generar documentos",
-        "listo para crear",
-        "proceder con la generación",
-        "procederé a generar",
-        "subir al bucket",
-        "carpeta con todos los documentos",
-        "entregables generados",
-        "propuesta finalizada",
-        "documentos listos",
-        "archivos generados",
-        "carga exitosa",
-        "comentario final",
-        "ajuste final",
-        "cerrar la propuesta",
-        "proyecto terminado",
-        "todos los documentos",
-        "carga de los documentos",
-        "bucket s3"
-    ]
+    """Check if project information gathering is complete - MUST be intelligent and follow the prompt flow"""
     
     response_lower = ai_response.lower()
-    has_completion_indicator = any(indicator in response_lower for indicator in completion_indicators)
     
-    # Check if we have minimum required info for a complete project
-    has_minimum_info = (
-        project_info.get('name') and 
-        project_info.get('type')
-    )
+    # EXPLICIT completion indicators - only when the AI explicitly says it's ready to generate
+    explicit_completion_indicators = [
+        "procederé a generar",
+        "voy a generar",
+        "generar y entregar",
+        "crear los documentos",
+        "subir al bucket",
+        "carpeta con todos los documentos",
+        "todos los archivos generados",
+        "documentos listos para subir",
+        "información completa para generar"
+    ]
     
-    # Check if response mentions document generation or file uploads
-    mentions_deliverables = any(term in response_lower for term in [
-        "documento", "archivo", "diagrama", "cloudformation", "csv", "excel", "word",
-        "tabla de actividades", "script", "guia", "bucket"
-    ])
+    # Check for explicit completion signals
+    has_explicit_completion = any(indicator in response_lower for indicator in explicit_completion_indicators)
     
-    # More lenient completion check
-    return has_completion_indicator or (has_minimum_info and mentions_deliverables)
+    # For SERVICIO RAPIDO - need specific service details answered
+    if project_info.get('type') == 'servicio_rapido':
+        service_type = project_info.get('service_type')
+        
+        # For S3 service - need at least bucket name and basic config
+        if service_type == 's3':
+            required_s3_info = [
+                project_info.get('bucket_name'),
+                project_info.get('region') or project_info.get('aws_region'),
+                project_info.get('storage_type') or project_info.get('storage_class')
+            ]
+            has_s3_details = any(info for info in required_s3_info)
+            
+            # Only complete if we have explicit completion AND some S3 details
+            return has_explicit_completion and has_s3_details
+        
+        # For EC2 service - need instance type and basic config
+        elif service_type == 'ec2':
+            has_ec2_details = (
+                project_info.get('instance_type') or 
+                project_info.get('instance_size') or
+                project_info.get('ec2_config')
+            )
+            return has_explicit_completion and has_ec2_details
+        
+        # For VPC service - need network details
+        elif service_type == 'vpc':
+            has_vpc_details = (
+                project_info.get('cidr_blocks') or 
+                project_info.get('vpc_config') or
+                project_info.get('network_config')
+            )
+            return has_explicit_completion and has_vpc_details
+        
+        # For other services - need at least service type and explicit completion
+        else:
+            return has_explicit_completion and project_info.get('service_type')
+    
+    # For SOLUCION INTEGRAL - need comprehensive information
+    elif project_info.get('type') == 'solucion_integral':
+        required_integral_info = [
+            project_info.get('objective'),
+            project_info.get('description'),
+            project_info.get('services') or project_info.get('aws_services'),
+            project_info.get('requirements')
+        ]
+        has_integral_details = sum(1 for info in required_integral_info if info) >= 3
+        
+        return has_explicit_completion and has_integral_details
+    
+    # Default: only if explicit completion is mentioned
+    return has_explicit_completion
 
 def generate_project_documents(project_info: Dict[str, Any]) -> Dict[str, Any]:
     """
