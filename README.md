@@ -1,280 +1,315 @@
-# 🚀 AWS Propuestas v3 - Sistema Conversacional Profesional
+# AWS Propuestas v3 - Sistema Dinámico e Inteligente
 
-Sistema conversacional profesional basado en Next.js y AWS para generar propuestas ejecutivas de soluciones en la nube. Incluye modo libre con IA y un modo guiado "Arquitecto AWS" que genera todos los entregables: Word, CSV, YAML, diagramas y subida a S3.
+Sistema completo de generación automática de propuestas técnicas y comerciales para proyectos AWS, utilizando IA para análisis dinámico de requerimientos.
 
-## ✨ Características Principales
+## 🚀 Características Principales
 
-### 🤖 **Chat Libre con IA**
-- Conversación natural con múltiples modelos de Amazon Bedrock
-- Selección dinámica entre Nova Pro, Claude Haiku y Claude Sonnet
-- Historial persistente de conversaciones
-- Respuestas expertas en AWS y arquitectura cloud
+### ✨ Generación Dinámica e Inteligente
+- **Análisis de IA**: El modelo analiza la conversación y extrae requerimientos automáticamente
+- **Detección de Servicios**: Identifica servicios AWS mencionados sin hardcodeo
+- **Documentos Específicos**: Genera contenido específico para cada servicio detectado
+- **Completamente Flexible**: Maneja cualquier servicio AWS sin modificar código
 
-### 🏗️ **Modo Arquitecto AWS**
-- Entrevista guiada paso a paso para capturar requerimientos
-- Generación automática de entregables profesionales
-- Flujo inteligente que se adapta al tipo de proyecto
-- Almacenamiento completo en DynamoDB y S3
+### 📄 Documentos Generados
+- **Propuesta Ejecutiva** (Word): Documento profesional para presentación
+- **Documento Técnico** (Word): Especificaciones técnicas detalladas
+- **CloudFormation Template** (YAML): Template funcional para despliegue
+- **Plan de Actividades** (CSV): Cronograma de implementación
+- **Estimación de Costos** (CSV): Costos detallados por servicio
+- **Diagramas de Arquitectura** (SVG, Draw.io): Visualización de la solución
+- **Guía de Calculadora AWS** (TXT): Instrucciones para estimación de costos
 
-### 📄 **Generación Automática de Documentos**
-- **Documento Word**: Propuesta ejecutiva profesional
-- **CSV de Actividades**: Plan de implementación detallado
-- **CSV de Costos**: Estimación de servicios AWS
-- **CloudFormation YAML**: Scripts de infraestructura
-- **Diagramas**: SVG, PNG y archivos .drawio editables
-- **Guía de Calculadora**: Instrucciones para AWS Pricing Calculator
-
-### 📊 **Dashboard de Proyectos**
-- Vista completa de todos los proyectos generados
-- Filtros por estado, fecha y tipo
-- Descarga directa de documentos desde S3
-- Métricas y estadísticas de uso
-
-## 🛠️ Stack Tecnológico
-
-### Frontend
-- **Next.js 14** con App Router y Server Components
-- **React 18** con hooks modernos
-- **Tailwind CSS** para estilos responsivos
-- **shadcn/ui** para componentes de interfaz
-- **Zustand** para manejo de estado global
-- **TypeScript** para tipado estático
-
-### Backend
-- **Next.js API Routes** para endpoints REST
-- **AWS Lambda** (opcional) para procesamiento pesado
-- **Amazon Bedrock** para modelos de IA
-- **DynamoDB** para persistencia de datos
-- **Amazon S3** para almacenamiento de documentos
-
-### Despliegue
-- **AWS Amplify Hosting** para frontend
-- **CloudFormation/SAM** para infraestructura
-- **GitHub Actions** para CI/CD
+### 🎯 Servicios AWS Soportados
+- **Compute**: EC2, Lambda, Fargate, Batch
+- **Storage**: S3, EFS, FSx, EBS
+- **Database**: RDS, DynamoDB, Redshift, Aurora
+- **Networking**: VPC, CloudFront, Route53, ELB, ALB, NLB
+- **API & Integration**: API Gateway, EventBridge, SNS, SQS, Step Functions
+- **Security**: GuardDuty, Inspector, Macie, Config, CloudTrail, WAF, Shield
+- **Monitoring**: CloudWatch, X-Ray, Systems Manager
+- **AI/ML**: SageMaker, Bedrock, Comprehend, Rekognition
+- **Y muchos más...
 
 ## 🏗️ Arquitectura del Sistema
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend APIs   │    │   AWS Services  │
-│   (Next.js)     │◄──►│   (Next.js)      │◄──►│                 │
-│                 │    │                  │    │ • Bedrock       │
-│ • Chat UI       │    │ • /api/chat      │    │ • DynamoDB      │
-│ • Arquitecto UI │    │ • /api/arquitecto │    │ • S3            │
-│ • Projects UI   │    │ • /api/projects  │    │ • Lambda        │
-│ • Model Select  │    │ • Document Gen   │    │                 │
+│   Frontend      │    │   API Gateway    │    │   Lambda        │
+│   (Next.js)     │───▶│   (REST API)     │───▶│   Functions     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         │
+                       ┌─────────────────┐              │
+                       │   DynamoDB      │◀─────────────┤
+                       │   (Projects)    │              │
+                       └─────────────────┘              │
+                                                        │
+                       ┌─────────────────┐              │
+                       │   S3 Bucket     │◀─────────────┘
+                       │   (Documents)   │
+                       └─────────────────┘
 ```
-
-## 🚀 Instalación y Configuración
-
-### Prerrequisitos
-- Node.js 18+ y npm
-- AWS CLI configurado
-- Cuenta AWS con permisos para Bedrock, DynamoDB y S3
-
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/coedaniel/aws-propuestas-v3.git
-cd aws-propuestas-v3
-```
-
-### 2. Instalar dependencias
-```bash
-npm install
-```
-
-### 3. Configurar variables de entorno
-```bash
-cp .env.local.example .env.local
-# Editar .env.local con tus configuraciones
-```
-
-### 4. Configurar AWS
-```bash
-# Configurar credenciales AWS
-aws configure
-
-# Habilitar modelos en Bedrock (si es necesario)
-aws bedrock put-model-invocation-logging-configuration \
-  --logging-config cloudWatchConfig='{logGroupName="/aws/bedrock/modelinvocations",roleArn="arn:aws:iam::ACCOUNT:role/service-role/AmazonBedrockExecutionRoleForLogging"}'
-```
-
-### 5. Ejecutar en desarrollo
-```bash
-npm run dev
-```
-
-La aplicación estará disponible en `http://localhost:3000`
 
 ## 📁 Estructura del Proyecto
 
 ```
 aws-propuestas-v3/
-├── app/                          # Next.js App Router
-│   ├── api/                      # API Routes
-│   │   ├── chat/route.ts         # Chat libre endpoint
-│   │   ├── arquitecto/route.ts   # Arquitecto endpoint
-│   │   └── projects/route.ts     # Proyectos endpoint
-│   ├── chat/page.tsx             # Página de chat libre
-│   ├── arquitecto/page.tsx       # Página de arquitecto
-│   ├── projects/page.tsx         # Dashboard de proyectos
-│   ├── layout.tsx                # Layout principal
-│   ├── page.tsx                  # Página de inicio
-│   └── globals.css               # Estilos globales
-├── components/                   # Componentes React
-│   ├── ui/                       # Componentes base (shadcn/ui)
-│   ├── chat/                     # Componentes de chat
-│   ├── arquitecto/               # Componentes de arquitecto
-│   ├── projects/                 # Componentes de proyectos
-│   └── ModelSelector.tsx         # Selector de modelos IA
-├── lib/                          # Utilidades y configuración
-│   ├── types/index.ts            # Definiciones de tipos
-│   ├── utils.ts                  # Funciones utilitarias
-│   └── aws/                      # Clientes AWS
-├── store/                        # Estado global (Zustand)
-│   ├── chatStore.ts              # Estado del chat
-│   ├── arquitectoStore.ts        # Estado del arquitecto
-│   └── projectsStore.ts          # Estado de proyectos
-├── lambda/                       # Funciones Lambda (opcional)
-│   ├── arquitecto/               # Lógica del arquitecto
-│   │   ├── app.py                # Handler principal
-│   │   ├── generators/           # Generadores de documentos
-│   │   └── utils/                # Utilidades
-│   └── shared/                   # Código compartido
-├── infrastructure/               # CloudFormation/SAM
-│   └── template.yaml             # Template de infraestructura
-├── scripts/                      # Scripts de deployment
-│   ├── deploy.sh                 # Deploy completo
-│   ├── deploy-frontend.sh        # Deploy frontend
-│   └── deploy-backend.sh         # Deploy backend
-└── docs/                         # Documentación
-    ├── API.md                    # Documentación de APIs
-    ├── DEPLOYMENT.md             # Guía de despliegue
-    └── ARCHITECTURE.md           # Arquitectura detallada
+├── README.md                          # Este archivo
+├── DEPLOYMENT.md                      # Guía de despliegue
+├── ARCHITECTURE.md                    # Documentación de arquitectura
+├── API_REFERENCE.md                   # Referencia de API
+├── TROUBLESHOOTING.md                 # Guía de resolución de problemas
+├── 
+├── app/                               # Frontend Next.js
+│   ├── arquitecto/                    # Página del arquitecto
+│   ├── chat/                         # Chat general
+│   ├── projects/                     # Gestión de proyectos
+│   └── globals.css                   # Estilos globales
+├── 
+├── components/                        # Componentes React
+│   ├── ui/                           # Componentes de UI
+│   ├── chat/                         # Componentes de chat
+│   └── projects/                     # Componentes de proyectos
+├── 
+├── lambda/                           # Funciones Lambda
+│   ├── arquitecto/                   # Lambda del arquitecto
+│   │   ├── app.py                   # Handler principal
+│   │   ├── conversation_analyzer.py  # Análisis de conversaciones
+│   │   └── generators/              # Generadores dinámicos
+│   │       ├── dynamic_generator.py  # Generador principal
+│   │       ├── dynamic_helpers.py    # Funciones auxiliares
+│   │       └── s3_uploader.py       # Subida a S3
+│   ├── chat/                        # Lambda de chat general
+│   ├── projects/                    # Lambda de proyectos
+│   ├── documents/                   # Lambda de documentos
+│   └── health/                      # Lambda de health check
+├── 
+├── infrastructure/                   # Infraestructura como código
+│   └── template.yaml                # Template SAM
+├── 
+├── docs/                            # Documentación adicional
+│   ├── examples/                    # Ejemplos de uso
+│   ├── api/                        # Documentación de API
+│   └── deployment/                 # Guías de despliegue
+├── 
+├── scripts/                         # Scripts de utilidad
+│   ├── deploy.sh                   # Script de despliegue
+│   ├── build.sh                    # Script de construcción
+│   └── test.sh                     # Script de pruebas
+├── 
+└── package.json                     # Dependencias del frontend
 ```
 
-## 🔧 Configuración de AWS
+## 🚀 Inicio Rápido
 
-### IAM Policy Mínima
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "bedrock:InvokeModel",
-        "dynamodb:*",
-        "s3:*"
-      ],
-      "Resource": "*"
+### Prerrequisitos
+- Node.js 18+
+- AWS CLI configurado
+- AWS SAM CLI
+- Python 3.9+
+
+### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/coedaniel/aws-propuestas-v3.git
+cd aws-propuestas-v3
+```
+
+### 2. Instalar Dependencias
+```bash
+npm install
+```
+
+### 3. Configurar Variables de Entorno
+```bash
+cp .env.local.example .env.local
+# Editar .env.local con tus configuraciones
+```
+
+### 4. Desplegar Backend
+```bash
+sam build --template infrastructure/template.yaml
+sam deploy --stack-name aws-propuestas-v3-prod --capabilities CAPABILITY_IAM --region us-east-1 --resolve-s3
+```
+
+### 5. Ejecutar Frontend
+```bash
+npm run dev
+```
+
+## 🔧 Configuración
+
+### Variables de Entorno
+```env
+# AWS Configuration
+AWS_REGION=us-east-1
+AWS_PROFILE=default
+
+# API Configuration
+NEXT_PUBLIC_API_URL=https://your-api-gateway-url.amazonaws.com/prod
+
+# Bedrock Configuration
+BEDROCK_REGION=us-east-1
+DEFAULT_MODEL_ID=anthropic.claude-3-haiku-20240307-v1:0
+```
+
+### Configuración de AWS
+```bash
+aws configure
+# Ingresa tus credenciales AWS
+```
+
+## 📖 Uso del Sistema
+
+### 1. Acceder al Arquitecto
+- Navega a `/arquitecto`
+- Inicia una conversación describiendo tu proyecto
+- El sistema analizará automáticamente tus requerimientos
+
+### 2. Ejemplo de Conversación
+```
+Usuario: "Hola, necesito ayuda con un proyecto"
+Sistema: "¿Cuál es el nombre del proyecto?"
+Usuario: "MiAPI"
+Sistema: "¿Es una solución integral o servicio rápido?"
+Usuario: "Necesito implementar API Gateway para mi aplicación web"
+Sistema: [Genera documentos específicos de API Gateway]
+```
+
+### 3. Documentos Generados
+Los documentos se generan automáticamente y se suben a S3:
+- Propuesta ejecutiva con información específica del servicio
+- CloudFormation template funcional
+- Estimación de costos real
+- Guía de calculadora AWS personalizada
+
+## 🔍 Cómo Funciona la Detección Dinámica
+
+### 1. Análisis de Conversación
+```python
+# El sistema analiza el texto de la conversación
+conversation_text = "Necesito implementar API Gateway para mi aplicación"
+
+# Extrae servicios mencionados
+services = extract_services_from_analysis(conversation_text)
+# Resultado: ['Amazon API Gateway']
+```
+
+### 2. Generación de Recursos
+```python
+# Genera recursos específicos para cada servicio
+if 'API Gateway' in services:
+    resources['ApiGateway'] = {
+        'Type': 'AWS::ApiGateway::RestApi',
+        'Properties': {
+            'Name': project_name + '-api',
+            # ... configuración específica
+        }
     }
-  ]
-}
 ```
 
-### Servicios AWS Requeridos
-- **Amazon Bedrock**: Modelos de IA (Nova Pro, Claude)
-- **DynamoDB**: 2 tablas (proyectos y sesiones de chat)
-- **S3**: 1 bucket para documentos generados
-- **Lambda**: Funciones para generación de documentos (opcional)
-- **API Gateway**: Para APIs REST (si se usa Lambda)
+### 3. Costos Específicos
+```python
+# Genera costos reales para el servicio
+if 'API Gateway' in service:
+    writer.writerow(['Amazon API Gateway', 'REST API Calls', '1,000,000', '3.50', 'Llamadas a API REST'])
+```
 
-## 🎯 Flujo de Uso
+## 🛠️ Desarrollo
 
-### Chat Libre
-1. Seleccionar modelo de IA (Nova Pro, Claude Haiku, etc.)
-2. Hacer preguntas sobre AWS y arquitectura
-3. Recibir respuestas expertas y personalizadas
-4. Historial automático de conversaciones
+### Estructura de Generadores
+```python
+# generators/dynamic_generator.py
+def generate_dynamic_cloudformation(project_info, ai_analysis):
+    services = extract_services_from_analysis(ai_analysis)
+    # Genera template específico para servicios detectados
 
-### Modo Arquitecto
-1. Iniciar nuevo proyecto
-2. Responder entrevista guiada paso a paso
-3. El sistema captura todos los requerimientos
-4. Generación automática de documentos
-5. Subida a S3 y notificación de completado
-6. Descarga desde dashboard de proyectos
+# generators/dynamic_helpers.py  
+def generate_simple_costs_csv(project_info, ai_analysis):
+    services = extract_services_from_analysis(ai_analysis)
+    # Genera costos específicos para servicios detectados
+```
 
-## 📊 Modelos de IA Disponibles
+### Agregar Nuevo Servicio
+1. Agregar keywords en `service_keywords` en `dynamic_generator.py`
+2. Agregar parámetros en `generate_dynamic_parameters()`
+3. Agregar recursos en `generate_dynamic_resources()`
+4. Agregar outputs en `generate_dynamic_outputs()`
+5. Agregar costos en `dynamic_helpers.py`
 
-| Modelo | Proveedor | Uso Recomendado | Costo/1k tokens |
-|--------|-----------|-----------------|-----------------|
-| Nova Pro | Amazon | Análisis complejo, conversaciones largas | $0.008 |
-| Claude Haiku | Anthropic | Respuestas rápidas, tareas técnicas | $0.0025 |
-| Claude Sonnet | Anthropic | Balance velocidad/capacidad | $0.015 |
+## 🚀 Despliegue
 
-## 🚀 Despliegue en Producción
-
-### Opción 1: AWS Amplify (Recomendado)
+### Desarrollo
 ```bash
-# Conectar repositorio a Amplify
-aws amplify create-app --name aws-propuestas-v3 --repository https://github.com/tu-usuario/aws-propuestas-v3
-
-# Configurar variables de entorno en Amplify Console
-# Desplegar automáticamente con cada push
+npm run dev
 ```
 
-### Opción 2: Manual con scripts
+### Producción
 ```bash
-# Desplegar backend
-./scripts/deploy-backend.sh
-
-# Desplegar frontend
-./scripts/deploy-frontend.sh
-
-# Verificar despliegue
-./scripts/verify-deployment.sh
+npm run build
+sam deploy --stack-name aws-propuestas-v3-prod
 ```
 
-## 🧪 Testing
+### CI/CD
+El proyecto incluye configuración para GitHub Actions y AWS Amplify.
 
+## 📊 Monitoreo
+
+### CloudWatch Logs
 ```bash
-# Tests unitarios
-npm test
-
-# Tests de integración
-npm run test:integration
-
-# Tests E2E
-npm run test:e2e
+sam logs --stack-name aws-propuestas-v3-prod --tail
 ```
 
-## 📈 Monitoreo y Logs
+### Métricas
+- Invocaciones de Lambda
+- Errores de API Gateway
+- Uso de DynamoDB
+- Almacenamiento en S3
 
-- **CloudWatch**: Logs de Lambda y métricas
-- **X-Ray**: Trazabilidad de requests
-- **Bedrock Logs**: Uso de modelos IA
-- **Amplify Console**: Métricas de frontend
+## 🔒 Seguridad
+
+### IAM Roles
+- Principio de menor privilegio
+- Roles específicos por función Lambda
+- Políticas granulares para S3 y DynamoDB
+
+### Cifrado
+- Datos en reposo cifrados en DynamoDB y S3
+- Comunicación HTTPS/TLS
+- Secrets Manager para credenciales
 
 ## 🤝 Contribución
 
-1. Fork el proyecto
-2. Crear rama feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+1. Fork el repositorio
+2. Crea una rama feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crear Pull Request
+5. Crea un Pull Request
 
-## 📄 Licencia
+## 📝 Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ## 🆘 Soporte
 
-- **Issues**: [GitHub Issues](https://github.com/coedaniel/aws-propuestas-v3/issues)
-- **Documentación**: Ver carpeta `/docs`
-- **Email**: daniel@ejemplo.com
+- **Documentación**: Ver carpeta `docs/`
+- **Issues**: GitHub Issues
+- **Troubleshooting**: Ver `TROUBLESHOOTING.md`
 
-## 🎉 Changelog
+## 🔄 Changelog
 
-### v3.0.0 (2024-07-10)
-- ✨ Sistema conversacional completo con múltiples modelos IA
-- 🏗️ Modo Arquitecto con generación automática de documentos
-- 📊 Dashboard de proyectos con métricas
-- 🚀 Despliegue optimizado en AWS Amplify
-- 📱 UI/UX completamente rediseñada
-- 🔒 Seguridad mejorada con IAM roles específicos
+### v3.0.0 (Actual)
+- ✅ Sistema dinámico e inteligente implementado
+- ✅ Detección automática de servicios AWS
+- ✅ Generación específica de documentos
+- ✅ Soporte para 50+ servicios AWS
+- ✅ CloudFormation templates funcionales
+- ✅ Estimaciones de costos reales
+
+### v2.0.0
+- Sistema con servicios hardcodeados
+- Documentos genéricos
+
+### v1.0.0
+- Versión inicial básica
 
 ---
 

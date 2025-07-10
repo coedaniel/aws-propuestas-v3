@@ -143,25 +143,52 @@ def extract_services_from_analysis(ai_analysis: str) -> List[str]:
     services = []
     analysis_lower = ai_analysis.lower()
     
-    # Common AWS services - EXPANDED LIST
+    # Common AWS services - COMPREHENSIVE LIST WITH MULTIPLE VARIATIONS
     service_keywords = {
+        # Compute
         'ec2': 'Amazon EC2',
-        's3': 'Amazon S3',
-        'rds': 'Amazon RDS',
         'lambda': 'AWS Lambda',
-        'vpc': 'Amazon VPC',
+        'fargate': 'AWS Fargate',
+        'batch': 'AWS Batch',
+        
+        # Storage
+        's3': 'Amazon S3',
         'efs': 'Amazon EFS',
+        'fsx': 'Amazon FSx',
+        'ebs': 'Amazon EBS',
+        
+        # Database
+        'rds': 'Amazon RDS',
+        'dynamodb': 'Amazon DynamoDB',
+        'redshift': 'Amazon Redshift',
+        'aurora': 'Amazon Aurora',
+        'documentdb': 'Amazon DocumentDB',
+        'neptune': 'Amazon Neptune',
+        
+        # Networking
+        'vpc': 'Amazon VPC',
         'cloudfront': 'Amazon CloudFront',
+        'route53': 'Amazon Route 53',
         'elb': 'Elastic Load Balancer',
-        'ses': 'Amazon SES',
+        'alb': 'Application Load Balancer',
+        'nlb': 'Network Load Balancer',
+        'direct connect': 'AWS Direct Connect',
+        'transit gateway': 'AWS Transit Gateway',
+        
+        # API & Integration
+        'api gateway': 'Amazon API Gateway',
+        'apigw': 'Amazon API Gateway',
+        'api-gateway': 'Amazon API Gateway',
+        'apigateway': 'Amazon API Gateway',
+        'rest api': 'Amazon API Gateway',
+        'http api': 'Amazon API Gateway',
+        'websocket': 'Amazon API Gateway',
+        'eventbridge': 'Amazon EventBridge',
         'sns': 'Amazon SNS',
         'sqs': 'Amazon SQS',
-        'dynamodb': 'Amazon DynamoDB',
-        'cloudwatch': 'Amazon CloudWatch',
-        'iam': 'AWS IAM',
-        'route53': 'Amazon Route 53',
-        'api gateway': 'Amazon API Gateway',
-        'cognito': 'Amazon Cognito',
+        'step functions': 'AWS Step Functions',
+        
+        # Security
         'guardduty': 'Amazon GuardDuty',
         'guard duty': 'Amazon GuardDuty',
         'security': 'Amazon GuardDuty',
@@ -175,7 +202,40 @@ def extract_services_from_analysis(ai_analysis: str) -> List[str]:
         'secrets manager': 'AWS Secrets Manager',
         'kms': 'AWS KMS',
         'certificate manager': 'AWS Certificate Manager',
-        'acm': 'AWS Certificate Manager'
+        'acm': 'AWS Certificate Manager',
+        'iam': 'AWS IAM',
+        
+        # Monitoring & Management
+        'cloudwatch': 'Amazon CloudWatch',
+        'x-ray': 'AWS X-Ray',
+        'systems manager': 'AWS Systems Manager',
+        'cloudformation': 'AWS CloudFormation',
+        
+        # Analytics
+        'kinesis': 'Amazon Kinesis',
+        'athena': 'Amazon Athena',
+        'glue': 'AWS Glue',
+        'emr': 'Amazon EMR',
+        
+        # AI/ML
+        'sagemaker': 'Amazon SageMaker',
+        'bedrock': 'Amazon Bedrock',
+        'comprehend': 'Amazon Comprehend',
+        'rekognition': 'Amazon Rekognition',
+        
+        # Messaging
+        'ses': 'Amazon SES',
+        'pinpoint': 'Amazon Pinpoint',
+        
+        # Identity
+        'cognito': 'Amazon Cognito',
+        'sso': 'AWS SSO',
+        
+        # Developer Tools
+        'codecommit': 'AWS CodeCommit',
+        'codebuild': 'AWS CodeBuild',
+        'codedeploy': 'AWS CodeDeploy',
+        'codepipeline': 'AWS CodePipeline'
     }
     
     for keyword, service_name in service_keywords.items():
@@ -263,6 +323,18 @@ def generate_dynamic_parameters(services: List[str], ai_analysis: str) -> Dict[s
                 'AllowedValues': ['true', 'false'],
                 'Description': 'Enable GuardDuty threat detection'
             }
+        elif 'API Gateway' in service:
+            parameters['ApiName'] = {
+                'Type': 'String',
+                'Default': f'{project_name}-api',
+                'Description': 'API Gateway name'
+            }
+            parameters['StageName'] = {
+                'Type': 'String',
+                'Default': 'prod',
+                'AllowedValues': ['dev', 'staging', 'prod'],
+                'Description': 'API Gateway stage name'
+            }
     
     return parameters
 
@@ -305,6 +377,28 @@ def generate_dynamic_resources(services: List[str], project_name: str, ai_analys
                         {'Key': 'Name', 'Value': f'{project_name}-guardduty'},
                         {'Key': 'Project', 'Value': project_name}
                     ]
+                }
+            }
+        elif 'API Gateway' in service:
+            resources['ApiGateway'] = {
+                'Type': 'AWS::ApiGateway::RestApi',
+                'Properties': {
+                    'Name': {'Ref': 'ApiName'},
+                    'Description': f'API Gateway for {project_name}',
+                    'EndpointConfiguration': {
+                        'Types': ['REGIONAL']
+                    },
+                    'Tags': [
+                        {'Key': 'Name', 'Value': f'{project_name}-api'},
+                        {'Key': 'Project', 'Value': project_name}
+                    ]
+                }
+            }
+            resources['ApiGatewayDeployment'] = {
+                'Type': 'AWS::ApiGateway::Deployment',
+                'Properties': {
+                    'RestApiId': {'Ref': 'ApiGateway'},
+                    'StageName': {'Ref': 'StageName'}
                 }
             }
         elif 'RDS' in service:
@@ -351,6 +445,15 @@ def generate_dynamic_outputs(services: List[str], project_name: str) -> Dict[str
             outputs['GuardDutyDetectorId'] = {
                 'Description': 'GuardDuty Detector ID',
                 'Value': {'Ref': 'GuardDutyDetector'}
+            }
+        elif 'API Gateway' in service:
+            outputs['ApiGatewayId'] = {
+                'Description': 'API Gateway ID',
+                'Value': {'Ref': 'ApiGateway'}
+            }
+            outputs['ApiGatewayUrl'] = {
+                'Description': 'API Gateway URL',
+                'Value': {'Fn::Sub': 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}'}
             }
         elif 'RDS' in service:
             outputs['RDSEndpoint'] = {

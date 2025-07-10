@@ -62,6 +62,10 @@ def generate_simple_costs_csv(project_info: Dict[str, Any], ai_analysis: str) ->
         elif 'KMS' in service:
             writer.writerow(['AWS KMS', 'Customer Managed Keys', '1', '1.00', 'Claves administradas por cliente'])
             writer.writerow(['AWS KMS', 'API Requests', '20,000', '0.03', 'Solicitudes de API'])
+        elif 'API Gateway' in service:
+            writer.writerow(['Amazon API Gateway', 'REST API Calls', '1,000,000', '3.50', 'Llamadas a API REST'])
+            writer.writerow(['Amazon API Gateway', 'Data Transfer', '1 GB', '0.09', 'Transferencia de datos'])
+            writer.writerow(['Amazon API Gateway', 'Caching', '0.5 GB', '0.02', 'Cache de respuestas'])
         elif 'Certificate Manager' in service:
             writer.writerow(['AWS Certificate Manager', 'Public Certificates', '1', '0.00', 'Certificados publicos gratuitos'])
             writer.writerow(['AWS Certificate Manager', 'Private Certificates', '1', '0.75', 'Certificados privados'])
@@ -260,6 +264,18 @@ CONFIGURACIÓN AMAZON GUARDDUTY:
   - DNS Logs analysis: Estima millones de consultas por mes
   - S3 Protection: Si tienes buckets S3 críticos
   - EKS Protection: Si usas Kubernetes
+"""
+        elif 'API Gateway' in service:
+            guide += """
+CONFIGURACIÓN AMAZON API GATEWAY:
+• Busca "API Gateway" en la calculadora
+• Selecciona "Amazon API Gateway"
+• Configuración recomendada:
+  - API type: REST API (más funciones) o HTTP API (más económico)
+  - Number of API calls: Estima llamadas por mes
+  - Average response size: Tamaño promedio de respuesta
+  - Caching: Si necesitas cache para mejorar rendimiento
+  - Data transfer: Estima GB transferidos por mes
 """
         elif 'Inspector' in service:
             guide += """
