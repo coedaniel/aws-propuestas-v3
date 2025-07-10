@@ -1,6 +1,6 @@
-# AWS Propuestas v3 - Sistema Dinámico e Inteligente
+# AWS Propuestas v3
 
-Sistema completo de generación automática de propuestas técnicas y comerciales para proyectos AWS, utilizando IA para análisis dinámico de requerimientos.
+Sistema inteligente de generación automática de propuestas técnicas y comerciales para proyectos AWS. Utiliza IA para analizar conversaciones y generar documentación específica para cada servicio AWS detectado.
 
 ## 🚀 Características Principales
 
@@ -157,160 +157,11 @@ aws configure
 # Ingresa tus credenciales AWS
 ```
 
-## 📖 Uso del Sistema
+## 📚 Documentación
 
-### 1. Acceder al Arquitecto
-- Navega a `/arquitecto`
-- Inicia una conversación describiendo tu proyecto
-- El sistema analizará automáticamente tus requerimientos
-
-### 2. Ejemplo de Conversación
-```
-Usuario: "Hola, necesito ayuda con un proyecto"
-Sistema: "¿Cuál es el nombre del proyecto?"
-Usuario: "MiAPI"
-Sistema: "¿Es una solución integral o servicio rápido?"
-Usuario: "Necesito implementar API Gateway para mi aplicación web"
-Sistema: [Genera documentos específicos de API Gateway]
-```
-
-### 3. Documentos Generados
-Los documentos se generan automáticamente y se suben a S3:
-- Propuesta ejecutiva con información específica del servicio
-- CloudFormation template funcional
-- Estimación de costos real
-- Guía de calculadora AWS personalizada
-
-## 🔍 Cómo Funciona la Detección Dinámica
-
-### 1. Análisis de Conversación
-```python
-# El sistema analiza el texto de la conversación
-conversation_text = "Necesito implementar API Gateway para mi aplicación"
-
-# Extrae servicios mencionados
-services = extract_services_from_analysis(conversation_text)
-# Resultado: ['Amazon API Gateway']
-```
-
-### 2. Generación de Recursos
-```python
-# Genera recursos específicos para cada servicio
-if 'API Gateway' in services:
-    resources['ApiGateway'] = {
-        'Type': 'AWS::ApiGateway::RestApi',
-        'Properties': {
-            'Name': project_name + '-api',
-            # ... configuración específica
-        }
-    }
-```
-
-### 3. Costos Específicos
-```python
-# Genera costos reales para el servicio
-if 'API Gateway' in service:
-    writer.writerow(['Amazon API Gateway', 'REST API Calls', '1,000,000', '3.50', 'Llamadas a API REST'])
-```
-
-## 🛠️ Desarrollo
-
-### Estructura de Generadores
-```python
-# generators/dynamic_generator.py
-def generate_dynamic_cloudformation(project_info, ai_analysis):
-    services = extract_services_from_analysis(ai_analysis)
-    # Genera template específico para servicios detectados
-
-# generators/dynamic_helpers.py  
-def generate_simple_costs_csv(project_info, ai_analysis):
-    services = extract_services_from_analysis(ai_analysis)
-    # Genera costos específicos para servicios detectados
-```
-
-### Agregar Nuevo Servicio
-1. Agregar keywords en `service_keywords` en `dynamic_generator.py`
-2. Agregar parámetros en `generate_dynamic_parameters()`
-3. Agregar recursos en `generate_dynamic_resources()`
-4. Agregar outputs en `generate_dynamic_outputs()`
-5. Agregar costos en `dynamic_helpers.py`
-
-## 🚀 Despliegue
-
-### Desarrollo
-```bash
-npm run dev
-```
-
-### Producción
-```bash
-npm run build
-sam deploy --stack-name aws-propuestas-v3-prod
-```
-
-### CI/CD
-El proyecto incluye configuración para GitHub Actions y AWS Amplify.
-
-## 📊 Monitoreo
-
-### CloudWatch Logs
-```bash
-sam logs --stack-name aws-propuestas-v3-prod --tail
-```
-
-### Métricas
-- Invocaciones de Lambda
-- Errores de API Gateway
-- Uso de DynamoDB
-- Almacenamiento en S3
-
-## 🔒 Seguridad
-
-### IAM Roles
-- Principio de menor privilegio
-- Roles específicos por función Lambda
-- Políticas granulares para S3 y DynamoDB
-
-### Cifrado
-- Datos en reposo cifrados en DynamoDB y S3
-- Comunicación HTTPS/TLS
-- Secrets Manager para credenciales
-
-## 🤝 Contribución
-
-1. Fork el repositorio
-2. Crea una rama feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crea un Pull Request
-
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
-
-## 🆘 Soporte
-
-- **Documentación**: Ver carpeta `docs/`
-- **Issues**: GitHub Issues
-- **Troubleshooting**: Ver `TROUBLESHOOTING.md`
-
-## 🔄 Changelog
-
-### v3.0.0 (Actual)
-- ✅ Sistema dinámico e inteligente implementado
-- ✅ Detección automática de servicios AWS
-- ✅ Generación específica de documentos
-- ✅ Soporte para 50+ servicios AWS
-- ✅ CloudFormation templates funcionales
-- ✅ Estimaciones de costos reales
-
-### v2.0.0
-- Sistema con servicios hardcodeados
-- Documentos genéricos
-
-### v1.0.0
-- Versión inicial básica
-
----
-
-**Desarrollado con ❤️ para la comunidad AWS**
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Guía completa de despliegue
+- **[API.md](API.md)** - Documentación de la API REST
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Arquitectura del sistema
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solución de problemas
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Guía de contribución
+- **[CHANGELOG.md](CHANGELOG.md)** - Historial de cambios
