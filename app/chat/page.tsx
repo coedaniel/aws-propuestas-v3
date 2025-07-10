@@ -58,26 +58,15 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content
-          })),
-          modelId: selectedModel,
-          mode: 'chat-libre'
-        }),
+      const { sendChatMessage } = await import('@/lib/api')
+      const data = await sendChatMessage({
+        messages: [...messages, userMessage].map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        modelId: selectedModel,
+        mode: 'chat-libre'
       })
-
-      if (!response.ok) {
-        throw new Error('Error en la respuesta del servidor')
-      }
-
-      const data = await response.json()
 
       const assistantMessage: Message = {
         id: generateId(),
