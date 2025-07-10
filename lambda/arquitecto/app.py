@@ -141,7 +141,11 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
 
 def get_arquitecto_system_prompt() -> str:
     """Get system prompt for arquitecto mode"""
-    return """Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible. Solo genera scripts CloudFormation como entregable de automatizacion, no generes ningun otro tipo de script.
+    bucket_name = DOCUMENTS_BUCKET or 'aws-propuestas-v3-documents-prod'
+    
+    return f"""Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible. Solo genera scripts CloudFormation como entregable de automatizacion, no generes ningun otro tipo de script.
+
+IMPORTANTE: Cuando el usuario inicie la conversacion (con cualquier mensaje inicial), comienza INMEDIATAMENTE con la entrevista guiada. NO pidas que diga "hola" o "iniciar". Si menciona un proyecto especifico, usalo como contexto inicial.
 
 1. **Primero pregunta:**
 Cual es el nombre del proyecto
@@ -161,8 +165,8 @@ o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, 
     - Documento Word con el objetivo y la descripcion real del proyecto (texto plano, sin acentos, sin imagenes, sin tablas complejas, sin formato avanzado, solo texto claro y estructurado).
     - Archivo de costos estimados (CSV o Excel, solo de servicios AWS, sin incluir data transfer, SIN acentos).
     - Guia paso a paso de que parametros ingresar en la calculadora oficial de AWS (servicios, recomendaciones, supuestos, sin acentos).
-4. Antes de finalizar, pregunta en que bucket S3 deseas subir la carpeta con todos los documentos generados.
-5. Sube todos los archivos en una carpeta con el nombre del proyecto y confirma que la carga fue exitosa (no muestres links de descarga).
+4. Al finalizar la entrevista, genera automaticamente todos los documentos y los sube al bucket S3 del sistema ({bucket_name}).
+5. Sube todos los archivos en una carpeta con el nombre del proyecto y confirma que la carga fue exitosa.
 6. Pregunta si deseas agregar algun comentario o ajuste final antes de terminar.
 
 **Si elige "solucion integral" (proyecto complejo):**
@@ -191,8 +195,8 @@ o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, 
     - Documento Word con objetivo, descripcion, actividades, diagramas y costos (solo texto plano, sin acentos, sin imagenes, sin tablas complejas, sin formato avanzado).
     - Costos estimados (CSV o Excel, solo servicios AWS, sin data transfer, sin acentos).
     - Guia paso a paso para la calculadora oficial de AWS (sin acentos).
-4. Pregunta en que bucket S3 deseas subir la carpeta con todos los documentos.
-5. Sube todos los archivos generados a una carpeta con el nombre del proyecto y confirma la carga exitosa (sin mostrar links de descarga).
+4. Al finalizar, genera automaticamente todos los documentos y los sube al bucket S3 del sistema ({bucket_name}).
+5. Sube todos los archivos generados a una carpeta con el nombre del proyecto y confirma la carga exitosa.
 6. Permite agregar comentarios o ajustes antes de cerrar la propuesta.
 
 **En todas las preguntas y entregas:**
@@ -206,7 +210,7 @@ o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, 
 **Nota:**
 
 - Los diagramas siempre deben entregarse en SVG, PNG y Draw.io editable, sin acentos ni caracteres especiales.
-- La carpeta final debe contener todos los entregables bien organizados, y estar subida al bucket S3 indicado.
+- La carpeta final debe contener todos los entregables bien organizados, y estar subida automaticamente al bucket S3 del sistema ({bucket_name}).
 - Los documentos Word deben ser funcionales y abrirse correctamente en Microsoft Word o editores compatibles, solo texto plano, sin acentos ni caracteres especiales, sin imagenes, sin tablas complejas."""
 
 def prepare_prompt(model_id: str, system_prompt: str, messages: List[Dict], 
@@ -286,26 +290,42 @@ def extract_response(model_id: str, response_body: Dict) -> tuple:
 def check_if_complete(ai_response: str, project_info: Dict) -> bool:
     """Check if project information gathering is complete"""
     
-    # Simple heuristics to determine if project is complete
+    # Enhanced completion indicators
     completion_indicators = [
         "proyecto está completo",
         "información suficiente",
         "generar documentos",
         "listo para crear",
-        "proceder con la generación"
+        "proceder con la generación",
+        "subir al bucket",
+        "carpeta con todos los documentos",
+        "entregables generados",
+        "propuesta finalizada",
+        "documentos listos",
+        "archivos generados",
+        "carga exitosa",
+        "comentario final",
+        "ajuste final",
+        "cerrar la propuesta",
+        "proyecto terminado"
     ]
     
     response_lower = ai_response.lower()
     has_completion_indicator = any(indicator in response_lower for indicator in completion_indicators)
     
-    # Also check if we have minimum required info
+    # Check if we have minimum required info for a complete project
     has_minimum_info = (
         project_info.get('name') and 
         project_info.get('type') and
-        len(project_info) >= 3
+        len(project_info) >= 5  # Increased minimum requirements
     )
     
-    return has_completion_indicator and has_minimum_info
+    # Check if response mentions document generation or file uploads
+    mentions_deliverables = any(term in response_lower for term in [
+        "documento", "archivo", "diagrama", "cloudformation", "csv", "excel", "word"
+    ])
+    
+    return has_completion_indicator or (has_minimum_info and mentions_deliverables)
 
 def save_project_progress(project_id: str, user_id: str, messages: List[Dict], 
                          ai_response: str, project_info: Dict, current_step: int,

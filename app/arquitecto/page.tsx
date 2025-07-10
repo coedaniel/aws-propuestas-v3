@@ -102,43 +102,6 @@ export default function ArquitectoPage() {
           </CardContent>
         </Card>
 
-        {/* Input Section */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Arquitecto AWS - Consultor Experto</CardTitle>
-            <p className="text-sm text-gray-600">
-              El Arquitecto AWS te guiará paso a paso para dimensionar, documentar y entregar una solución profesional completa.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Escribe 'Hola' o 'Iniciar' para comenzar la consultoría..."
-              className="min-h-[120px] resize-none"
-              disabled={isLoading}
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                Presiona Enter para enviar, Shift+Enter para nueva línea
-              </span>
-              <Button
-                onClick={handleSubmit}
-                disabled={!currentInput.trim() || isLoading}
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                {isLoading ? 'Consultando...' : 'Iniciar Consultoría'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Conversation History */}
         {messages.length > 0 && (
           <Card className="mb-6">
@@ -151,6 +114,11 @@ export default function ArquitectoPage() {
                     (Proyecto: {projectId.slice(0, 8)}... - Paso {currentStep})
                   </span>
                 )}
+                {isComplete && (
+                  <span className="text-sm font-normal text-green-600">
+                    ✅ Completado
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -158,23 +126,23 @@ export default function ArquitectoPage() {
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={`p-3 rounded-lg ${
+                    className={`p-4 rounded-lg ${
                       message.role === 'user'
                         ? 'bg-blue-50 border-l-4 border-blue-500 ml-8'
                         : 'bg-gray-50 border-l-4 border-gray-500 mr-8'
                     }`}
                   >
-                    <div className="text-sm font-medium mb-1">
-                      {message.role === 'user' ? 'Tú' : 'Arquitecto AWS'}
+                    <div className="text-sm font-medium mb-2">
+                      {message.role === 'user' ? '👤 Tú' : '🏗️ Arquitecto AWS'}
                     </div>
-                    <div className="whitespace-pre-wrap text-gray-800">
+                    <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
                       {message.content}
                     </div>
                   </div>
                 ))}
                 {isLoading && (
-                  <div className="bg-gray-50 border-l-4 border-gray-500 mr-8 p-3 rounded-lg">
-                    <div className="text-sm font-medium mb-1">Arquitecto AWS</div>
+                  <div className="bg-gray-50 border-l-4 border-gray-500 mr-8 p-4 rounded-lg">
+                    <div className="text-sm font-medium mb-2">🏗️ Arquitecto AWS</div>
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span className="text-gray-600">Analizando tu proyecto...</span>
@@ -186,38 +154,87 @@ export default function ArquitectoPage() {
           </Card>
         )}
 
-        {/* Response Section */}
-        {(response || isLoading) && messages.length === 0 && (
-          <Card>
+        {/* Auto-start welcome message */}
+        {messages.length === 0 && !isLoading && (
+          <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
-                Propuesta de Arquitectura
-                <span className="text-sm font-normal text-gray-500">
-                  ({currentModel.name})
-                </span>
+                Arquitecto AWS - Consultor Experto
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-                    <p className="text-gray-600">El Arquitecto AWS está analizando tu proyecto...</p>
-                  </div>
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mr-8">
+                <div className="text-sm font-medium mb-2">🏗️ Arquitecto AWS</div>
+                <div className="text-gray-800 leading-relaxed">
+                  ¡Hola! Soy tu Arquitecto AWS especializado. Te ayudaré a diseñar una solución profesional completa paso a paso.
+                  
+                  Puedo ayudarte con dos tipos de proyectos:
+                  
+                  **🔧 Solución Integral**: Proyecto completo desde cero con arquitectura, documentación y estimaciones detalladas.
+                  
+                  **⚡ Servicio Rápido**: Consulta específica sobre un tema puntual de AWS.
+                  
+                  Para comenzar, simplemente describe tu proyecto o necesidad en el campo de abajo.
                 </div>
-              ) : (
-                <div className="prose max-w-none">
-                  <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                    {response}
-                  </div>
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Examples */}
+        {/* Input Section - Always at bottom */}
+        <Card className="mb-6">
+          <CardContent className="space-y-4 pt-6">
+            <Textarea
+              value={currentInput}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={messages.length === 0 ? 
+                "Describe tu proyecto o necesidad (ej: 'Necesito un e-commerce que maneje 10,000 productos')" : 
+                "Continúa la conversación..."
+              }
+              className="min-h-[100px] resize-none"
+              disabled={isLoading}
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">
+                Presiona Enter para enviar, Shift+Enter para nueva línea
+              </span>
+              <div className="flex gap-2">
+                {messages.length > 0 && !isComplete && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMessages([])
+                      setCurrentInput('')
+                      setProjectId(null)
+                      setCurrentStep(0)
+                      setIsComplete(false)
+                      setResponse('')
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    🔄 Nuevo Proyecto
+                  </Button>
+                )}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!currentInput.trim() || isLoading}
+                  className="flex items-center gap-2"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {isLoading ? 'Consultando...' : messages.length === 0 ? 'Iniciar Consultoría' : 'Enviar'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Examples - Only show when no conversation */}
         {messages.length === 0 && !isLoading && (
           <Card>
             <CardHeader>
