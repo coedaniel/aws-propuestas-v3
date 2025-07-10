@@ -1,11 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
-
-const bedrockClient = new BedrockRuntimeClient({
-  region: process.env.NEXT_PUBLIC_REGION || 'us-east-1'
-})
 
 export async function POST(request: NextRequest) {
+  // Check if we should use Lambda backend
+  const API_URL = process.env.NEXT_PUBLIC_API_URL
+  
+  if (API_URL && API_URL !== 'http://localhost:3000') {
+    // Use Lambda backend
+    try {
+      const body = await request.json()
+      
+      const response = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      return NextResponse.json(data)
+      
+    } catch (error) {
+      console.error('Error calling Lambda backend:', error)
+      return NextResponse.json(
+        { error: 'Backend service unavailable', details: error instanceof Error ? error.message : 'Unknown error' },
+        { status: 503 }
+      )
+    }
+  }
+  
+  // Fallback to direct Bedrock call (for local development)
+  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime')
+  
+  const bedrockClient = new BedrockRuntimeClient({
+    region: process.env.NEXT_PUBLIC_REGION || 'us-east-1'
+  })
   try {
     const body = await request.json()
     const { messages, modelId = 'amazon.nova-pro-v1:0', mode = 'chat-libre' } = body
