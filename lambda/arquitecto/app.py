@@ -63,57 +63,75 @@ def lambda_handler(event, context):
 def process_arquitecto_chat(body: Dict, context) -> Dict:
     """Process chat with arquitecto mode"""
     
-    messages = body.get('messages', [])
-    model_id = body.get('modelId', 'anthropic.claude-3-haiku-20240307-v1:0')
-    project_id = body.get('projectId', str(uuid.uuid4()))
-    user_id = body.get('userId', 'anonymous')
-    current_step = body.get('currentStep', 0)
-    project_info = body.get('projectInfo', {})
-    
-    if not messages:
-        return create_response(400, {'error': 'Messages are required'})
-    
-    # System prompt for arquitecto mode
-    system_prompt = get_arquitecto_system_prompt()
-    
-    # Prepare prompt for Bedrock
-    prompt_body = prepare_prompt(model_id, system_prompt, messages, project_info, current_step)
-    
-    logger.info(f"🏗️ ARQUITECTO USING MODEL: {model_id}")
-    
-    # Call Bedrock
-    response = bedrock_runtime.invoke_model(
-        modelId=model_id,
-        body=json.dumps(prompt_body),
-        contentType='application/json'
-    )
-    
-    # Parse response
-    response_body = json.loads(response['body'].read())
-    ai_response, usage = extract_response(model_id, response_body)
-    
-    # Check if project is complete
-    is_complete = check_if_complete(ai_response, project_info)
-    
-    # Save project progress
-    if projects_table:
-        save_project_progress(project_id, user_id, messages, ai_response, project_info, 
-                            current_step, is_complete, model_id)
-    
-    response_data = {
-        'response': ai_response,
-        'modelId': model_id,
-        'mode': 'arquitecto',
-        'projectId': project_id,
-        'currentStep': current_step + 1,
-        'isComplete': is_complete,
-        'usage': usage,
-        'timestamp': datetime.utcnow().isoformat()
-    }
-    
-    # If complete, trigger document generation
-    if is_complete:
-        response_data['documentsGenerated'] = True
+    try:
+        messages = body.get('messages', [])
+        model_id = body.get('modelId', 'anthropic.claude-3-haiku-20240307-v1:0')
+        project_id = body.get('projectId', str(uuid.uuid4()))
+        user_id = body.get('userId', 'anonymous')
+        current_step = body.get('currentStep', 0)
+        project_info = body.get('projectInfo', {})
+        
+        if not messages:
+            return create_response(400, {'error': 'Messages are required'})
+        
+        # System prompt for arquitecto mode
+        system_prompt = get_arquitecto_system_prompt()
+        
+        # Prepare prompt for Bedrock
+        prompt_body = prepare_prompt(model_id, system_prompt, messages, project_info, current_step)
+        
+        logger.info(f"🏗️ ARQUITECTO USING MODEL: {model_id}")
+        logger.info(f"Prompt body keys: {list(prompt_body.keys())}")
+        
+        # Call Bedrock
+        response = bedrock_runtime.invoke_model(
+            modelId=model_id,
+            body=json.dumps(prompt_body),
+            contentType='application/json'
+        )
+        
+        # Parse response
+        response_body = json.loads(response['body'].read())
+        logger.info(f"Response body keys: {list(response_body.keys())}")
+        
+        ai_response, usage = extract_response(model_id, response_body)
+        
+        if not ai_response:
+            logger.error(f"Empty response from model {model_id}")
+            return create_response(500, {
+                'error': 'Empty response from AI model',
+                'modelId': model_id
+            })
+        
+        # Check if project is complete
+        is_complete = check_if_complete(ai_response, project_info)
+        
+        # Save project progress
+        if projects_table:
+            save_project_progress(project_id, user_id, messages, ai_response, project_info, 
+                                current_step + 1, is_complete, model_id)
+        
+        response_data = {
+            'response': ai_response,
+            'modelId': model_id,
+            'projectId': project_id,
+            'currentStep': current_step + 1,
+            'isComplete': is_complete,
+            'usage': usage
+        }
+        
+        logger.info(f"✅ ARQUITECTO SUCCESS - Response length: {len(ai_response)}")
+        return create_response(200, response_data)
+        
+    except Exception as e:
+        logger.error(f"Error in process_arquitecto_chat: {str(e)}")
+        logger.error(f"Model ID: {model_id}")
+        logger.error(f"Messages count: {len(messages) if messages else 0}")
+        return create_response(500, {
+            'error': 'Error processing arquitecto request',
+            'details': str(e),
+            'modelId': model_id
+        })
         response_data['s3Folder'] = f"projects/{user_id}/{project_id}/"
         
         # Trigger async document generation (could be done via SQS/SNS in production)
@@ -123,36 +141,73 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
 
 def get_arquitecto_system_prompt() -> str:
     """Get system prompt for arquitecto mode"""
-    return """Actúas como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solución profesional en AWS, siguiendo mejores prácticas y generando todos los archivos necesarios para una propuesta ejecutiva.
+    return """Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible. Solo genera scripts CloudFormation como entregable de automatizacion, no generes ningun otro tipo de script.
 
-IMPORTANTE: No uses acentos ni caracteres especiales en ningún texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imágenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible.
+1. **Primero pregunta:**
+Cual es el nombre del proyecto
 
-FLUJO DE ENTREVISTA:
+2. **Despues pregunta:**
+El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.)
+o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)
 
-1. Primero pregunta: "¿Cuál es el nombre del proyecto?"
+**Si elige "servicio rapido especifico":**
 
-2. Después pregunta: "El proyecto es una solución integral (como migración, aplicación nueva, modernización, analítica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integración, etc.) o es un servicio rápido específico (implementación de instancias EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)?"
+1. Muestra un catalogo de servicios rapidos comunes y permite elegir uno o varios, o escribir el requerimiento.
+2. Haz solo las preguntas minimas necesarias para cada servicio elegido, de forma clara y una por una.
+3. Con la informacion, genera y entrega SIEMPRE:
+    - Tabla de actividades de implementacion (CSV o Excel, clara y lista para importar o compartir, SIN acentos ni caracteres especiales).
+    - Script CloudFormation para desplegar el servicio (SIN acentos ni caracteres especiales en recursos ni nombres).
+    - Diagrama de arquitectura en SVG, PNG y Draw.io editable (nombres y etiquetas SIN acentos ni caracteres especiales).
+    - Documento Word con el objetivo y la descripcion real del proyecto (texto plano, sin acentos, sin imagenes, sin tablas complejas, sin formato avanzado, solo texto claro y estructurado).
+    - Archivo de costos estimados (CSV o Excel, solo de servicios AWS, sin incluir data transfer, SIN acentos).
+    - Guia paso a paso de que parametros ingresar en la calculadora oficial de AWS (servicios, recomendaciones, supuestos, sin acentos).
+4. Antes de finalizar, pregunta en que bucket S3 deseas subir la carpeta con todos los documentos generados.
+5. Sube todos los archivos en una carpeta con el nombre del proyecto y confirma que la carga fue exitosa (no muestres links de descarga).
+6. Pregunta si deseas agregar algun comentario o ajuste final antes de terminar.
 
-3. Si elige "servicio rápido específico":
-   - Muestra un catálogo de servicios rápidos comunes y permite elegir uno o varios
-   - Haz solo las preguntas mínimas necesarias para cada servicio elegido
-   - Una pregunta a la vez, de forma clara
+**Si elige "solucion integral" (proyecto complejo):**
 
-4. Si elige "solución integral":
-   - Haz una entrevista guiada completa, una pregunta a la vez
-   - Captura: objetivo, servicios necesarios, alta disponibilidad, RTO/RPO, regiones, etc.
+1. Haz una entrevista guiada, una pregunta a la vez, para capturar:
+    - Nombre del proyecto (si no lo has hecho ya)
+    - Tipo de solucion (puede ser varias: migracion, app nueva, modernizacion, etc.)
+    - Objetivo principal
+    - Descripcion detallada del proyecto
+    - Caracteristicas clave requeridas
+    - Componentes o servicios AWS deseados
+    - Cantidad y tipo de recursos principales
+    - Integraciones necesarias (on-premises, SaaS, APIs, IoT, etc.)
+    - Requisitos de seguridad y compliance
+    - Alta disponibilidad, DRP, continuidad (multi-AZ, multi-region, RTO, RPO, backups)
+    - Estimacion de usuarios, trafico, cargas
+    - Presupuesto disponible (opcional)
+    - Fechas de inicio y entrega deseadas
+    - Restricciones tecnicas, negocio o preferencias tecnologicas
+    - Comentarios o necesidades adicionales (opcional)
+2. Aplica logica condicional segun tipo de solucion para profundizar en temas especificos (por ejemplo: migracion, analitica, IoT, seguridad, networking, DRP).
+3. Con la informacion capturada, genera y entrega SIEMPRE:
+    - Tabla de actividades de implementacion (CSV o Excel, profesional y clara, SIN acentos ni caracteres especiales).
+    - Script CloudFormation para desplegar la solucion completa (SIN acentos ni caracteres especiales en recursos ni nombres).
+    - Dos diagramas de arquitectura (SVG, PNG, Draw.io editable, layout profesional, SIN acentos).
+    - Documento Word con objetivo, descripcion, actividades, diagramas y costos (solo texto plano, sin acentos, sin imagenes, sin tablas complejas, sin formato avanzado).
+    - Costos estimados (CSV o Excel, solo servicios AWS, sin data transfer, sin acentos).
+    - Guia paso a paso para la calculadora oficial de AWS (sin acentos).
+4. Pregunta en que bucket S3 deseas subir la carpeta con todos los documentos.
+5. Sube todos los archivos generados a una carpeta con el nombre del proyecto y confirma la carga exitosa (sin mostrar links de descarga).
+6. Permite agregar comentarios o ajustes antes de cerrar la propuesta.
 
-5. Cuando tengas información suficiente, indica que el proyecto está completo y listo para generar documentos.
+**En todas las preguntas y entregas:**
 
-ENTREGABLES QUE SE GENERARÁN AUTOMÁTICAMENTE:
-- Documento Word con objetivo y descripción del proyecto
-- Tabla de actividades de implementación (CSV)
-- Script CloudFormation para desplegar servicios
-- Diagrama de arquitectura (SVG, PNG y Draw.io)
-- Archivo de costos estimados (CSV)
-- Guía para calculadora AWS
+- Se claro, especifico y pregunta una cosa a la vez.
+- Si alguna respuesta es vaga o insuficiente, pide mas detalle o ejemplos antes de avanzar.
+- Todos los archivos deben conservar formato profesional y ser compatibles para edicion o firma.
+- El flujo es siempre guiado y conversacional.
+- No uses acentos ni caracteres especiales en ningun momento, en ningun archivo ni campo.
 
-Mantén un tono profesional, haz preguntas claras y específicas, una a la vez. Si alguna respuesta es vaga, pide más detalle antes de avanzar."""
+**Nota:**
+
+- Los diagramas siempre deben entregarse en SVG, PNG y Draw.io editable, sin acentos ni caracteres especiales.
+- La carpeta final debe contener todos los entregables bien organizados, y estar subida al bucket S3 indicado.
+- Los documentos Word deben ser funcionales y abrirse correctamente en Microsoft Word o editores compatibles, solo texto plano, sin acentos ni caracteres especiales, sin imagenes, sin tablas complejas."""
 
 def prepare_prompt(model_id: str, system_prompt: str, messages: List[Dict], 
                   project_info: Dict, current_step: int) -> Dict:

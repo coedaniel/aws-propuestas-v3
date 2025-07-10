@@ -86,9 +86,9 @@ export default function ArquitectoPage() {
         {/* Input Section */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Describe tu Proyecto</CardTitle>
+            <CardTitle>Arquitecto AWS - Consultor Experto</CardTitle>
             <p className="text-sm text-gray-600">
-              Describe los requisitos de tu proyecto y el Arquitecto AWS te ayudará a diseñar la solución ideal.
+              El Arquitecto AWS te guiará paso a paso para dimensionar, documentar y entregar una solución profesional completa.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -96,7 +96,7 @@ export default function ArquitectoPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ejemplo: Necesito una aplicación web escalable para e-commerce que maneje 10,000 usuarios concurrentes, con base de datos, autenticación, pagos y análisis en tiempo real..."
+              placeholder="Escribe 'Hola' o 'Iniciar' para comenzar la consultoría..."
               className="min-h-[120px] resize-none"
               disabled={isLoading}
             />
@@ -114,7 +114,7 @@ export default function ArquitectoPage() {
                 ) : (
                   <Send className="h-4 w-4" />
                 )}
-                {isLoading ? 'Analizando...' : 'Generar Arquitectura'}
+                {isLoading ? 'Consultando...' : 'Iniciar Consultoría'}
               </Button>
             </div>
           </CardContent>
