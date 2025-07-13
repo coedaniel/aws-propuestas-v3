@@ -152,7 +152,7 @@ export async function generateDocuments(projectId: string): Promise<any> {
   return response.json()
 }
 
-export async function deleteProject(projectId: string): Promise<{ success: boolean; message: string }> {
+export async function deleteProject(projectId: string): Promise<{ success: boolean; message: string; deletedFiles?: number; projectId?: string }> {
   const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
     method: 'DELETE',
     headers: {

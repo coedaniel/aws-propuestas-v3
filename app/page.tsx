@@ -3,7 +3,6 @@
 import React from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   MessageCircle, 
   Building2, 
@@ -13,8 +12,7 @@ import {
   FileText,
   Database,
   Cloud,
-  ArrowRight,
-  CheckCircle
+  ArrowRight
 } from 'lucide-react'
 
 export default function HomePage() {
@@ -78,28 +76,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-            <FeatureCard
-              icon={<MessageCircle className="w-8 h-8 text-blue-600" />}
-              title="Chat Libre"
-              description="Conversa con modelos IA avanzados sobre cualquier tema de AWS. Selecciona entre Nova Pro, Claude Haiku y más."
-              features={["Múltiples modelos IA", "Respuestas expertas", "Historial persistente"]}
-            />
-            <FeatureCard
-              icon={<Building2 className="w-8 h-8 text-green-600" />}
-              title="Generador de Propuestas"
-              description="Entrevista guiada paso a paso que genera automáticamente todos los entregables profesionales."
-              features={["Entrevista inteligente", "Documentos automáticos", "Diagramas profesionales"]}
-            />
-            <FeatureCard
-              icon={<FileText className="w-8 h-8 text-purple-600" />}
-              title="Entregables Completos"
-              description="Genera automáticamente Word, CSV, YAML, diagramas SVG/PNG y guías de calculadora AWS."
-              features={["Documentos Word", "Scripts CloudFormation", "Estimaciones de costos"]}
-            />
-          </div>
-
           {/* Process Flow */}
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-8">
@@ -132,57 +108,9 @@ export default function HomePage() {
               />
             </div>
           </div>
-
-          {/* CTA Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">
-              ¿Listo para crear tu propuesta AWS?
-            </h2>
-            <p className="text-xl mb-8 opacity-90">
-              Comienza ahora y genera documentos profesionales en minutos
-            </p>
-            <div className="flex items-center justify-center space-x-4">
-              <Link href="/arquitecto">
-                <Button size="lg" className="text-lg px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
-                  <Building2 className="w-5 h-5 mr-2" />
-                  Crear Propuesta AWS
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          </div>
         </div>
       </section>
     </div>
-  )
-}
-
-interface FeatureCardProps {
-  icon: React.ReactNode
-  title: string
-  description: string
-  features: string[]
-}
-
-function FeatureCard({ icon, title, description, features }: FeatureCardProps) {
-  return (
-    <Card className="h-full hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <div className="mb-4">{icon}</div>
-        <CardTitle className="text-xl">{title}</CardTitle>
-        <CardDescription className="text-base">{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {features.map((feature, index) => (
-            <li key={index} className="flex items-center text-sm text-gray-600">
-              <CheckCircle className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-              {feature}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
   )
 }
 
