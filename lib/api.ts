@@ -152,6 +152,21 @@ export async function generateDocuments(projectId: string): Promise<any> {
   return response.json()
 }
 
+export async function deleteProject(projectId: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Delete project API error: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
 // Health check
 export async function checkHealth(): Promise<{ status: string; timestamp: string }> {
   const response = await fetch(`${API_BASE_URL}/health`, {

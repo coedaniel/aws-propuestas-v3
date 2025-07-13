@@ -22,7 +22,7 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react'
-import { getProjects, createProject, generateDocuments } from '@/lib/api'
+import { getProjects, createProject, generateDocuments, deleteProject } from '@/lib/api'
 
 interface Project {
   projectId: string
@@ -113,16 +113,21 @@ export default function ProjectsPage() {
   }
 
   const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este proyecto?')) return
+    if (!confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción eliminará el proyecto de DynamoDB y todos sus documentos de S3. No se puede deshacer.')) return
     
     setDeletingProject(projectId)
     try {
-      // TODO: Implement delete API call
-      console.log('Delete project:', projectId)
-      alert('Funcionalidad de eliminación pendiente de implementar')
+      const result = await deleteProject(projectId)
+      if (result.success) {
+        // Remove project from local state
+        setProjects(prev => prev.filter(p => p.projectId !== projectId))
+        alert('Proyecto eliminado exitosamente')
+      } else {
+        alert(`Error al eliminar proyecto: ${result.message}`)
+      }
     } catch (error) {
       console.error('Error deleting project:', error)
-      alert('Error al eliminar proyecto')
+      alert('Error al eliminar proyecto. Por favor intenta de nuevo.')
     } finally {
       setDeletingProject(null)
     }

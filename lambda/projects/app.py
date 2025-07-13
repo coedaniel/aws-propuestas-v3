@@ -47,6 +47,12 @@ def lambda_handler(event, context):
                 return get_projects(event, context)
         elif method == 'POST':
             return create_or_update_project(event, context)
+        elif method == 'DELETE':
+            project_id = path_parameters.get('projectId')
+            if project_id:
+                return delete_project(project_id)
+            else:
+                return create_response(400, {'error': 'projectId path parameter required'})
         else:
             return create_response(405, {'error': 'Method not allowed'})
         
@@ -423,6 +429,94 @@ def create_or_update_project(event, context) -> Dict:
     except Exception as e:
         logger.error(f"Error creating/updating project: {str(e)}")
         return create_response(500, {'error': f'Failed to create/update project: {str(e)}'})
+
+def delete_project(project_id: str) -> Dict:
+    """Delete a project from DynamoDB and all its documents from S3"""
+    try:
+        logger.info(f"🗑️ DELETING PROJECT: {project_id}")
+        
+        if not projects_table:
+            return create_response(500, {'error': 'Projects table not configured'})
+        
+        # First, get the project to check if it exists and get document info
+        try:
+            response = projects_table.get_item(Key={'projectId': project_id})
+            if 'Item' not in response:
+                return create_response(404, {
+                    'success': False,
+                    'message': 'Project not found'
+                })
+            
+            project = response['Item']
+            logger.info(f"Found project: {project.get('projectInfo', {}).get('name', 'Unknown')}")
+            
+        except Exception as e:
+            logger.error(f"Error getting project: {str(e)}")
+            return create_response(500, {
+                'success': False,
+                'message': f'Error retrieving project: {str(e)}'
+            })
+        
+        # Delete documents from S3 if bucket is configured
+        deleted_files = []
+        if DOCUMENTS_BUCKET:
+            try:
+                # List all objects with the project prefix
+                s3_prefix = f"projects/{project_id}/"
+                logger.info(f"Deleting S3 objects with prefix: {s3_prefix}")
+                
+                # List objects
+                response = s3.list_objects_v2(
+                    Bucket=DOCUMENTS_BUCKET,
+                    Prefix=s3_prefix
+                )
+                
+                if 'Contents' in response:
+                    # Delete all objects
+                    objects_to_delete = [{'Key': obj['Key']} for obj in response['Contents']]
+                    
+                    if objects_to_delete:
+                        delete_response = s3.delete_objects(
+                            Bucket=DOCUMENTS_BUCKET,
+                            Delete={'Objects': objects_to_delete}
+                        )
+                        
+                        deleted_files = [obj['Key'] for obj in objects_to_delete]
+                        logger.info(f"Deleted {len(deleted_files)} files from S3")
+                    else:
+                        logger.info("No files found in S3 for this project")
+                else:
+                    logger.info("No S3 objects found for this project")
+                    
+            except Exception as e:
+                logger.error(f"Error deleting S3 objects: {str(e)}")
+                # Continue with DynamoDB deletion even if S3 fails
+        
+        # Delete project from DynamoDB
+        try:
+            projects_table.delete_item(Key={'projectId': project_id})
+            logger.info(f"Successfully deleted project {project_id} from DynamoDB")
+            
+        except Exception as e:
+            logger.error(f"Error deleting from DynamoDB: {str(e)}")
+            return create_response(500, {
+                'success': False,
+                'message': f'Error deleting project from database: {str(e)}'
+            })
+        
+        return create_response(200, {
+            'success': True,
+            'message': f'Project deleted successfully. Removed {len(deleted_files)} documents from S3.',
+            'deletedFiles': len(deleted_files),
+            'projectId': project_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in delete_project: {str(e)}")
+        return create_response(500, {
+            'success': False,
+            'message': f'Failed to delete project: {str(e)}'
+        })
 
 def create_response(status_code: int, body: Dict) -> Dict:
     """Create HTTP response with CORS headers"""

@@ -146,6 +146,12 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /projects
             Method: POST
+        ProjectsDeleteApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /projects/{projectId}
+            Method: DELETE
 
   # Documents Function
   DocumentsFunction:

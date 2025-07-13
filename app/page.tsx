@@ -63,15 +63,16 @@ export default function HomePage() {
             </p>
             <div className="flex items-center justify-center space-x-4">
               <Link href="/chat">
-                <Button size="lg" className="text-lg px-8 py-3">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
                   <MessageCircle className="w-5 h-5 mr-2" />
-                  Comenzar Chat
+                  Chat Libre
                 </Button>
               </Link>
               <Link href="/arquitecto">
-                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
+                <Button size="lg" className="text-lg px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
                   <Building2 className="w-5 h-5 mr-2" />
-                  Modo Arquitecto
+                  Crear Propuesta AWS
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -87,7 +88,7 @@ export default function HomePage() {
             />
             <FeatureCard
               icon={<Building2 className="w-8 h-8 text-green-600" />}
-              title="Arquitecto AWS"
+              title="Generador de Propuestas"
               description="Entrevista guiada paso a paso que genera automáticamente todos los entregables profesionales."
               features={["Entrevista inteligente", "Documentos automáticos", "Diagramas profesionales"]}
             />
@@ -97,35 +98,6 @@ export default function HomePage() {
               description="Genera automáticamente Word, CSV, YAML, diagramas SVG/PNG y guías de calculadora AWS."
               features={["Documentos Word", "Scripts CloudFormation", "Estimaciones de costos"]}
             />
-          </div>
-
-          {/* Technology Stack */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 mb-16">
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">
-              Stack Tecnológico Avanzado
-            </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <TechCard
-                icon="⚡"
-                title="Next.js 14"
-                description="App Router, Server Components"
-              />
-              <TechCard
-                icon="🤖"
-                title="Amazon Bedrock"
-                description="Nova Pro, Claude, Titan"
-              />
-              <TechCard
-                icon="🗃️"
-                title="DynamoDB"
-                description="Mensajes y proyectos"
-              />
-              <TechCard
-                icon="☁️"
-                title="AWS S3"
-                description="Documentos generados"
-              />
-            </div>
           </div>
 
           {/* Process Flow */}
@@ -171,9 +143,9 @@ export default function HomePage() {
             </p>
             <div className="flex items-center justify-center space-x-4">
               <Link href="/arquitecto">
-                <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
+                <Button size="lg" className="text-lg px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
                   <Building2 className="w-5 h-5 mr-2" />
-                  Iniciar Proyecto
+                  Crear Propuesta AWS
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
@@ -211,22 +183,6 @@ function FeatureCard({ icon, title, description, features }: FeatureCardProps) {
         </ul>
       </CardContent>
     </Card>
-  )
-}
-
-interface TechCardProps {
-  icon: string
-  title: string
-  description: string
-}
-
-function TechCard({ icon, title, description }: TechCardProps) {
-  return (
-    <div className="text-center p-4">
-      <div className="text-4xl mb-3">{icon}</div>
-      <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-600">{description}</p>
-    </div>
   )
 }
 

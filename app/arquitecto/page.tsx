@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import ModelSelector from '@/components/ModelSelector'
-import { ArrowLeft, Send, Loader2, Building2, Lightbulb } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, Building2, Lightbulb, FolderOpen } from 'lucide-react'
 import { sendArquitectoRequest } from '@/lib/api'
 import { AVAILABLE_MODELS } from '@/lib/types'
 
@@ -105,27 +105,38 @@ function ArquitectoContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+            <div className="flex items-center gap-2">
+              <Building2 className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">
+                Arquitecto AWS
+                {existingProjectId && (
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    (Continuando proyecto)
+                  </span>
+                )}
+              </h1>
+            </div>
+          </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/projects')}
             className="flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Volver
+            <FolderOpen className="h-4 w-4" />
+            Ver Proyectos
           </Button>
-          <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              Arquitecto AWS
-              {existingProjectId && (
-                <span className="text-sm font-normal text-gray-600 ml-2">
-                  (Continuando proyecto)
-                </span>
-              )}
-            </h1>
-          </div>
         </div>
 
         {/* Loading Project State */}
