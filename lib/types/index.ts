@@ -139,15 +139,15 @@ export const AVAILABLE_MODELS: AIModel[] = [
     costPer1kTokens: 0.0025
   },
   {
-    id: 'anthropic.claude-3-sonnet-20240229-v1:0',
-    name: 'Claude Sonnet',
-    description: 'Balance perfecto entre velocidad y capacidad',
+    id: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+    name: 'Claude 3.5 Sonnet',
+    description: 'Modelo más avanzado con mejor razonamiento y análisis',
     icon: '🎯',
     color: 'text-purple-600',
     provider: 'anthropic',
-    capabilities: ['text', 'balanced', 'versatile'],
-    maxTokens: 4000,
-    costPer1kTokens: 0.015
+    capabilities: ['text', 'advanced', 'reasoning', 'analysis'],
+    maxTokens: 8000,
+    costPer1kTokens: 0.003
   }
 ]
 

@@ -70,7 +70,7 @@ export default function ModelSelector({
         <ul className="space-y-1">
           <li>• <strong>Nova Pro</strong>: Ideal para conversaciones complejas y análisis detallado</li>
           <li>• <strong>Claude Haiku</strong>: Perfecto para respuestas rápidas y técnicas</li>
-          <li>• <strong>Claude Sonnet</strong>: Balance entre velocidad y capacidad</li>
+          <li>• <strong>Claude 3.5 Sonnet</strong>: El más avanzado con razonamiento superior</li>
         </ul>
       </div>
     </div>
