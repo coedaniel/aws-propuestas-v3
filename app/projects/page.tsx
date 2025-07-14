@@ -179,6 +179,7 @@ export default function ProjectsPage() {
       case 'COMPLETED': return 'bg-green-100 text-green-800'
       case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800'
       case 'ARCHIVED': return 'bg-gray-100 text-gray-800'
+      case 'DRAFT': return 'bg-yellow-100 text-yellow-800'
       default: return 'bg-yellow-100 text-yellow-800'
     }
   }
@@ -292,6 +293,7 @@ Fin del resumen del proyecto
             className="px-3 py-2 border border-gray-300 rounded-md bg-white"
           >
             <option value="all">Todos los estados</option>
+            <option value="DRAFT">Borrador</option>
             <option value="IN_PROGRESS">En Progreso</option>
             <option value="COMPLETED">Completados</option>
             <option value="ARCHIVED">Archivados</option>

@@ -157,22 +157,17 @@ function ArquitectoContent() {
           </Card>
         )}
 
-        {/* Model Selector */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5" />
-              Configuración del Modelo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Model Selector - Compact */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
             <ModelSelector
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
               disabled={isLoading}
+              compact={true}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Chat Interface */}
         <Card className="mb-6">
