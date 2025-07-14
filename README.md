@@ -1,12 +1,23 @@
-# AWS Propuestas v3.2.0 🚀
+# AWS Propuestas v3.3.0 🚀 - Dual Bedrock Agents
 
-> **Sistema Conversacional Profesional para Generar Propuestas Ejecutivas de Soluciones AWS con IA**
+> **Sistema Conversacional Profesional con Agentes Duales de Bedrock para Generar Propuestas Ejecutivas de Soluciones AWS**
 
-[![Version](https://img.shields.io/badge/version-3.2.0-blue.svg)](https://github.com/coedaniel/aws-propuestas-v3)
-[![AWS](https://img.shields.io/badge/AWS-Bedrock%20%7C%20Lambda%20%7C%20S3-orange.svg)](https://aws.amazon.com/)
+[![Version](https://img.shields.io/badge/version-3.3.0-blue.svg)](https://github.com/coedaniel/aws-propuestas-v3)
+[![AWS](https://img.shields.io/badge/AWS-Bedrock%20Agents%20%7C%20Nova%20Pro%20%7C%20Claude%203.5-orange.svg)](https://aws.amazon.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## 🎯 Nuevas Funcionalidades V3.3.0
+
+### 🤖 Agentes Duales Especializados
+- **🎨 Nova Pro (Multimodal)**: Diagramas, análisis visual, contenido multimedia
+- **🧠 Claude 3.5 Sonnet (Análisis)**: Documentación técnica, análisis profundo, código optimizado
+
+### 🔄 Selector Inteligente de Modelos
+- Switch dinámico en el frontend para elegir el agente óptimo
+- Recomendaciones automáticas basadas en el tipo de consulta
+- Optimización de costos y rendimiento por tarea
 
 ## 🎯 ¿Qué es AWS Propuestas v3?
 

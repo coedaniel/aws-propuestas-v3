@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS Propuestas V3 - Dual Bedrock Agents Architecture
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.9
+    Environment:
+      Variables:
+        CORS_ORIGIN: "*"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+Resources:
+  # ============================================================================
+  # LAMBDA FUNCTIONS
+  # ============================================================================
+  
+  # Función principal con agentes duales
+  DualAgentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "aws-propuestas-dual-agents-${Environment}"
+      CodeUri: lambda/
+      Handler: app.lambda_handler
+      Description: "Función principal con agentes duales Nova Pro y Claude 3.5 Sonnet"
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeAgent
+                - bedrock:InvokeModel
+                - bedrock:ListFoundationModels
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /chat
+            Method: post
+        OptionsEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /chat
+            Method: options
+
+  # Función para obtener información de modelos
+  ModelsInfoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "aws-propuestas-models-info-${Environment}"
+      CodeUri: lambda/
+      Handler: app.get_models_info
+      Description: "Función para obtener información de modelos disponibles"
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /models
+            Method: get
+        OptionsEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /models
+            Method: options
+
+  # ============================================================================
+  # API GATEWAY
+  # ============================================================================
+  
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "aws-propuestas-api-${Environment}"
+      StageName: !Ref Environment
+      Description: "API Gateway para AWS Propuestas V3 con agentes duales"
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+  # ============================================================================
+  # S3 BUCKET PARA DOCUMENTOS
+  # ============================================================================
+  
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "aws-propuestas-documents-${Environment}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  DocumentsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DocumentsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub "${DocumentsBucket}/*"
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+Outputs:
+  ApiGatewayUrl:
+    Description: "URL del API Gateway"
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+
+  DualAgentsFunctionArn:
+    Description: "ARN de la función Lambda principal"
+    Value: !GetAtt DualAgentsFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DualAgentsFunctionArn"
+
+  ModelsInfoFunctionArn:
+    Description: "ARN de la función Lambda de información de modelos"
+    Value: !GetAtt ModelsInfoFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ModelsInfoFunctionArn"
+
+  DocumentsBucketName:
+    Description: "Nombre del bucket S3 para documentos"
+    Value: !Ref DocumentsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-DocumentsBucket"
+
+  DocumentsBucketUrl:
+    Description: "URL del bucket S3 para documentos"
+    Value: !Sub "https://${DocumentsBucket}.s3.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-DocumentsBucketUrl"
+
+  # Información de los agentes Bedrock
+  NovaProAgentId:
+    Description: "ID del agente Nova Pro"
+    Value: "WUGHP2HGH9"
+    Export:
+      Name: !Sub "${AWS::StackName}-NovaProAgentId"
+
+  NovaProAgentAliasId:
+    Description: "ID del alias del agente Nova Pro"
+    Value: "ZNZ3SYTP5L"
+    Export:
+      Name: !Sub "${AWS::StackName}-NovaProAgentAliasId"
+
+  ClaudeAgentId:
+    Description: "ID del agente Claude 3.5 Sonnet"
+    Value: "W3YRJXXIRE"
+    Export:
+      Name: !Sub "${AWS::StackName}-ClaudeAgentId"
+
+  ClaudeAgentAliasId:
+    Description: "ID del alias del agente Claude 3.5 Sonnet"
+    Value: "ULPAGJS0VW"
+    Export:
+      Name: !Sub "${AWS::StackName}-ClaudeAgentAliasId"

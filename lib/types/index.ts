@@ -117,35 +117,24 @@ export interface AIModel {
 
 export const AVAILABLE_MODELS: AIModel[] = [
   {
-    id: 'amazon.nova-pro-v1:0',
+    id: 'nova',
     name: 'Nova Pro',
-    description: 'Conversaciones complejas y análisis profundo',
-    icon: '🚀',
-    color: 'text-blue-600',
+    description: 'Ideal para diagramas, análisis visual y contenido multimodal',
+    icon: '🎨',
+    color: 'text-orange-600',
     provider: 'amazon',
-    capabilities: ['text', 'reasoning', 'analysis'],
+    capabilities: ['text', 'image', 'video', 'multimodal', 'diagrams'],
     maxTokens: 4000,
     costPer1kTokens: 0.008
   },
   {
-    id: 'anthropic.claude-3-haiku-20240307-v1:0',
-    name: 'Claude Haiku',
-    description: 'Rápido para tareas técnicas y arquitectura',
-    icon: '⚡',
-    color: 'text-green-600',
-    provider: 'anthropic',
-    capabilities: ['text', 'technical', 'fast'],
-    maxTokens: 4000,
-    costPer1kTokens: 0.0025
-  },
-  {
-    id: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
+    id: 'claude',
     name: 'Claude 3.5 Sonnet',
-    description: 'Modelo más avanzado con mejor razonamiento y análisis',
-    icon: '🎯',
+    description: 'Ideal para análisis técnico profundo y documentación detallada',
+    icon: '🧠',
     color: 'text-purple-600',
     provider: 'anthropic',
-    capabilities: ['text', 'advanced', 'reasoning', 'analysis'],
+    capabilities: ['text', 'advanced-reasoning', 'technical-analysis', 'documentation'],
     maxTokens: 8000,
     costPer1kTokens: 0.003
   }

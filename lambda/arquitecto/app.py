@@ -122,7 +122,10 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         # Do NOT auto-complete based on extracted info length
         is_complete = check_if_complete(ai_response, project_info)
         
-        logger.info(f"🎯 COMPLETION CHECK - Has info: {has_enough_info}, Original check: {original_complete_check}, Final: {is_complete}")
+        # Check if we have enough information extracted
+        has_enough_info = bool(servicio and descripcion and objetivo)
+        
+        logger.info(f"🎯 COMPLETION CHECK - Has info: {has_enough_info}, AI completion check: {is_complete}")
         
         # Generate documents if project is complete
         document_generation_results = None

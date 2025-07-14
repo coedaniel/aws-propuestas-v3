@@ -10,6 +10,7 @@ export interface ChatRequest {
   messages: ChatMessage[]
   modelId?: string
   mode?: string
+  selected_model?: string  // Para el selector de modelos duales
 }
 
 export interface ChatResponse {
@@ -27,6 +28,10 @@ export interface ArquitectoRequest {
   messages: ChatMessage[]
   modelId?: string
   projectId?: string
+  selected_model?: string  // Para el selector de modelos duales
+  project_info?: any  // Información del proyecto
+  query?: string  // Query del usuario
+  session_id?: string  // ID de sesión
 }
 
 export interface ArquitectoResponse {
