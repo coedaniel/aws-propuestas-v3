@@ -1256,9 +1256,9 @@ def create_response(status_code: int, body: Dict) -> Dict:
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
+            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'
         },
-        'body': json.dumps(body, ensure_ascii=False)
+        'body': json.dumps(body, ensure_ascii=False, default=str)
     }
 def prepare_prompt_for_model(model_id: str, system_prompt: str, messages: List[Dict]) -> Dict:
     """
@@ -1350,17 +1350,4 @@ def save_conversation_data(project_id: str, user_id: str, messages: List[Dict], 
     except Exception as e:
         logger.error(f"Error saving conversation data: {str(e)}")
 
-def create_response(status_code: int, body: Dict) -> Dict:
-    """
-    Crea respuesta HTTP con headers CORS
-    """
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
-        },
-        'body': json.dumps(body, ensure_ascii=False, default=str)
-    }
+
