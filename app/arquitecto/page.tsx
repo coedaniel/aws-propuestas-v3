@@ -242,7 +242,38 @@ function ArquitectoContent() {
         {projectId && (
           <Card>
             <CardHeader>
-              <CardTitle>Estado del Proyecto</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                Estado del Proyecto
+                {isComplete && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/projects?highlight=${projectId}`)}
+                      className="flex items-center gap-2"
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      Ver Documentos
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        setMessages([])
+                        setProjectId(null)
+                        setCurrentStep(0)
+                        setIsComplete(false)
+                        setCurrentInput('')
+                        router.push('/arquitecto')
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Lightbulb className="h-4 w-4" />
+                      Nuevo Proyecto
+                    </Button>
+                  </div>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -256,8 +287,8 @@ function ArquitectoContent() {
                 </div>
                 <div>
                   <div className="font-medium text-gray-600">Estado</div>
-                  <div className={isComplete ? 'text-green-600' : 'text-yellow-600'}>
-                    {isComplete ? 'Completado' : 'En Progreso'}
+                  <div className={isComplete ? 'text-green-600 font-semibold' : 'text-yellow-600'}>
+                    {isComplete ? '✅ Completado' : '🔄 En Progreso'}
                   </div>
                 </div>
                 <div>
@@ -265,6 +296,19 @@ function ArquitectoContent() {
                   <div className="text-xs">{currentModel.name}</div>
                 </div>
               </div>
+              
+              {isComplete && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-800 font-medium mb-2">
+                    <Lightbulb className="h-4 w-4" />
+                    Proyecto Completado
+                  </div>
+                  <p className="text-green-700 text-sm">
+                    Los documentos han sido generados y están disponibles en la sección de proyectos. 
+                    Puedes descargarlos o iniciar un nuevo proyecto.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

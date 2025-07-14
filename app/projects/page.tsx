@@ -101,11 +101,23 @@ export default function ProjectsPage() {
 
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(project =>
-        project.projectName.toLowerCase().includes(searchLower) ||
-        (project.lastMessage && project.lastMessage.toLowerCase().includes(searchLower)) ||
-        project.projectId.toLowerCase().includes(searchLower)
-      )
+      filtered = filtered.filter(project => {
+        // Search in project name
+        const nameMatch = project.projectName?.toLowerCase().includes(searchLower)
+        
+        // Search in project info
+        const infoMatch = project.projectInfo?.description?.toLowerCase().includes(searchLower) ||
+                         project.projectInfo?.name?.toLowerCase().includes(searchLower) ||
+                         project.projectInfo?.service_focus?.toLowerCase().includes(searchLower)
+        
+        // Search in project ID
+        const idMatch = project.projectId?.toLowerCase().includes(searchLower)
+        
+        // Search in status
+        const statusMatch = project.status?.toLowerCase().includes(searchLower)
+        
+        return nameMatch || infoMatch || idMatch || statusMatch
+      })
     }
 
     if (statusFilter !== 'all') {
@@ -115,7 +127,32 @@ export default function ProjectsPage() {
     setFilteredProjects(filtered)
   }
 
-  const handleCreateProject = async () => {
+  // Helper function to format dates safely
+  const formatDate = (dateString: string | number) => {
+    try {
+      if (!dateString) return 'Fecha no disponible'
+      
+      // Handle timestamp (number) or ISO string
+      const date = typeof dateString === 'number' 
+        ? new Date(dateString * 1000) // Convert from Unix timestamp
+        : new Date(dateString)
+      
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida'
+      }
+      
+      return date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return 'Fecha inválida'
+    }
+  }
     if (!formData.name.trim()) return
 
     setIsCreating(true)
@@ -192,8 +229,8 @@ export default function ProjectsPage() {
 - ID: ${project.projectId}
 - Estado: ${project.status}
 - Paso Actual: ${project.currentStep}
-- Creado: ${new Date(project.createdAt).toLocaleDateString()}
-- Actualizado: ${new Date(project.updatedAt).toLocaleDateString()}
+- Creado: ${formatDate(project.createdAt)}
+- Actualizado: ${formatDate(project.updatedAt)}
 
 ## Detalles del Proyecto
 ${info.description ? `Descripción: ${info.description}` : ''}
@@ -401,7 +438,7 @@ Fin del resumen del proyecto
                   <div className="text-sm text-gray-600">
                     <div className="flex items-center space-x-2 mb-1">
                       <Calendar className="h-4 w-4" />
-                      <span>Creado: {new Date(project.createdAt).toLocaleDateString()}</span>
+                      <span>Creado: {formatDate(project.createdAt)}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <FileText className="h-4 w-4" />

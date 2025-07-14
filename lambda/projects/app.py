@@ -77,11 +77,13 @@ def get_projects(event, context) -> Dict:
         scan_params = {}
         if status_filter and status_filter != 'all':
             if status_filter == 'completed':
-                scan_params['FilterExpression'] = 'isComplete = :completed'
-                scan_params['ExpressionAttributeValues'] = {':completed': True}
+                scan_params['FilterExpression'] = '#status = :completed'
+                scan_params['ExpressionAttributeNames'] = {'#status': 'status'}
+                scan_params['ExpressionAttributeValues'] = {':completed': 'COMPLETED'}
             elif status_filter == 'in_progress':
-                scan_params['FilterExpression'] = 'isComplete = :completed'
-                scan_params['ExpressionAttributeValues'] = {':completed': False}
+                scan_params['FilterExpression'] = '#status = :in_progress'
+                scan_params['ExpressionAttributeNames'] = {'#status': 'status'}
+                scan_params['ExpressionAttributeValues'] = {':in_progress': 'IN_PROGRESS'}
         
         response = projects_table.scan(**scan_params)
         projects = response.get('Items', [])
@@ -104,7 +106,7 @@ def get_projects(event, context) -> Dict:
             enriched_project = {
                 'projectId': project.get('projectId'),
                 'projectName': project_name,
-                'status': 'completed' if (project.get('status') == 'COMPLETED' or project.get('isComplete')) else 'in_progress',
+                'status': project.get('status', 'IN_PROGRESS'),  # Use the actual status field
                 'currentStep': project.get('currentStep', 0),
                 'createdAt': project.get('createdAt'),
                 'updatedAt': project.get('updatedAt'),
