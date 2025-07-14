@@ -29,37 +29,37 @@ def extract_service_from_conversation(messages: List[Dict], ai_response: str) ->
         conversation_lower = full_conversation.lower()
         logger.info(f"🔍 ANALYZING CONVERSATION: {len(full_conversation)} characters")
         
-        # Detectar servicio AWS específico - EXPANDED LIST
+        # Detectar servicio AWS específico - EXPANDED LIST with better detection
         servicio = "AWS"  # Default
         servicios_aws = {
-            'LEX': ['lex', 'bot', 'chatbot', 'conversacional', 'chat', 'asistente virtual'],
-            'LAMBDA': ['lambda', 'función', 'serverless', 'sin servidor', 'function'],
-            'API GATEWAY': ['api', 'gateway', 'rest', 'endpoint', 'api gateway'],
-            'DYNAMODB': ['dynamodb', 'base de datos', 'nosql', 'tabla', 'dynamo'],
-            'RDS': ['rds', 'mysql', 'postgresql', 'sql', 'relacional', 'aurora'],
-            'S3': ['s3', 'almacenamiento', 'bucket', 'archivos', 'storage'],
-            'EC2': ['ec2', 'servidor', 'instancia', 'máquina virtual', 'compute'],
-            'ECS': ['ecs', 'contenedor', 'docker', 'container'],
-            'EKS': ['eks', 'kubernetes', 'k8s', 'orchestration'],
-            'SAGEMAKER': ['sagemaker', 'machine learning', 'ml', 'ia', 'modelo'],
-            'BEDROCK': ['bedrock', 'inteligencia artificial', 'genai', 'llm'],
-            'CLOUDFRONT': ['cloudfront', 'cdn', 'distribución', 'cache'],
-            'ROUTE53': ['route53', 'dns', 'dominio', 'routing'],
-            'COGNITO': ['cognito', 'autenticación', 'usuarios', 'auth', 'login'],
-            'SNS': ['sns', 'notificaciones', 'mensajes', 'notification'],
-            'SQS': ['sqs', 'cola', 'queue', 'messaging'],
-            'EVENTBRIDGE': ['eventbridge', 'eventos', 'event', 'event-driven'],
+            'LEX': ['lex', 'bot', 'chatbot', 'conversacional', 'chat', 'asistente virtual', 'nlp', 'procesamiento de lenguaje'],
+            'LAMBDA': ['lambda', 'función', 'serverless', 'sin servidor', 'function', 'microservicio', 'api'],
+            'API GATEWAY': ['api', 'gateway', 'rest', 'endpoint', 'api gateway', 'http', 'webhook'],
+            'DYNAMODB': ['dynamodb', 'base de datos', 'nosql', 'tabla', 'dynamo', 'bd', 'database'],
+            'RDS': ['rds', 'mysql', 'postgresql', 'sql', 'relacional', 'aurora', 'mariadb', 'oracle'],
+            'S3': ['s3', 'almacenamiento', 'bucket', 'archivos', 'storage', 'objeto', 'file'],
+            'EC2': ['ec2', 'servidor', 'instancia', 'máquina virtual', 'compute', 'vm', 'virtual machine'],
+            'ECS': ['ecs', 'contenedor', 'docker', 'container', 'fargate'],
+            'EKS': ['eks', 'kubernetes', 'k8s', 'orchestration', 'cluster'],
+            'SAGEMAKER': ['sagemaker', 'machine learning', 'ml', 'ia', 'modelo', 'artificial intelligence'],
+            'BEDROCK': ['bedrock', 'inteligencia artificial', 'genai', 'llm', 'claude', 'titan'],
+            'CLOUDFRONT': ['cloudfront', 'cdn', 'distribución', 'cache', 'edge'],
+            'ROUTE53': ['route53', 'dns', 'dominio', 'routing', 'domain'],
+            'COGNITO': ['cognito', 'autenticación', 'usuarios', 'auth', 'login', 'identity'],
+            'SNS': ['sns', 'notificaciones', 'mensajes', 'notification', 'push'],
+            'SQS': ['sqs', 'cola', 'queue', 'messaging', 'message'],
+            'CLOUDWATCH': ['cloudwatch', 'monitoreo', 'logs', 'métricas', 'monitoring'],
+            'IAM': ['iam', 'permisos', 'roles', 'políticas', 'security', 'access'],
+            'VPC': ['vpc', 'red', 'network', 'subnet', 'networking', 'private'],
+            'AMPLIFY': ['amplify', 'frontend', 'web app', 'hosting', 'deployment'],
             'STEP FUNCTIONS': ['step functions', 'workflow', 'orquestación', 'state machine'],
-            'CLOUDWATCH': ['cloudwatch', 'monitoreo', 'métricas', 'monitoring', 'logs'],
-            'VPC': ['vpc', 'red virtual', 'networking', 'subred', 'network'],
-            'IAM': ['iam', 'identidad', 'permisos', 'roles', 'security'],
+            'EVENTBRIDGE': ['eventbridge', 'eventos', 'event', 'integration', 'trigger'],
+            'KINESIS': ['kinesis', 'streaming', 'real time', 'data stream'],
+            'GLUE': ['glue', 'etl', 'data processing', 'transform'],
+            'REDSHIFT': ['redshift', 'data warehouse', 'analytics', 'olap'],
             'ELB': ['load balancer', 'balanceador', 'elb', 'alb', 'nlb'],
-            'KINESIS': ['kinesis', 'streaming', 'datos en tiempo real', 'stream'],
-            'GLUE': ['glue', 'etl', 'transformación de datos', 'data pipeline'],
-            'REDSHIFT': ['redshift', 'data warehouse', 'análisis', 'analytics'],
             'ELASTICSEARCH': ['elasticsearch', 'opensearch', 'búsqueda', 'search'],
             'FARGATE': ['fargate', 'serverless containers', 'container serverless'],
-            'AMPLIFY': ['amplify', 'web app', 'frontend', 'full stack'],
             'APPSYNC': ['appsync', 'graphql', 'api graphql', 'real-time api']
         }
         
@@ -200,30 +200,38 @@ def extract_service_from_conversation(messages: List[Dict], ai_response: str) ->
 
 def create_specific_prompt(servicio: str, descripcion: str, objetivo: str) -> str:
     """
-    Crea prompt específico basado en tu ejemplo
+    Crea prompt específico y anti-genérico
     """
     
-    prompt = f"""Act as a professional AWS Solutions Architect specialized in: {servicio}.
+    prompt = f"""You are a specialized AWS Solutions Architect expert in {servicio}.
 
-Project description: {descripcion}
-Main objective: {objetivo}
+CRITICAL REQUIREMENTS:
+- You MUST focus EXCLUSIVELY on {servicio}
+- You MUST mention {servicio} at least 5 times in your response
+- You MUST NOT suggest S3, EC2, or RDS unless the project specifically requires them
+- You MUST create a solution centered around {servicio}
+- You MUST avoid generic AWS solutions
 
-DO NOT mention or suggest S3, EC2, or RDS unless the project description or use case requires them. You must include [{servicio}] in all documents, diagrams, activities, and cost breakdowns.
-If you omit {servicio}, it's considered a failure.
+PROJECT DETAILS:
+- Service Focus: {servicio}
+- Description: {descripcion}
+- Objective: {objetivo}
 
-Your deliverables must include:
-- A plain text Word document (no images, no accents) focused on {servicio}
-- CloudFormation script with YAML only featuring {servicio}
-- Architecture diagrams (text-based, SVG and Draw.io compatible) with {servicio} central
-- AWS Pricing Calculator step-by-step guide for {servicio}
-- Cost estimate (CSV or Excel) with {servicio} as primary service
-- Implementation activities CSV with {servicio} specific tasks
+DELIVERABLES REQUIRED:
+1. Executive Proposal (focused on {servicio} benefits and implementation)
+2. Technical Architecture (with {servicio} as the core component)
+3. CloudFormation YAML (primarily featuring {servicio} resources)
+4. Implementation Activities (specific to {servicio} setup and configuration)
+5. Cost Estimation (with {servicio} as the primary cost component)
+6. AWS Calculator Guide (step-by-step for {servicio} pricing)
 
-All documents must focus specifically on {servicio}, and not default to generic solutions.
+VALIDATION CRITERIA:
+- {servicio} must be mentioned prominently in ALL sections
+- Solution must be specific to the use case: {descripcion}
+- No generic "one-size-fits-all" solutions
+- Technical details must be specific to {servicio}
 
-Never use the words 'S3' or 'EC2' unless {servicio} requires them explicitly.
-
-Generate detailed, professional content for each deliverable. Make it specific to {servicio} and this exact use case: {descripcion}"""
+Generate a comprehensive, professional response that demonstrates deep expertise in {servicio} for this specific use case."""
 
     return prompt
 
