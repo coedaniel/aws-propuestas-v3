@@ -153,6 +153,8 @@ export default function ProjectsPage() {
       return 'Fecha inválida'
     }
   }
+
+  const handleCreateProject = async () => {
     if (!formData.name.trim()) return
 
     setIsCreating(true)
