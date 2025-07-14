@@ -5,6 +5,29 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2025-07-14
+
+### 🚀 Optimización Crítica de Performance
+- **MAJOR**: Optimización crítica del paquete Lambda arquitecto
+  - Eliminada dependencia innecesaria de pandas (reducción de ~50MB)
+  - Tamaño del paquete reducido de 70MB+ a 21MB (70% de reducción)
+  - Resuelto `RequestEntityTooLargeException` en despliegues Lambda
+  - Mejora significativa en tiempos de arranque en frío
+
+### 🐛 Correcciones de Código
+- Corregidos errores de sintaxis en `working_intelligent_generator.py`
+- Eliminados bloques de código duplicados
+- Corregida indentación en `app.py` línea 162
+- Validación de sintaxis Python implementada antes del despliegue
+
+### 🔧 Mejoras Técnicas
+- Requirements.txt optimizado con dependencias esenciales únicamente:
+  - boto3>=1.26.0, botocore>=1.29.0, python-docx>=0.8.11
+  - lxml>=4.9.0, PyYAML>=6.0, charset-normalizer>=3.0.0
+- Eliminadas librerías de prueba y documentación innecesarias
+- Proceso de empaquetado optimizado para Lambda
+- Función desplegada exitosamente en producción
+
 ## [3.2.1] - 2025-07-14
 
 ### 🔧 Correcciones Críticas
