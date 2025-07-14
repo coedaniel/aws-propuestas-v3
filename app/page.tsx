@@ -32,6 +32,12 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <Link href="/analytics">
+                <Button variant="outline" size="sm">
+                  <Database className="w-4 h-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
               <Link href="/projects">
                 <Button variant="outline" size="sm">
                   <FolderOpen className="w-4 h-4 mr-2" />
@@ -56,8 +62,7 @@ export default function HomePage() {
               <span className="block text-blue-600">con Inteligencia Artificial</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Sistema conversacional profesional que combina IA avanzada con expertise en AWS 
-              para crear propuestas ejecutivas completas con documentos, diagramas y estimaciones.
+              IA avanzada + expertise AWS = propuestas ejecutivas completas con documentos, diagramas y estimaciones automáticas.
             </p>
             <div className="flex items-center justify-center space-x-4">
               <Link href="/chat">

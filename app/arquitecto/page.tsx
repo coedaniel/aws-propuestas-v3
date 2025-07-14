@@ -31,6 +31,12 @@ function ArquitectoContent() {
   useEffect(() => {
     if (existingProjectId) {
       loadExistingProject(existingProjectId)
+    } else {
+      // Initialize with welcome message for new projects
+      setMessages([{
+        role: 'assistant',
+        content: '¡Hola! Soy tu Arquitecto AWS. Para comenzar, necesito que me proporciones únicamente el **nombre del proyecto** (por ejemplo: "E-commerce Platform", "Sistema de Inventario", "Portal de Clientes", etc.). ¿Cuál es el nombre de tu proyecto?'
+      }])
     }
   }, [existingProjectId])
 
@@ -51,7 +57,7 @@ function ArquitectoContent() {
       // If loading fails, start fresh but keep the projectId
       setMessages([{
         role: 'assistant',
-        content: '¡Hola! Soy tu Arquitecto AWS. ¿Cuál es el nombre del proyecto?'
+        content: '¡Hola! Soy tu Arquitecto AWS. Para comenzar, necesito que me proporciones únicamente el **nombre del proyecto** (por ejemplo: "E-commerce Platform", "Sistema de Inventario", "Portal de Clientes", etc.). ¿Cuál es el nombre de tu proyecto?'
       }])
     } finally {
       setIsLoadingProject(false)

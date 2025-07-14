@@ -22,9 +22,7 @@ import {
   Clock,
   Filter,
   MoreVertical,
-  Play,
-  Pause,
-  RotateCcw
+  ExternalLink
 } from 'lucide-react'
 import { getProjects, createProject, generateDocuments, deleteProject } from '@/lib/api'
 
@@ -43,79 +41,15 @@ interface Project {
 
 interface TypewriterViewerProps {
   content: string
-  isPlaying: boolean
-  onTogglePlay: () => void
-  onReset: () => void
-  speed?: number
 }
 
-function TypewriterViewer({ content, isPlaying, onTogglePlay, onReset, speed = 50 }: TypewriterViewerProps) {
-  const [displayedContent, setDisplayedContent] = useState('')
-  const [currentIndex, setCurrentIndex] = useState(0)
-
-  useEffect(() => {
-    if (!isPlaying || currentIndex >= content.length) return
-
-    const timer = setTimeout(() => {
-      setDisplayedContent(content.slice(0, currentIndex + 1))
-      setCurrentIndex(currentIndex + 1)
-    }, speed)
-
-    return () => clearTimeout(timer)
-  }, [content, currentIndex, isPlaying, speed])
-
-  const handleReset = () => {
-    setCurrentIndex(0)
-    setDisplayedContent('')
-    onReset()
-  }
-
-  const progress = content.length > 0 ? (currentIndex / content.length) * 100 : 0
-
+function TypewriterViewer({ content }: TypewriterViewerProps) {
   return (
     <div className="space-y-4">
-      {/* Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onTogglePlay}
-            className="flex items-center space-x-2"
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            <span>{isPlaying ? 'Pausar' : 'Reproducir'}</span>
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleReset}
-            className="flex items-center space-x-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            <span>Reiniciar</span>
-          </Button>
-        </div>
-        <div className="text-sm text-gray-500">
-          {currentIndex} / {content.length} caracteres ({Math.round(progress)}%)
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div 
-          className="bg-blue-600 h-2 rounded-full transition-all duration-100"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      {/* Content Display */}
-      <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm min-h-[300px] overflow-y-auto">
+      {/* Content Display - Show complete content immediately */}
+      <div className="bg-black text-green-400 p-6 rounded-lg font-mono text-sm max-h-[500px] overflow-y-auto">
         <div className="whitespace-pre-wrap">
-          {displayedContent}
-          {isPlaying && currentIndex < content.length && (
-            <span className="animate-pulse">|</span>
-          )}
+          {content}
         </div>
       </div>
     </div>
@@ -134,7 +68,6 @@ export default function ProjectsPage() {
   const [generatingDocs, setGeneratingDocs] = useState<string | null>(null)
   const [deletingProject, setDeletingProject] = useState<string | null>(null)
   const [previewProject, setPreviewProject] = useState<Project | null>(null)
-  const [typewriterPlaying, setTypewriterPlaying] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -166,10 +99,12 @@ export default function ProjectsPage() {
   const filterProjects = () => {
     let filtered = projects
 
-    if (searchTerm) {
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase()
       filtered = filtered.filter(project =>
-        project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
+        project.projectName.toLowerCase().includes(searchLower) ||
+        (project.lastMessage && project.lastMessage.toLowerCase().includes(searchLower)) ||
+        project.projectId.toLowerCase().includes(searchLower)
       )
     }
 
@@ -186,14 +121,17 @@ export default function ProjectsPage() {
     setIsCreating(true)
     try {
       const newProject = await createProject({
-        name: formData.name,
-        description: formData.description,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
         requirements: formData.requirements.filter(req => req.trim())
       })
 
       setProjects(prev => [newProject, ...prev])
       setShowCreateForm(false)
       setFormData({ name: '', description: '', requirements: [''] })
+      
+      // Redirect to architect page with the new project
+      router.push(`/arquitecto?projectId=${newProject.projectId}`)
     } catch (error) {
       console.error('Error creating project:', error)
       alert('Error al crear proyecto')
@@ -487,17 +425,25 @@ Fin del resumen del proyecto
                           Vista Previa
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+                      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
                         <DialogHeader>
-                          <DialogTitle>Vista Previa: {project.projectName}</DialogTitle>
+                          <DialogTitle className="flex items-center justify-between">
+                            <span>Vista Previa: {project.projectName}</span>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(`/arquitecto?projectId=${project.projectId}`)}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Abrir Proyecto
+                              </Button>
+                            </div>
+                          </DialogTitle>
                         </DialogHeader>
-                        <div className="overflow-y-auto">
+                        <div className="overflow-y-auto max-h-[70vh]">
                           <TypewriterViewer
                             content={getPreviewContent(project)}
-                            isPlaying={typewriterPlaying}
-                            onTogglePlay={() => setTypewriterPlaying(!typewriterPlaying)}
-                            onReset={() => setTypewriterPlaying(false)}
-                            speed={30}
                           />
                         </div>
                       </DialogContent>
