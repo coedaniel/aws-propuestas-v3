@@ -118,13 +118,18 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         
         logger.info(f"🔍 EXTRACTED - Service: {servicio}, Description: {descripcion[:50]}...")
         
-        # Check if project is complete - improved logic
+        # Check if project is complete - FIXED logic
         has_enough_info = len(descripcion) > 30 and servicio != "AWS"
-        is_complete = has_enough_info or check_if_complete(ai_response, project_info)
+        original_complete_check = check_if_complete(ai_response, project_info)
+        
+        # Project is complete if EITHER we have enough extracted info OR the original check passes
+        is_complete = has_enough_info or original_complete_check
+        
+        logger.info(f"🎯 COMPLETION CHECK - Has info: {has_enough_info}, Original check: {original_complete_check}, Final: {is_complete}")
         
         # Generate documents if project is complete
         document_generation_results = None
-        if is_complete and has_enough_info:
+        if is_complete:
             # Generate documents using the working intelligent system
             logger.info(f"✅ GENERATING DOCUMENTS for {servicio}")
             
