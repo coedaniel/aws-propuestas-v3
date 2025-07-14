@@ -5,6 +5,20 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2025-07-14
+
+### 🔧 Correcciones Críticas
+- **Lógica de Generación de Documentos**: Corregida condición redundante que impedía la generación
+- **Verificación de Completitud**: Mejorada lógica para generar documentos cuando la extracción O verificación original pasan
+- **Logging de Debug**: Mejorado logging de estado de completitud para mejor troubleshooting
+- **Flujo de Generación**: Simplificadas condiciones de activación de generación de documentos
+
+### 🎯 Mejoras Técnicas
+- Eliminada condición redundante `has_enough_info` en verificación de generación
+- Agregado logging detallado para debugging de estado de completitud
+- Mejorada lógica OR para detección de completitud de proyecto
+- Mejor separación de lógica de validación de completitud
+
 ## [3.2.0] - 2025-07-14
 
 ### 🚀 ACTUALIZACIÓN MAYOR: Sistema de Arquitecto Inteligente

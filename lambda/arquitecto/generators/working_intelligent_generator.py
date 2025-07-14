@@ -1,6 +1,7 @@
 """
 Generador Inteligente que SÍ FUNCIONA - Basado en tu ejemplo
 Extrae parámetros específicos y genera documentos reales
+ENHANCED VERSION with better error handling and more AWS services
 """
 
 import json
@@ -8,6 +9,7 @@ import boto3
 import os
 from typing import Dict, Any, List
 import logging
+import re
 
 logger = logging.getLogger()
 
@@ -15,38 +17,150 @@ def extract_service_from_conversation(messages: List[Dict], ai_response: str) ->
     """
     Extrae servicio, descripción y objetivo de la conversación real
     Basado en tu ejemplo: servicio, descripcion, objetivo
+    ENHANCED with better service detection and error handling
     """
-    # Combinar toda la conversación
-    full_conversation = ai_response
-    for msg in messages:
-        if msg.get('content'):
-            full_conversation += f" {msg.get('content')}"
-    
-    conversation_lower = full_conversation.lower()
-    
-    # Detectar servicio AWS específico
-    servicio = "AWS"  # Default
-    servicios_aws = {
-        'LEX': ['lex', 'bot', 'chatbot', 'conversacional', 'chat'],
-        'LAMBDA': ['lambda', 'función', 'serverless', 'sin servidor'],
-        'API GATEWAY': ['api', 'gateway', 'rest', 'endpoint'],
-        'DYNAMODB': ['dynamodb', 'base de datos', 'nosql', 'tabla'],
-        'RDS': ['rds', 'mysql', 'postgresql', 'sql', 'relacional'],
-        'S3': ['s3', 'almacenamiento', 'bucket', 'archivos'],
-        'EC2': ['ec2', 'servidor', 'instancia', 'máquina virtual'],
-        'ECS': ['ecs', 'contenedor', 'docker'],
-        'EKS': ['eks', 'kubernetes', 'k8s'],
-        'SAGEMAKER': ['sagemaker', 'machine learning', 'ml', 'ia'],
-        'BEDROCK': ['bedrock', 'inteligencia artificial', 'genai'],
-        'CLOUDFRONT': ['cloudfront', 'cdn', 'distribución'],
-        'ROUTE53': ['route53', 'dns', 'dominio'],
-        'COGNITO': ['cognito', 'autenticación', 'usuarios'],
-        'SNS': ['sns', 'notificaciones', 'mensajes'],
-        'SQS': ['sqs', 'cola', 'queue'],
-        'EVENTBRIDGE': ['eventbridge', 'eventos', 'event'],
-        'STEP FUNCTIONS': ['step functions', 'workflow', 'orquestación'],
-        'CLOUDWATCH': ['cloudwatch', 'monitoreo', 'métricas']
-    }
+    try:
+        # Combinar toda la conversación
+        full_conversation = ai_response
+        for msg in messages:
+            if msg.get('content'):
+                full_conversation += f" {msg.get('content')}"
+        
+        conversation_lower = full_conversation.lower()
+        logger.info(f"🔍 ANALYZING CONVERSATION: {len(full_conversation)} characters")
+        
+        # Detectar servicio AWS específico - EXPANDED LIST
+        servicio = "AWS"  # Default
+        servicios_aws = {
+            'LEX': ['lex', 'bot', 'chatbot', 'conversacional', 'chat', 'asistente virtual'],
+            'LAMBDA': ['lambda', 'función', 'serverless', 'sin servidor', 'function'],
+            'API GATEWAY': ['api', 'gateway', 'rest', 'endpoint', 'api gateway'],
+            'DYNAMODB': ['dynamodb', 'base de datos', 'nosql', 'tabla', 'dynamo'],
+            'RDS': ['rds', 'mysql', 'postgresql', 'sql', 'relacional', 'aurora'],
+            'S3': ['s3', 'almacenamiento', 'bucket', 'archivos', 'storage'],
+            'EC2': ['ec2', 'servidor', 'instancia', 'máquina virtual', 'compute'],
+            'ECS': ['ecs', 'contenedor', 'docker', 'container'],
+            'EKS': ['eks', 'kubernetes', 'k8s', 'orchestration'],
+            'SAGEMAKER': ['sagemaker', 'machine learning', 'ml', 'ia', 'modelo'],
+            'BEDROCK': ['bedrock', 'inteligencia artificial', 'genai', 'llm'],
+            'CLOUDFRONT': ['cloudfront', 'cdn', 'distribución', 'cache'],
+            'ROUTE53': ['route53', 'dns', 'dominio', 'routing'],
+            'COGNITO': ['cognito', 'autenticación', 'usuarios', 'auth', 'login'],
+            'SNS': ['sns', 'notificaciones', 'mensajes', 'notification'],
+            'SQS': ['sqs', 'cola', 'queue', 'messaging'],
+            'EVENTBRIDGE': ['eventbridge', 'eventos', 'event', 'event-driven'],
+            'STEP FUNCTIONS': ['step functions', 'workflow', 'orquestación', 'state machine'],
+            'CLOUDWATCH': ['cloudwatch', 'monitoreo', 'métricas', 'monitoring', 'logs'],
+            'VPC': ['vpc', 'red virtual', 'networking', 'subred', 'network'],
+            'IAM': ['iam', 'identidad', 'permisos', 'roles', 'security'],
+            'ELB': ['load balancer', 'balanceador', 'elb', 'alb', 'nlb'],
+            'KINESIS': ['kinesis', 'streaming', 'datos en tiempo real', 'stream'],
+            'GLUE': ['glue', 'etl', 'transformación de datos', 'data pipeline'],
+            'REDSHIFT': ['redshift', 'data warehouse', 'análisis', 'analytics'],
+            'ELASTICSEARCH': ['elasticsearch', 'opensearch', 'búsqueda', 'search'],
+            'FARGATE': ['fargate', 'serverless containers', 'container serverless'],
+            'AMPLIFY': ['amplify', 'web app', 'frontend', 'full stack'],
+            'APPSYNC': ['appsync', 'graphql', 'api graphql', 'real-time api']
+        }
+        
+        # Encontrar el servicio más mencionado
+        max_mentions = 0
+        for service_name, keywords in servicios_aws.items():
+            mentions = sum(1 for keyword in keywords if keyword in conversation_lower)
+            if mentions > max_mentions:
+                max_mentions = mentions
+                servicio = service_name
+        
+        logger.info(f"🎯 DETECTED SERVICE: {servicio} (mentions: {max_mentions})")
+        
+        # Extraer descripción con patrones mejorados
+        descripcion = ""
+        description_patterns = [
+            r'(?:necesito|requiero|quiero|busco)\s+(.{20,200}?)(?:\.|$)',
+            r'(?:problema|desafío|reto):\s*(.{20,200}?)(?:\.|$)',
+            r'(?:solución|implementar|desarrollar)\s+(.{20,200}?)(?:\.|$)',
+            r'(?:sistema|aplicación|plataforma)\s+(.{20,200}?)(?:\.|$)',
+            r'(?:crear|construir|hacer)\s+(.{20,200}?)(?:\.|$)'
+        ]
+        
+        for pattern in description_patterns:
+            matches = re.findall(pattern, full_conversation, re.IGNORECASE | re.DOTALL)
+            if matches:
+                descripcion = matches[0].strip()[:200]
+                break
+        
+        # Si no encuentra patrón, usar primera oración significativa
+        if not descripcion:
+            sentences = re.split(r'[.!?]+', full_conversation)
+            for sentence in sentences:
+                if len(sentence.strip()) > 30 and any(word in sentence.lower() for word in ['aws', 'sistema', 'aplicación', 'solución', 'implementar']):
+                    descripcion = sentence.strip()[:200]
+                    break
+        
+        # Extraer objetivo con patrones mejorados
+        objetivo = ""
+        objective_patterns = [
+            r'(?:objetivo|meta|propósito|finalidad):\s*(.{20,200}?)(?:\.|$)',
+            r'(?:para|con el fin de|con la finalidad de)\s+(.{20,200}?)(?:\.|$)',
+            r'(?:lograr|conseguir|obtener|alcanzar)\s+(.{20,200}?)(?:\.|$)',
+            r'(?:beneficio|ventaja|mejora)\s+(.{20,200}?)(?:\.|$)'
+        ]
+        
+        for pattern in objective_patterns:
+            matches = re.findall(pattern, full_conversation, re.IGNORECASE | re.DOTALL)
+            if matches:
+                objetivo = matches[0].strip()[:200]
+                break
+        
+        # Objetivos por defecto mejorados por servicio
+        if not objetivo:
+            objetivos_default = {
+                'LEX': 'Implementar un chatbot inteligente para mejorar la atención al cliente y automatizar respuestas',
+                'LAMBDA': 'Desarrollar funciones serverless para optimizar procesos y reducir costos operativos',
+                'API GATEWAY': 'Crear APIs escalables y seguras para integrar servicios y aplicaciones',
+                'DYNAMODB': 'Implementar base de datos NoSQL de alto rendimiento para aplicaciones modernas',
+                'RDS': 'Establecer base de datos relacional gestionada con alta disponibilidad',
+                'S3': 'Implementar almacenamiento seguro y escalable para datos y contenido estático',
+                'EC2': 'Desplegar infraestructura de cómputo flexible y escalable',
+                'ECS': 'Orquestar contenedores para aplicaciones modernas y microservicios',
+                'EKS': 'Gestionar aplicaciones Kubernetes de forma escalable y segura',
+                'SAGEMAKER': 'Desarrollar y desplegar modelos de machine learning en producción',
+                'BEDROCK': 'Integrar inteligencia artificial generativa en aplicaciones empresariales',
+                'CLOUDFRONT': 'Optimizar distribución de contenido global con baja latencia',
+                'ROUTE53': 'Gestionar DNS y routing inteligente para alta disponibilidad',
+                'COGNITO': 'Implementar autenticación y autorización segura de usuarios',
+                'SNS': 'Establecer sistema de notificaciones escalable y confiable',
+                'SQS': 'Implementar cola de mensajes para desacoplar componentes',
+                'EVENTBRIDGE': 'Crear arquitectura basada en eventos para sistemas distribuidos',
+                'STEP FUNCTIONS': 'Orquestar workflows complejos con manejo de errores',
+                'CLOUDWATCH': 'Implementar monitoreo y observabilidad completa del sistema',
+                'VPC': 'Crear red virtual segura y aislada para recursos AWS',
+                'IAM': 'Gestionar identidades y accesos con principio de menor privilegio',
+                'ELB': 'Distribuir tráfico de forma inteligente para alta disponibilidad'
+            }
+            objetivo = objetivos_default.get(servicio, 'Implementar solución AWS escalable, segura y eficiente')
+        
+        # Asegurar calidad mínima
+        if not descripcion or len(descripcion) < 20:
+            descripcion = f"Implementación de solución empresarial basada en {servicio} para optimizar procesos y mejorar eficiencia operacional"
+        
+        result = {
+            'servicio': servicio,
+            'descripcion': descripcion,
+            'objetivo': objetivo
+        }
+        
+        logger.info(f"✅ EXTRACTION SUCCESS: {json.dumps(result, ensure_ascii=False)}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ ERROR IN SERVICE EXTRACTION: {str(e)}")
+        # Fallback seguro
+        return {
+            'servicio': 'AWS',
+            'descripcion': 'Implementación de solución AWS personalizada para optimizar procesos empresariales',
+            'objetivo': 'Mejorar eficiencia operacional y escalabilidad con tecnología cloud'
+        }
     
     for service, keywords in servicios_aws.items():
         if any(keyword in conversation_lower for keyword in keywords):
