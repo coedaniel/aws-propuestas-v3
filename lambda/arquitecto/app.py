@@ -118,12 +118,9 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         
         logger.info(f"🔍 EXTRACTED - Service: {servicio}, Description: {descripcion[:50]}...")
         
-        # Check if project is complete - FIXED logic
-        has_enough_info = len(descripcion) > 30 and servicio != "AWS"
-        original_complete_check = check_if_complete(ai_response, project_info)
-        
-        # Project is complete if EITHER we have enough extracted info OR the original check passes
-        is_complete = has_enough_info or original_complete_check
+        # Check if project is complete - ONLY when AI explicitly indicates completion
+        # Do NOT auto-complete based on extracted info length
+        is_complete = check_if_complete(ai_response, project_info)
         
         logger.info(f"🎯 COMPLETION CHECK - Has info: {has_enough_info}, Original check: {original_complete_check}, Final: {is_complete}")
         
@@ -674,74 +671,34 @@ def check_if_complete(ai_response: str, project_info: Dict) -> bool:
     
     response_lower = ai_response.lower()
     
-    # EXPLICIT completion indicators - only when the AI explicitly says it's ready to generate
+    # VERY EXPLICIT completion indicators - only when the AI explicitly says it's ready to generate
     explicit_completion_indicators = [
-        "procederé a generar",
-        "voy a generar",
-        "generar y entregar",
-        "crear los documentos",
-        "subir al bucket",
+        "procederé a generar los documentos",
+        "voy a generar los documentos",
+        "generar y entregar los documentos",
+        "crear los documentos técnicos",
+        "subir al bucket los documentos",
         "carpeta con todos los documentos",
         "todos los archivos generados",
         "documentos listos para subir",
-        "información completa para generar"
+        "información completa para generar los documentos",
+        "comenzaré con la generación de documentos",
+        "procedo a crear los documentos"
     ]
     
-    # Check for explicit completion signals
+    # Check for explicit completion signals - must be very specific
     has_explicit_completion = any(indicator in response_lower for indicator in explicit_completion_indicators)
     
-    # For SERVICIO RAPIDO - need specific service details answered
-    if project_info.get('type') == 'servicio_rapido':
-        service_type = project_info.get('service_type')
-        
-        # For S3 service - need at least bucket name and basic config
-        if service_type == 's3':
-            required_s3_info = [
-                project_info.get('bucket_name'),
-                project_info.get('region') or project_info.get('aws_region'),
-                project_info.get('storage_type') or project_info.get('storage_class')
-            ]
-            has_s3_details = any(info for info in required_s3_info)
-            
-            # Only complete if we have explicit completion AND some S3 details
-            return has_explicit_completion and has_s3_details
-        
-        # For EC2 service - need instance type and basic config
-        elif service_type == 'ec2':
-            has_ec2_details = (
-                project_info.get('instance_type') or 
-                project_info.get('instance_size') or
-                project_info.get('ec2_config')
-            )
-            return has_explicit_completion and has_ec2_details
-        
-        # For VPC service - need network details
-        elif service_type == 'vpc':
-            has_vpc_details = (
-                project_info.get('cidr_blocks') or 
-                project_info.get('vpc_config') or
-                project_info.get('network_config')
-            )
-            return has_explicit_completion and has_vpc_details
-        
-        # For other services - need at least service type and explicit completion
-        else:
-            return has_explicit_completion and project_info.get('service_type')
+    # Additional check: AI should NOT be asking questions if it's complete
+    question_indicators = [
+        "¿", "?", "necesito saber", "me puedes decir", "podrías especificar",
+        "qué tipo de", "cuál es", "cómo", "dónde", "cuándo", "por favor proporciona"
+    ]
     
-    # For SOLUCION INTEGRAL - need comprehensive information
-    elif project_info.get('type') == 'solucion_integral':
-        required_integral_info = [
-            project_info.get('objective'),
-            project_info.get('description'),
-            project_info.get('services') or project_info.get('aws_services'),
-            project_info.get('requirements')
-        ]
-        has_integral_details = sum(1 for info in required_integral_info if info) >= 3
-        
-        return has_explicit_completion and has_integral_details
+    is_asking_questions = any(indicator in response_lower for indicator in question_indicators)
     
-    # Default: only if explicit completion is mentioned
-    return has_explicit_completion
+    # Only complete if explicitly stated AND not asking more questions
+    return has_explicit_completion and not is_asking_questions
 
 def generate_project_documents_dynamic(project_info: Dict[str, Any], ai_analysis: str) -> Dict[str, Any]:
     """
