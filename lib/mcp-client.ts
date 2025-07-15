@@ -33,14 +33,14 @@ export interface ChatResponse {
   }
 }
 
-// MCP Server URLs - Updated with working endpoints
+// MCP Server URLs - Using HTTPS for secure connections
 const MCP_URLS = {
-  core: process.env.NEXT_PUBLIC_CORE_MCP_URL || 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/core',
-  pricing: process.env.NEXT_PUBLIC_PRICING_MCP_URL || 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/pricing',
-  awsdocs: process.env.NEXT_PUBLIC_AWSDOCS_MCP_URL || 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/awsdocs',
-  cfn: process.env.NEXT_PUBLIC_CFN_MCP_URL || 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/cfn',
-  diagram: process.env.NEXT_PUBLIC_DIAGRAM_MCP_URL || 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/diagram',
-  docgen: process.env.NEXT_PUBLIC_DOCGEN_MCP_URL || 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/docgen',
+  core: process.env.NEXT_PUBLIC_CORE_MCP_URL || 'https://danielingram.shop/core',
+  pricing: process.env.NEXT_PUBLIC_PRICING_MCP_URL || 'https://danielingram.shop/pricing',
+  awsdocs: process.env.NEXT_PUBLIC_AWSDOCS_MCP_URL || 'https://danielingram.shop/awsdocs',
+  cfn: process.env.NEXT_PUBLIC_CFN_MCP_URL || 'https://danielingram.shop/cfn',
+  diagram: process.env.NEXT_PUBLIC_DIAGRAM_MCP_URL || 'https://danielingram.shop/diagram',
+  docgen: process.env.NEXT_PUBLIC_DOCGEN_MCP_URL || 'https://danielingram.shop/docgen',
 }
 
 class MCPClient {
@@ -55,7 +55,7 @@ class MCPClient {
       }
     }
 
-    const response = await fetch(`${MCP_URLS.core}/call-tool`, {
+    const response = await fetch(`${MCP_URLS.core}&endpoint=call-tool`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ class MCPClient {
       arguments: { services }
     }
 
-    const response = await fetch(`${MCP_URLS.pricing}/call-tool`, {
+    const response = await fetch(`${MCP_URLS.pricing}&endpoint=call-tool`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -225,7 +225,7 @@ class MCPClient {
 
     for (const [name, url] of Object.entries(MCP_URLS)) {
       try {
-        const response = await fetch(`${url}/health`, {
+        const response = await fetch(`${url}&endpoint=health`, {
           method: 'GET',
           signal: AbortSignal.timeout(5000),
         })

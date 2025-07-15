@@ -23,4 +23,4 @@ EXPOSE 8005
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8005/health || exit 1
 
-CMD ["python", "mcp_http_wrapper.py", "--port", "8005"]
+CMD ["python", "mcp_http_wrapper_customdoc.py", "--port", "8005"]
