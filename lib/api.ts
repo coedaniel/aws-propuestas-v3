@@ -1,5 +1,8 @@
 // API configuration for AWS Propuestas v3
+import { mcpClient, type ChatMessage as MCPChatMessage } from './mcp-client'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+const USE_MCP_FALLBACK = true // Enable MCP fallback when legacy API fails
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -65,19 +68,49 @@ export interface ProjectResponse {
 
 // API functions
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
-  const response = await fetch(`${API_BASE_URL}/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
-  })
+  try {
+    // Try legacy API first
+    const response = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
 
-  if (!response.ok) {
-    throw new Error(`Chat API error: ${response.status} ${response.statusText}`)
+    if (!response.ok) {
+      throw new Error(`Chat API error: ${response.status} ${response.statusText}`)
+    }
+
+    return response.json()
+  } catch (error) {
+    console.warn('Legacy API failed, trying MCP fallback:', error)
+    
+    if (USE_MCP_FALLBACK) {
+      try {
+        // Convert to MCP format and use MCP client
+        const mcpMessages: MCPChatMessage[] = request.messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
+        
+        const mcpResponse = await mcpClient.sendChatMessage(mcpMessages, request.modelId)
+        
+        // Convert MCP response to legacy format
+        return {
+          response: mcpResponse.response,
+          modelId: mcpResponse.modelId,
+          mode: mcpResponse.mode || 'chat',
+          usage: mcpResponse.usage
+        }
+      } catch (mcpError) {
+        console.error('MCP fallback also failed:', mcpError)
+        throw new Error('Both legacy API and MCP servers are unavailable')
+      }
+    }
+    
+    throw error
   }
-
-  return response.json()
 }
 
 export async function sendArquitectoRequest(request: ArquitectoRequest): Promise<ArquitectoResponse> {
@@ -173,14 +206,41 @@ export async function deleteProject(projectId: string): Promise<{ success: boole
 }
 
 // Health check
-export async function checkHealth(): Promise<{ status: string; timestamp: string }> {
-  const response = await fetch(`${API_BASE_URL}/health`, {
-    method: 'GET',
-  })
+export async function checkHealth(): Promise<{ 
+  status: string
+  timestamp: string
+  legacy_api?: boolean
+  mcp_servers?: { [key: string]: boolean }
+}> {
+  const timestamp = new Date().toISOString()
+  let legacyApiStatus = false
+  let mcpServersStatus: { [key: string]: boolean } = {}
 
-  if (!response.ok) {
-    throw new Error(`Health check failed: ${response.status} ${response.statusText}`)
+  // Check legacy API
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      method: 'GET',
+    })
+    legacyApiStatus = response.ok
+  } catch (error) {
+    console.warn('Legacy API health check failed:', error)
   }
 
-  return response.json()
+  // Check MCP servers
+  try {
+    mcpServersStatus = await mcpClient.checkHealth()
+  } catch (error) {
+    console.warn('MCP servers health check failed:', error)
+  }
+
+  // Determine overall status
+  const mcpHealthy = Object.values(mcpServersStatus).some(status => status)
+  const overallStatus = legacyApiStatus || mcpHealthy ? 'healthy' : 'unhealthy'
+
+  return {
+    status: overallStatus,
+    timestamp,
+    legacy_api: legacyApiStatus,
+    mcp_servers: mcpServersStatus
+  }
 }

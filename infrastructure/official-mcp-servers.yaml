@@ -1,0 +1,794 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Propuestas V3 - Official AWS Labs MCP Servers on ECS'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    Description: Environment name
+  ProjectName:
+    Type: String
+    Default: aws-propuestas-v3
+    Description: Project name
+
+Resources:
+  # VPC and Networking
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc-${Environment}'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw-${Environment}'
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet-1-${Environment}'
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet-2-${Environment}'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-routes-${Environment}'
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  # Security Group
+  MCPSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-mcp-sg-${Environment}'
+      GroupDescription: Security group for Official MCP servers
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8010
+          CidrIp: 10.0.0.0/16
+          Description: MCP server ports
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: All outbound traffic
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${ProjectName}-alb-${Environment}'
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref MCPSecurityGroup
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: 404
+            ContentType: text/plain
+            MessageBody: 'MCP Server not found'
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # Target Groups for Official MCP Servers
+  CoreMCPTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub 'aws-prop-v3-core-${Environment}'
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+
+  PricingMCPTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub 'aws-prop-v3-pricing-${Environment}'
+      Port: 8001
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+
+  AwsDocsMCPTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub 'aws-prop-v3-awsdocs-${Environment}'
+      Port: 8002
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+
+  CFNMCPTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub 'aws-prop-v3-cfn-${Environment}'
+      Port: 8003
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+
+  DiagramMCPTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub 'aws-prop-v3-diagram-${Environment}'
+      Port: 8004
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+
+  CustomDocGenTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub 'aws-prop-v3-customdoc-${Environment}'
+      Port: 8005
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+
+  # ALB Listener Rules
+  CoreMCPListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref CoreMCPTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/core/*'
+      ListenerArn: !Ref ALBListener
+      Priority: 1
+
+  PricingMCPListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref PricingMCPTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/pricing/*'
+      ListenerArn: !Ref ALBListener
+      Priority: 2
+
+  AwsDocsMCPListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref AwsDocsMCPTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/awsdocs/*'
+      ListenerArn: !Ref ALBListener
+      Priority: 3
+
+  CFNMCPListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref CFNMCPTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/cfn/*'
+      ListenerArn: !Ref ALBListener
+      Priority: 4
+
+  DiagramMCPListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref DiagramMCPTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/diagram/*'
+      ListenerArn: !Ref ALBListener
+      Priority: 5
+
+  CustomDocGenListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref CustomDocGenTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/docgen/*'
+      ListenerArn: !Ref ALBListener
+      Priority: 6
+
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ProjectName}-official-mcp-${Environment}'
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 4
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  # IAM Roles
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: OfficialMCPServerPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  # S3 permissions for document generation
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  # Bedrock permissions for AI capabilities
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:ListFoundationModels
+                  # Pricing API permissions
+                  - pricing:GetProducts
+                  - pricing:DescribeServices
+                  - pricing:GetAttributeValues
+                  # CloudFormation permissions
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:ValidateTemplate
+                  # Documentation permissions
+                  - documentation:*
+                  # Logs permissions
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  # CloudWatch Log Groups
+  CoreMCPLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-core-mcp-${Environment}'
+      RetentionInDays: 14
+
+  PricingMCPLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-pricing-mcp-${Environment}'
+      RetentionInDays: 14
+
+  AwsDocsMCPLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-awsdocs-mcp-${Environment}'
+      RetentionInDays: 14
+
+  CFNMCPLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-cfn-mcp-${Environment}'
+      RetentionInDays: 14
+
+  DiagramMCPLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-diagram-mcp-${Environment}'
+      RetentionInDays: 14
+
+  CustomDocGenLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-customdoc-mcp-${Environment}'
+      RetentionInDays: 14
+
+  # ECS Task Definitions
+  CoreMCPTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-core-mcp-${Environment}'
+      Cpu: 256
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: core-mcp
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-core-mcp:latest'
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CoreMCPLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: FASTMCP_LOG_LEVEL
+              Value: ERROR
+
+  PricingMCPTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-pricing-mcp-${Environment}'
+      Cpu: 256
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: pricing-mcp
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-pricing-mcp:latest'
+          PortMappings:
+            - ContainerPort: 8001
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref PricingMCPLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: FASTMCP_LOG_LEVEL
+              Value: ERROR
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+
+  AwsDocsMCPTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-awsdocs-mcp-${Environment}'
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: awsdocs-mcp
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-docgen-mcp:latest'
+          PortMappings:
+            - ContainerPort: 8002
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AwsDocsMCPLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: FASTMCP_LOG_LEVEL
+              Value: ERROR
+
+  CFNMCPTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-cfn-mcp-${Environment}'
+      Cpu: 256
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: cfn-mcp
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-cfn-mcp:latest'
+          PortMappings:
+            - ContainerPort: 8003
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CFNMCPLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: FASTMCP_LOG_LEVEL
+              Value: ERROR
+
+  DiagramMCPTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-diagram-mcp-${Environment}'
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: diagram-mcp
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-diagram-mcp:latest'
+          PortMappings:
+            - ContainerPort: 8004
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref DiagramMCPLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: FASTMCP_LOG_LEVEL
+              Value: ERROR
+  CustomDocGenTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-customdoc-mcp-${Environment}'
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: customdoc-mcp
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-customdoc-mcp:latest'
+          PortMappings:
+            - ContainerPort: 8005
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CustomDocGenLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+  # ECS Services
+  CoreMCPService:
+    Type: AWS::ECS::Service
+    DependsOn: CoreMCPListenerRule
+    Properties:
+      ServiceName: !Sub '${ProjectName}-core-mcp-${Environment}'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref CoreMCPTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref MCPSecurityGroup
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+      LoadBalancers:
+        - ContainerName: core-mcp
+          ContainerPort: 8000
+          TargetGroupArn: !Ref CoreMCPTargetGroup
+
+  PricingMCPService:
+    Type: AWS::ECS::Service
+    DependsOn: PricingMCPListenerRule
+    Properties:
+      ServiceName: !Sub '${ProjectName}-pricing-mcp-${Environment}'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref PricingMCPTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref MCPSecurityGroup
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+      LoadBalancers:
+        - ContainerName: pricing-mcp
+          ContainerPort: 8001
+          TargetGroupArn: !Ref PricingMCPTargetGroup
+
+  AwsDocsMCPService:
+    Type: AWS::ECS::Service
+    DependsOn: AwsDocsMCPListenerRule
+    Properties:
+      ServiceName: !Sub '${ProjectName}-awsdocs-mcp-${Environment}'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref AwsDocsMCPTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref MCPSecurityGroup
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+      LoadBalancers:
+        - ContainerName: awsdocs-mcp
+          ContainerPort: 8002
+          TargetGroupArn: !Ref AwsDocsMCPTargetGroup
+
+  CFNMCPService:
+    Type: AWS::ECS::Service
+    DependsOn: CFNMCPListenerRule
+    Properties:
+      ServiceName: !Sub '${ProjectName}-cfn-mcp-${Environment}'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref CFNMCPTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref MCPSecurityGroup
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+      LoadBalancers:
+        - ContainerName: cfn-mcp
+          ContainerPort: 8003
+          TargetGroupArn: !Ref CFNMCPTargetGroup
+
+  DiagramMCPService:
+    Type: AWS::ECS::Service
+    DependsOn: DiagramMCPListenerRule
+    Properties:
+      ServiceName: !Sub '${ProjectName}-diagram-mcp-${Environment}'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref DiagramMCPTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref MCPSecurityGroup
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+      LoadBalancers:
+        - ContainerName: diagram-mcp
+          ContainerPort: 8004
+          TargetGroupArn: !Ref DiagramMCPTargetGroup
+  CustomDocGenService:
+    Type: AWS::ECS::Service
+    DependsOn: CustomDocGenListenerRule
+    Properties:
+      ServiceName: !Sub '${ProjectName}-customdoc-mcp-${Environment}'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref CustomDocGenTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref MCPSecurityGroup
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+      LoadBalancers:
+        - ContainerName: customdoc-mcp
+          ContainerPort: 8005
+          TargetGroupArn: !Ref CustomDocGenTargetGroup
+Outputs:
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ECSCluster'
+
+  LoadBalancerDNS:
+    Description: Application Load Balancer DNS
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${AWS::StackName}-ALB-DNS'
+
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPC'
+
+  CoreMCPEndpoint:
+    Description: Core MCP Server Endpoint
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/core'
+    Export:
+      Name: !Sub '${AWS::StackName}-CoreMCP-Endpoint'
+
+  PricingMCPEndpoint:
+    Description: Pricing MCP Server Endpoint
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/pricing'
+    Export:
+      Name: !Sub '${AWS::StackName}-PricingMCP-Endpoint'
+
+  AwsDocsMCPEndpoint:
+    Description: AWS Documentation MCP Server Endpoint
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/awsdocs'
+    Export:
+      Name: !Sub '${AWS::StackName}-AwsDocsMCP-Endpoint'
+
+  CFNMCPEndpoint:
+    Description: CloudFormation MCP Server Endpoint
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/cfn'
+    Export:
+      Name: !Sub '${AWS::StackName}-CFNMCP-Endpoint'
+
+  DiagramMCPEndpoint:
+    Description: Diagram MCP Server Endpoint
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/diagram'
+    Export:
+      Name: !Sub '${AWS::StackName}-DiagramMCP-Endpoint'
+  CustomDocGenEndpoint:
+    Description: Custom Document Generator MCP Server Endpoint
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/docgen'
+    Export:
+      Name: !Sub '${AWS::StackName}-CustomDocGenMCP-Endpoint'

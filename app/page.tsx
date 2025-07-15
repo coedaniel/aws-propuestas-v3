@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { MCPStatus } from '@/components/mcp-status'
 import { 
   MessageCircle, 
   Building2, 
@@ -31,19 +32,24 @@ export default function HomePage() {
                 <p className="text-sm text-gray-600">Sistema Conversacional Profesional</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Link href="/analytics">
-                <Button variant="outline" size="sm">
-                  <Database className="w-4 h-4 mr-2" />
-                  Analytics
-                </Button>
+            <div className="flex items-center space-x-4">
+              <Link href="/system-status">
+                <MCPStatus />
               </Link>
-              <Link href="/projects">
-                <Button variant="outline" size="sm">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  Proyectos
-                </Button>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link href="/analytics">
+                  <Button variant="outline" size="sm">
+                    <Database className="w-4 h-4 mr-2" />
+                    Analytics
+                  </Button>
+                </Link>
+                <Link href="/projects">
+                  <Button variant="outline" size="sm">
+                    <FolderOpen className="w-4 h-4 mr-2" />
+                    Proyectos
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
