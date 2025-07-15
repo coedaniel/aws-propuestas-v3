@@ -1,0 +1,42 @@
+{
+  "family": "aws-propuestas-v3-customdoc-mcp-prod",
+  "executionRoleArn": "arn:aws:iam::035385358261:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "customdoc-mcp",
+      "image": "035385358261.dkr.ecr.us-east-1.amazonaws.com/aws-propuestas-v3-customdoc-mcp-prod:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8005,
+          "hostPort": 8005,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/aws-propuestas-v3-customdoc-mcp-prod",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8005/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048"
+}

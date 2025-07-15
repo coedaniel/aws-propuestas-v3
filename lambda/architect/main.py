@@ -1,6 +1,6 @@
 """
 AWS Propuestas V3 - Professional Solutions Architect
-Implements the Master Prompt for AWS Solutions Architecture
+Implements the Master Prompt for AWS Solutions Architecture with MCP Integration
 """
 
 import json
@@ -11,43 +11,98 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from botocore.exceptions import ClientError
 
-# Initialize AWS clients
-bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name='us-east-1')
-lambda_client = boto3.client('lambda')
-s3_client = boto3.client('s3')
+# Import the new intelligent architect
+from intelligent_architect import IntelligentArchitect
 
-# Configuration
-NOVA_AGENT_ID = os.environ.get('NOVA_AGENT_ID', 'WUGHP2HGH9')
-NOVA_AGENT_ALIAS_ID = os.environ.get('NOVA_AGENT_ALIAS_ID', 'ZNZ3SYTP5L')
-CLAUDE_AGENT_ID = os.environ.get('CLAUDE_AGENT_ID', 'W3YRJXXIRE')
-CLAUDE_AGENT_ALIAS_ID = os.environ.get('CLAUDE_AGENT_ALIAS_ID', 'ULPAGJS0VW')
-DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET')
-ENVIRONMENT = os.environ.get('ENVIRONMENT', 'prod')
-
-class AWSArchitect:
-    """Professional AWS Solutions Architect implementing the Master Prompt"""
+def lambda_handler(event, context):
+    """
+    Main Lambda handler for the Architect functionality
+    Routes requests to the appropriate handler based on the request type
+    """
     
-    def __init__(self):
-        self.session_data = {}
-        self.project_info = {}
-        self.conversation_state = "initial"
+    try:
+        # Handle CORS preflight
+        if event.get('httpMethod') == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                },
+                'body': ''
+            }
         
-    def lambda_handler(self, event, context):
-        """Main Lambda handler implementing the Master Prompt flow"""
-        try:
-            # Handle CORS preflight
-            if event.get('httpMethod') == 'OPTIONS':
-                return self._cors_response()
-            
-            # Parse request body
-            body = self._parse_body(event)
-            user_input = body.get('message', '').strip()
-            session_id = body.get('session_id', str(uuid.uuid4()))
-            
-            print(f"Processing request - Session: {session_id}, Input: {user_input[:100]}...")
-            
-            # Initialize or load session
-            self._load_session(session_id)
+        # Parse request body
+        if 'body' in event:
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+        else:
+            body = event
+        
+        # Extract parameters
+        messages = body.get('messages', [])
+        session_id = body.get('session_id')
+        model_id = body.get('modelId', 'anthropic.claude-3-5-sonnet-20241022-v2:0')
+        
+        print(f"Architect request - Session: {session_id}, Messages: {len(messages)}")
+        
+        # Get the last user message
+        user_input = ""
+        if messages:
+            for msg in reversed(messages):
+                if msg.get('role') == 'user':
+                    user_input = msg.get('content', '')
+                    break
+        
+        # Create intelligent architect instance and process request
+        architect = IntelligentArchitect()
+        result = architect.process_request(user_input, session_id)
+        
+        # Format response for frontend compatibility
+        response = {
+            'response': result.get('response', ''),
+            'modelId': model_id,
+            'projectId': result.get('session_id'),
+            'currentStep': result.get('state', 'initial'),
+            'isComplete': result.get('state') == 'completed',
+            'usage': {
+                'inputTokens': len(user_input) // 4,  # Rough estimate
+                'outputTokens': len(result.get('response', '')) // 4,
+                'totalTokens': (len(user_input) + len(result.get('response', ''))) // 4
+            }
+        }
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps(response)
+        }
+        
+    except Exception as e:
+        print(f"Error in architect lambda_handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps({
+                'error': 'Internal server error',
+                'message': str(e),
+                'response': 'Lo siento, hubo un error interno. Por favor, intenta de nuevo.',
+                'modelId': 'error',
+                'projectId': None,
+                'currentStep': 'error',
+                'isComplete': False
+            })
+        }
             
             # Process user input through the Master Prompt flow
             response = self._process_master_prompt(user_input, session_id)

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -14,13 +14,17 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY document_generator_mcp.py .
-COPY mcp_http_wrapper_customdoc.py .
+COPY src/ ./src/
 
+# Create output directory
+RUN mkdir -p /tmp/output
+
+# Expose port
 EXPOSE 8005
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8005/health || exit 1
 
-CMD ["python", "mcp_http_wrapper_customdoc.py", "--port", "8005"]
+# Start the FastAPI app with Uvicorn
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8005"]

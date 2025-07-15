@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const MCP_BASE_URL = 'http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com'
+const MCP_BASE_URL = 'https://mcp.danielingram.shop'
 
 const MCP_ENDPOINTS = {
   core: `${MCP_BASE_URL}/core`,
