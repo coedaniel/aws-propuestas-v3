@@ -1,52 +1,112 @@
-# AWS Propuestas V3
+# 🚀 AWS Propuestas V3
 
-Sistema conversacional profesional para generar propuestas ejecutivas de soluciones AWS con IA.
+> Sistema conversacional profesional para generar propuestas ejecutivas de soluciones AWS con IA
 
-## 🏗️ Arquitectura
+[![Amplify Status](https://img.shields.io/badge/Amplify-Deployed-success)](https://main.d2xsphsjdxlk24.amplifyapp.com)
+[![MCP Services](https://img.shields.io/badge/MCP-6%20Services-blue)](https://mcp.danielingram.shop)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 
-- **Frontend**: Next.js desplegado en AWS Amplify
-- **Backend**: Servidores MCP en AWS ECS (sin Lambdas)
-- **Dominio**: https://main.d2xsphsjdxlk24.amplifyapp.com
+## ✨ Características Principales
 
-## 🚀 Servicios MCP
+- **🤖 IA Conversacional**: Integración con Amazon Bedrock para generación inteligente
+- **📊 Diagramas Automáticos**: Creación de arquitecturas AWS visuales
+- **📚 Documentación AWS**: Acceso en tiempo real a documentación oficial
+- **💰 Análisis de Costos**: Estimaciones precisas de precios AWS
+- **🔧 CloudFormation**: Generación automática de templates IaC
+- **📝 Documentación Custom**: Generación de documentación técnica personalizada
 
-Los siguientes servidores MCP están desplegados en ECS:
+## 🏗️ Arquitectura Moderna
 
-- **Core MCP**: Funcionalidades principales
-- **AWS Docs MCP**: Documentación de AWS  
-- **Diagram MCP**: Generación de diagramas
-- **Pricing MCP**: Cálculos de costos
-- **CloudFormation MCP**: Plantillas de infraestructura
-- **Custom Doc MCP**: Documentación personalizada
+### Frontend (Next.js + Amplify)
+```
+🌐 AWS Amplify
+├── Next.js 14 + TypeScript
+├── Tailwind CSS + shadcn/ui
+├── Zustand (Estado Global)
+└── Componentes Reutilizables
+```
 
-**URL Base**: https://mcp.danielingram.shop
+### Backend (MCP Servers en ECS)
+```
+🐳 Amazon ECS
+├── 🧠 Core MCP Server
+├── 📖 AWS Documentation MCP
+├── 📊 Diagram Generator MCP
+├── 💰 Pricing Calculator MCP
+├── ☁️ CloudFormation MCP
+└── 📝 Custom Documentation MCP
+```
+
+## 🚀 URLs de Producción
+
+- **🌐 Frontend**: https://main.d2xsphsjdxlk24.amplifyapp.com
+- **📊 System Status**: https://main.d2xsphsjdxlk24.amplifyapp.com/system-status
+- **🔧 MCP Services**: https://mcp.danielingram.shop
 
 ## 📁 Estructura del Proyecto
 
 ```
-├── app/                    # Frontend Next.js (Amplify)
-├── components/             # Componentes React
-├── lib/                    # Utilidades y tipos
-├── store/                  # Estado global (Zustand)
-├── official-mcp-servers/   # Servidores MCP
-└── scripts/               # Scripts de despliegue
+aws-propuestas-v3/
+├── app/                    # 🎯 Frontend Next.js (Amplify)
+├── components/             # 🧩 Componentes React
+├── lib/                    # 🛠️ Utilidades y tipos
+├── store/                  # 📦 Estado global (Zustand)
+├── official-mcp-servers/   # 🐳 Servidores MCP
+├── infrastructure/         # ☁️ Configuración AWS
+├── docs/                   # 📚 Documentación adicional
+└── scripts/               # 🔧 Scripts de utilidad
 ```
 
-## 🛠️ Despliegue
+## 🛠️ Desarrollo Local
 
-- **Frontend**: Automático via Amplify (conectado a este repo)
-- **MCP Servers**: Desplegados en ECS via Docker
+```bash
+# Instalar dependencias
+npm install
 
-## 🌐 URLs
+# Configurar variables de entorno
+cp .env.local.example .env.local
 
-- **Frontend**: https://main.d2xsphsjdxlk24.amplifyapp.com
-- **System Status**: https://main.d2xsphsjdxlk24.amplifyapp.com/system-status
-- **MCP Services**: https://mcp.danielingram.shop/{service}
+# Ejecutar en desarrollo
+npm run dev
 
-## 📊 Estado
+# Abrir en el navegador
+open http://localhost:3000
+```
 
-✅ **Activo y funcionando**
-- Frontend desplegado en Amplify
-- 6 servicios MCP funcionando en ECS
-- CORS configurado correctamente
-- Health checks operativos
+## 🚀 Despliegue
+
+- **Frontend**: Automático via AWS Amplify (conectado a este repositorio)
+- **MCP Servers**: Desplegados en Amazon ECS via Docker
+- **CORS**: Configurado correctamente para integración frontend-backend
+
+## 📚 Documentación Completa
+
+| Documento | Descripción |
+|-----------|-------------|
+| [🏗️ Arquitectura](./ARCHITECTURE.md) | Diseño detallado del sistema |
+| [🔌 API](./API.md) | Endpoints y servicios MCP |
+| [🚀 Despliegue](./DEPLOYMENT.md) | Guía completa de deployment |
+| [🤝 Contribución](./CONTRIBUTING.md) | Cómo contribuir al proyecto |
+| [🔧 Troubleshooting](./TROUBLESHOOTING.md) | Solución de problemas comunes |
+
+## 📊 Estado del Sistema
+
+✅ **Sistema Completamente Operativo**
+- ✅ Frontend desplegado y funcionando en Amplify
+- ✅ 6 servicios MCP activos en ECS
+- ✅ CORS configurado correctamente
+- ✅ Health checks operativos
+- ✅ Migración completa a arquitectura MCP (sin Lambdas)
+
+## 🎯 Migración Completada
+
+Este proyecto ha migrado exitosamente de una arquitectura basada en Lambda a una arquitectura moderna basada en **MCP (Model Context Protocol)**, ofreciendo:
+
+- 🚀 **Mayor rendimiento** y escalabilidad
+- 🔧 **Mejor mantenibilidad** del código
+- 💰 **Optimización de costos** AWS
+- 🛡️ **Mayor seguridad** y control
+
+---
+
+**Desarrollado con ❤️ para la comunidad AWS**
