@@ -293,6 +293,5 @@ class MCPClient {
 // Export singleton instance
 export const mcpClient = new MCPClient()
 
-// Export types and utilities
-export type { ChatMessage, ChatRequest, ChatResponse }
+// Export utilities
 export { MCP_URLS }
