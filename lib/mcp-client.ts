@@ -1,7 +1,7 @@
 // MCP Client for AWS Propuestas v3
 // This client handles communication with the MCP servers deployed on ECS
 
-export interface MCPResponse {
+interface MCPResponse {
   result?: any
   error?: {
     code: number
@@ -294,5 +294,5 @@ class MCPClient {
 export const mcpClient = new MCPClient()
 
 // Export types and utilities
-export type { MCPResponse, ChatMessage, ChatRequest, ChatResponse }
+export type { ChatMessage, ChatRequest, ChatResponse }
 export { MCP_URLS }
