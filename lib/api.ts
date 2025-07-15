@@ -114,19 +114,54 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 }
 
 export async function sendArquitectoRequest(request: ArquitectoRequest): Promise<ArquitectoResponse> {
-  const response = await fetch(`${API_BASE_URL}/arquitecto`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
-  })
+  try {
+    // Try legacy API first
+    const response = await fetch(`${API_BASE_URL}/arquitecto`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
 
-  if (!response.ok) {
-    throw new Error(`Arquitecto API error: ${response.status}`)
+    if (!response.ok) {
+      throw new Error(`Arquitecto API error: ${response.status}`)
+    }
+
+    return response.json()
+  } catch (error) {
+    console.warn('Legacy Arquitecto API failed, trying MCP-enhanced version:', error)
+    
+    // Use new MCP-enhanced arquitecto endpoint
+    const response = await fetch('/api/arquitecto', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: request.query || '',
+        conversationHistory: request.messages || [],
+        selectedModel: request.modelId || request.selected_model || 'amazon.nova-pro-v1:0',
+        projectData: request.project_info
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`MCP Arquitecto API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    // Convert to legacy format
+    return {
+      response: data.response,
+      modelId: data.selectedModel || request.modelId || 'amazon.nova-pro-v1:0',
+      projectId: request.projectId,
+      currentStep: 0,
+      isComplete: false,
+      usage: data.usage
+    }
   }
-
-  return response.json()
 }
 
 export async function createProject(request: ProjectRequest): Promise<ProjectResponse> {
