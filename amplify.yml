@@ -3,30 +3,32 @@ frontend:
   phases:
     preBuild:
       commands:
+        - echo "Installing dependencies..."
         - npm ci
-        - echo "Node version:" && node --version
-        - echo "NPM version:" && npm --version
-        - echo "Setting up MCP environment variables..."
-        - echo "NEXT_PUBLIC_MCP_BASE_URL=$NEXT_PUBLIC_MCP_BASE_URL" >> .env.production
-        - echo "NEXT_PUBLIC_CORE_MCP_URL=$NEXT_PUBLIC_CORE_MCP_URL" >> .env.production
-        - echo "NEXT_PUBLIC_PRICING_MCP_URL=$NEXT_PUBLIC_PRICING_MCP_URL" >> .env.production
-        - echo "NEXT_PUBLIC_AWSDOCS_MCP_URL=$NEXT_PUBLIC_AWSDOCS_MCP_URL" >> .env.production
-        - echo "NEXT_PUBLIC_CFN_MCP_URL=$NEXT_PUBLIC_CFN_MCP_URL" >> .env.production
-        - echo "NEXT_PUBLIC_DIAGRAM_MCP_URL=$NEXT_PUBLIC_DIAGRAM_MCP_URL" >> .env.production
-        - echo "NEXT_PUBLIC_DOCGEN_MCP_URL=$NEXT_PUBLIC_DOCGEN_MCP_URL" >> .env.production
-        - echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
-        - echo "NEXT_PUBLIC_REGION=$NEXT_PUBLIC_REGION" >> .env.production
-        - echo "NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT" >> .env.production
+        - echo "Environment check..."
+        - node --version
+        - npm --version
     build:
       commands:
-        - echo "Building AWS Propuestas v3..."
+        - echo "Building the application..."
         - npm run build
         - echo "Build completed successfully"
   artifacts:
-    baseDirectory: out
+    baseDirectory: .next
     files:
       - '**/*'
   cache:
     paths:
       - node_modules/**/*
       - .next/cache/**/*
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'X-Frame-Options'
+          value: 'DENY'
+        - key: 'X-Content-Type-Options'
+          value: 'nosniff'
+        - key: 'Referrer-Policy'
+          value: 'strict-origin-when-cross-origin'
+        - key: 'Permissions-Policy'
+          value: 'camera=(), microphone=(), geolocation=()'

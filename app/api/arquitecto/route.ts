@@ -70,29 +70,30 @@ Responde de manera profesional y técnica como un consultor AWS experimentado.
 
     const modelResponse = await callBedrockModel(selectedModel, conversation);
 
-    // Step 5: TEMPORARILY DISABLE MCP calls to fix basic functionality
+    // Step 5: RE-ENABLE SELECTIVE MCP calls for essential functionality
     const mcpResults: any = {};
-    const usedServices: string[] = ['core']; // Only core for now
+    const usedServices: string[] = ['core']; // Core is always used
     
-    // TODO: Re-enable MCP calls after fixing basic functionality
-    /*
-    // Call AWS Documentation service for better responses
-    if (neededServices.includes('awsdocs')) {
-      console.log('📚 Calling AWS DOCS MCP service...');
-      usedServices.push('awsdocs');
+    // Always try to generate diagrams for architecture projects
+    if (shouldGenerateDiagram(modelResponse) || message.toLowerCase().includes('diagrama') || message.toLowerCase().includes('arquitectura')) {
+      console.log('📊 Generating diagram with local MCP...');
+      usedServices.push('diagram');
       try {
-        const keyTerms = extractKeyTermsFromMessage(message);
-        const docsResult = await callMCPService('awsdocs', {
-          action: 'search',
-          query: keyTerms,
-          limit: 5
-        });
-        mcpResults.awsdocs = docsResult;
+        const services = extractServicesFromResponse(modelResponse);
+        const projectName = extractProjectName(message) || 'Proyecto AWS';
+        
+        // Use local diagram MCP to generate architecture diagram
+        const diagramCode = generateDiagramCode(projectName, services, extractDescriptionFromResponse(modelResponse));
+        mcpResults.diagram = {
+          generated: true,
+          code: diagramCode,
+          services: services,
+          title: `Arquitectura - ${projectName}`
+        };
       } catch (error) {
-        console.error('Error calling AWS docs MCP:', error);
+        console.error('Error generating diagram:', error);
       }
     }
-    */
 
     // Step 6: Simplified response - DISABLE MCP calls temporarily to fix basic functionality
     const finalResponse = ensureUTF8(modelResponse);
@@ -290,29 +291,43 @@ function extractDescriptionFromResponse(response: string): string {
 
 // Extract project name from user message
 function extractProjectName(message: string): string | null {
-  // Look for patterns like "proyecto X", "sistema X", "aplicación X", etc.
-  const patterns = [
-    /llamado\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
-    /nombre\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
-    /proyecto\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
-    /sistema\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
-    /aplicaci[oó]n\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
-    /plataforma\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
+  // Direct patterns for project names
+  const directPatterns = [
+    /llamado\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
+    /nombre\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
+    /proyecto\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
+    /sistema\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
     /"([^"]+)"/g, // Text in quotes
   ];
 
-  for (const pattern of patterns) {
+  // Try direct patterns first
+  for (const pattern of directPatterns) {
     const match = message.match(pattern);
     if (match && match[1]) {
       const projectName = match[1].trim();
-      // Filter out common words and keep real project names
-      const excludeWords = ['que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el', 'se', 'encuentra', 'proyecto', 'sistema'];
+      // Filter out common words but keep real names like "sukarne"
+      const excludeWords = ['que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el', 'se', 'encuentra'];
       const words = projectName.toLowerCase().split(/\s+/);
-      const validWords = words.filter(word => !excludeWords.includes(word) && word.length > 2);
+      const validWords = words.filter(word => !excludeWords.includes(word) && word.length > 1);
       
       if (validWords.length > 0) {
-        return validWords.join(' ');
+        // Return original case
+        return validWords.map(word => {
+          const originalWord = projectName.split(/\s+/).find(w => w.toLowerCase() === word);
+          return originalWord || word;
+        }).join(' ');
       }
+    }
+  }
+
+  // Look for standalone names (like "sukarne" mentioned alone)
+  const words = message.split(/\s+/);
+  for (const word of words) {
+    const cleanWord = word.replace(/[.,!?;:]/, '').trim();
+    if (cleanWord.length > 3 && 
+        /^[a-zA-Z0-9áéíóúñü-_]+$/.test(cleanWord) &&
+        !['proyecto', 'sistema', 'aplicacion', 'plataforma', 'portal', 'que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el', 'se', 'encuentra', 'necesito', 'quiero', 'hacer', 'crear'].includes(cleanWord.toLowerCase())) {
+      return cleanWord;
     }
   }
 
@@ -335,6 +350,88 @@ function ensureUTF8(text: string): string {
     .replace(/Ã"/g, 'Ó')
     .replace(/Ãš/g, 'Ú')
     .replace(/Ã'/g, 'Ñ');
+}
+
+// Generate diagram code using local logic
+function generateDiagramCode(projectName: string, services: string[], description: string): string {
+  const title = `${projectName} - Arquitectura AWS`;
+  
+  // Map services to diagram components
+  const serviceMap: { [key: string]: string } = {
+    'EC2': 'EC2("web-server")',
+    'RDS': 'RDS("database")',
+    'S3': 'S3("storage")',
+    'Lambda': 'Lambda("function")',
+    'API Gateway': 'APIGateway("api")',
+    'CloudFront': 'CloudFront("cdn")',
+    'Route53': 'Route53("dns")',
+    'VPC': 'VPC("network")',
+    'ELB': 'ELB("load-balancer")',
+    'ALB': 'ALB("app-load-balancer")',
+    'DynamoDB': 'DynamoDB("nosql-db")',
+    'SQS': 'SQS("queue")',
+    'SNS': 'SNS("notifications")'
+  };
+
+  // Generate basic three-tier architecture
+  let diagramCode = `with Diagram("${title}", show=False, direction="LR"):\n`;
+  
+  if (services.includes('Route53')) {
+    diagramCode += '    dns = Route53("DNS")\n';
+  }
+  
+  if (services.includes('CloudFront')) {
+    diagramCode += '    cdn = CloudFront("CDN")\n';
+  }
+  
+  if (services.includes('ELB') || services.includes('ALB')) {
+    diagramCode += '    lb = ELB("Load Balancer")\n';
+  }
+  
+  if (services.includes('EC2')) {
+    diagramCode += '    web = EC2("Web Server")\n';
+  }
+  
+  if (services.includes('Lambda')) {
+    diagramCode += '    func = Lambda("Functions")\n';
+  }
+  
+  if (services.includes('RDS')) {
+    diagramCode += '    db = RDS("Database")\n';
+  }
+  
+  if (services.includes('DynamoDB')) {
+    diagramCode += '    nosql = DynamoDB("NoSQL DB")\n';
+  }
+  
+  if (services.includes('S3')) {
+    diagramCode += '    storage = S3("Storage")\n';
+  }
+
+  // Add connections based on common patterns
+  diagramCode += '\n    # Connections\n';
+  
+  if (services.includes('Route53') && services.includes('CloudFront')) {
+    diagramCode += '    dns >> cdn\n';
+  }
+  
+  if (services.includes('CloudFront') && (services.includes('ELB') || services.includes('ALB'))) {
+    diagramCode += '    cdn >> lb\n';
+  }
+  
+  if ((services.includes('ELB') || services.includes('ALB')) && services.includes('EC2')) {
+    diagramCode += '    lb >> web\n';
+  }
+  
+  if (services.includes('EC2') && services.includes('RDS')) {
+    diagramCode += '    web >> db\n';
+  }
+  
+  if (services.includes('Lambda') && services.includes('DynamoDB')) {
+    diagramCode += '    func >> nosql\n';
+  }
+
+  return diagramCode;
 }
 
 // Extract key terms from user message for documentation search

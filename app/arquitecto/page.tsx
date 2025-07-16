@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import ModelSelector from '@/components/ModelSelector'
-import { ArrowLeft, Send, Loader2, Building2, Lightbulb, FolderOpen } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, Building2, Lightbulb, FolderOpen, CheckCircle } from 'lucide-react'
 import { sendArquitectoRequest, ArquitectoResponse } from '@/lib/api'
 import { AVAILABLE_MODELS } from '@/lib/types'
 
@@ -25,6 +25,7 @@ function ArquitectoContent() {
   const [currentStep, setCurrentStep] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const [lastMcpInfo, setLastMcpInfo] = useState<any>(null) // For MCP transparency
+  const [projectCompleted, setProjectCompleted] = useState(false) // Track if project is manually completed
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
@@ -47,6 +48,29 @@ function ArquitectoContent() {
       // TODO: Implement API call to get project details
       // For now, we'll just set the projectId and let the user continue
       setProjectId(projectId)
+    } catch (error) {
+      console.error('Error loading project:', error)
+    } finally {
+      setIsLoadingProject(false)
+    }
+  }
+
+  const handleCompleteProject = () => {
+    setProjectCompleted(true)
+    setIsComplete(true)
+    
+    // Add completion message
+    const completionMessage = {
+      role: 'assistant' as const,
+      content: '✅ **PROYECTO COMPLETADO MANUALMENTE**\n\nEl proyecto ha sido marcado como completado. Todos los documentos generados están disponibles para descarga.',
+      mcpInfo: {
+        mcpServicesUsed: ['manual-completion'],
+        transparency: { message: '✅ Proyecto completado manualmente por el usuario' }
+      }
+    }
+    
+    setMessages(prev => [...prev, completionMessage])
+  }
       
       // Add a system message to indicate continuation
       setMessages([{
