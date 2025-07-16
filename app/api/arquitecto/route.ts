@@ -293,10 +293,10 @@ function extractDescriptionFromResponse(response: string): string {
 function extractProjectName(message: string): string | null {
   // Direct patterns for project names
   const directPatterns = [
-    /llamado\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
-    /nombre\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
-    /proyecto\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
-    /sistema\s+([a-zA-Z0-9áéíóúñü\s-_]+)/i,
+    /llamado\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
+    /nombre\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
+    /proyecto\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
+    /sistema\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
     /"([^"]+)"/g, // Text in quotes
   ];
 
@@ -325,7 +325,7 @@ function extractProjectName(message: string): string | null {
   for (const word of words) {
     const cleanWord = word.replace(/[.,!?;:]/, '').trim();
     if (cleanWord.length > 3 && 
-        /^[a-zA-Z0-9áéíóúñü-_]+$/.test(cleanWord) &&
+        /^[a-zA-Z0-9áéíóúñü_-]+$/.test(cleanWord) &&
         !['proyecto', 'sistema', 'aplicacion', 'plataforma', 'portal', 'que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el', 'se', 'encuentra', 'necesito', 'quiero', 'hacer', 'crear'].includes(cleanWord.toLowerCase())) {
       return cleanWord;
     }

@@ -48,8 +48,19 @@ function ArquitectoContent() {
       // TODO: Implement API call to get project details
       // For now, we'll just set the projectId and let the user continue
       setProjectId(projectId)
+      
+      // Add a system message to indicate continuation
+      setMessages([{
+        role: 'assistant',
+        content: 'Continuando con el proyecto existente. ¿En qué puedo ayudarte?'
+      }])
     } catch (error) {
       console.error('Error loading project:', error)
+      // If loading fails, start fresh but keep the projectId
+      setMessages([{
+        role: 'assistant',
+        content: '¡Hola! Soy tu Arquitecto AWS. Para comenzar, necesito que me proporciones únicamente el **nombre del proyecto** (por ejemplo: "E-commerce Platform", "Sistema de Inventario", "Portal de Clientes", etc.). ¿Cuál es el nombre de tu proyecto?'
+      }])
     } finally {
       setIsLoadingProject(false)
     }
@@ -70,23 +81,6 @@ function ArquitectoContent() {
     }
     
     setMessages(prev => [...prev, completionMessage])
-  }
-      
-      // Add a system message to indicate continuation
-      setMessages([{
-        role: 'assistant',
-        content: 'Continuando con el proyecto existente. ¿En qué puedo ayudarte?'
-      }])
-    } catch (error) {
-      console.error('Error loading project:', error)
-      // If loading fails, start fresh but keep the projectId
-      setMessages([{
-        role: 'assistant',
-        content: '¡Hola! Soy tu Arquitecto AWS. Para comenzar, necesito que me proporciones únicamente el **nombre del proyecto** (por ejemplo: "E-commerce Platform", "Sistema de Inventario", "Portal de Clientes", etc.). ¿Cuál es el nombre de tu proyecto?'
-      }])
-    } finally {
-      setIsLoadingProject(false)
-    }
   }
 
   const handleSubmit = async () => {
