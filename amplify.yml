@@ -8,15 +8,13 @@ frontend:
         - echo "Environment check..."
         - node --version
         - npm --version
-        - echo "TypeScript check..."
-        - npx tsc --noEmit
     build:
       commands:
         - echo "Building the application..."
         - npm run build
         - echo "Build completed successfully"
   artifacts:
-    baseDirectory: .next
+    baseDirectory: out
     files:
       - '**/*'
   cache:

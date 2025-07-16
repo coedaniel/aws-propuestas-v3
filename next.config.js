@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Use standalone output for better Amplify compatibility
-  output: 'standalone',
+  // Keep original export configuration that was working
+  output: 'export',
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
+  distDir: 'out',
   images: {
     unoptimized: true
   },
