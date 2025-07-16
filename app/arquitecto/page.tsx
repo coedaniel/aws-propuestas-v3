@@ -15,7 +15,7 @@ function ArquitectoContent() {
   const searchParams = useSearchParams()
   const existingProjectId = searchParams.get('projectId')
   
-  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
+  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string, mcpInfo?: any}>>([])
   const [currentInput, setCurrentInput] = useState('')
   const [response, setResponse] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -24,6 +24,7 @@ function ArquitectoContent() {
   const [projectId, setProjectId] = useState<string | null>(existingProjectId)
   const [currentStep, setCurrentStep] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
+  const [lastMcpInfo, setLastMcpInfo] = useState<any>(null) // For MCP transparency
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
@@ -81,8 +82,20 @@ function ArquitectoContent() {
         projectId: projectId || undefined
       })
 
-      // Add assistant response
-      setMessages([...newMessages, { role: 'assistant' as const, content: data.response }])
+      // Store MCP information for transparency
+      const mcpInfo = {
+        mcpServicesUsed: data.mcpServicesUsed || [],
+        transparency: data.transparency || null,
+        mcpResults: data.mcpResults || {}
+      }
+      setLastMcpInfo(mcpInfo)
+
+      // Add assistant response with MCP info
+      setMessages([...newMessages, { 
+        role: 'assistant' as const, 
+        content: data.response,
+        mcpInfo: mcpInfo
+      }])
       setResponse(data.response)
       
       // Update project state
@@ -186,27 +199,58 @@ function ArquitectoContent() {
               )}
               
               {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`p-3 rounded-lg ${
-                    message.role === 'user'
-                      ? 'bg-blue-100 ml-8'
-                      : 'bg-gray-100 mr-8'
-                  }`}
-                >
-                  <div className="text-sm font-medium mb-1">
-                    {message.role === 'user' ? 'Tú' : 'Arquitecto AWS'}
+                <div key={index}>
+                  <div
+                    className={`p-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-blue-100 ml-8'
+                        : 'bg-gray-100 mr-8'
+                    }`}
+                  >
+                    <div className="text-sm font-medium mb-1">
+                      {message.role === 'user' ? 'Tú' : 'Arquitecto AWS'}
+                    </div>
+                    <div className="whitespace-pre-wrap">{message.content}</div>
                   </div>
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  
+                  {/* MCP Transparency (like Amazon Q CLI) */}
+                  {message.role === 'assistant' && message.mcpInfo && message.mcpInfo.mcpServicesUsed.length > 0 && (
+                    <div className="mr-8 mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="font-medium">MCP Services Used:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {message.mcpInfo.mcpServicesUsed.map((service: string, idx: number) => (
+                          <span key={idx} className="px-2 py-1 bg-blue-100 rounded text-xs">
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+                      {message.mcpInfo.transparency?.message && (
+                        <div className="mt-1 text-xs text-blue-600">
+                          {message.mcpInfo.transparency.message}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               
               {isLoading && (
-                <div className="bg-gray-100 mr-8 p-3 rounded-lg">
-                  <div className="text-sm font-medium mb-1">Arquitecto AWS</div>
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Pensando...</span>
+                <div>
+                  <div className="bg-gray-100 mr-8 p-3 rounded-lg">
+                    <div className="text-sm font-medium mb-1">Arquitecto AWS</div>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Analizando consulta y preparando servicios MCP...</span>
+                    </div>
+                  </div>
+                  <div className="mr-8 mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                      <span className="font-medium">Detecting needed MCP services...</span>
+                    </div>
                   </div>
                 </div>
               )}
