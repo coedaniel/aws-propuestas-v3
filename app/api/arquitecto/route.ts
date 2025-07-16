@@ -74,8 +74,8 @@ Responde de manera natural y profesional como un consultor AWS real.
     const modelResponse = await callBedrockModel(selectedModel, conversation);
 
     // Step 5: Determine if we need to call additional MCP services
-    const mcpResults = {};
-    const usedServices = [];
+    const mcpResults: any = {};
+    const usedServices: string[] = [];
 
     // Call diagram service if needed
     if (neededServices.includes('diagram') && shouldGenerateDiagram(modelResponse)) {
