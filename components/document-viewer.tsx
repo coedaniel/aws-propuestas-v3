@@ -95,14 +95,14 @@ export function DocumentViewer({ projectName, s3Folder }: DocumentViewerProps) {
     }
   }
 
-  const handleDownload = (document: DocumentFile) => {
+  const handleDownload = (doc: DocumentFile) => {
     // En producción, esto descargaría desde S3
-    console.log(`Descargando: ${document.name} desde ${document.url}`)
+    console.log(`Descargando: ${doc.name} desde ${doc.url}`)
     
     // Simular descarga
-    const link = document.createElement('a')
-    link.href = document.url
-    link.download = document.name
+    const link = window.document.createElement('a')
+    link.href = doc.url
+    link.download = doc.name
     link.click()
   }
 
