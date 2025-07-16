@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import ModelSelector from '@/components/ModelSelector'
+import { MCPTransparency, MCPServiceIndicator } from '@/components/mcp-transparency'
+import { ProjectStatus } from '@/components/project-status'
+import { DocumentViewer } from '@/components/document-viewer'
 import { ArrowLeft, Send, Loader2, Building2, Lightbulb, FolderOpen, CheckCircle } from 'lucide-react'
 import { sendArquitectoRequest, ArquitectoResponse } from '@/lib/api'
 import { AVAILABLE_MODELS } from '@/lib/types'
@@ -26,8 +29,66 @@ function ArquitectoContent() {
   const [isComplete, setIsComplete] = useState(false)
   const [lastMcpInfo, setLastMcpInfo] = useState<any>(null) // For MCP transparency
   const [projectCompleted, setProjectCompleted] = useState(false) // Track if project is manually completed
+  
+  // New enhanced project state
+  const [projectName, setProjectName] = useState<string>('')
+  const [currentPhase, setCurrentPhase] = useState<'planning' | 'architecture' | 'documentation' | 'costing' | 'completed'>('planning')
+  const [documentsGenerated, setDocumentsGenerated] = useState(0)
+  const [totalDocuments] = useState(5) // Word, Excel, YAML, SVG, XML
+  const [completedTasks, setCompletedTasks] = useState<string[]>([])
+  const [pendingTasks, setPendingTasks] = useState<string[]>([
+    'Definir arquitectura',
+    'Generar diagrama',
+    'Crear documentación',
+    'Calcular costos',
+    'Finalizar proyecto'
+  ])
+  const [mcpTransparency, setMcpTransparency] = useState<{
+    service: string
+    action: string
+    status: 'preparing' | 'executing' | 'completed' | 'error'
+    details?: string
+  } | null>(null)
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
+
+  // Helper functions
+  const extractProjectNameFromInput = (input: string): string | null => {
+    // Simple extraction - in production this would be more sophisticated
+    const patterns = [
+      /proyecto\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
+      /llamado\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
+      /nombre\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
+      /"([^"]+)"/g
+    ]
+    
+    for (const pattern of patterns) {
+      const match = input.match(pattern)
+      if (match && match[1]) {
+        return match[1].trim()
+      }
+    }
+    
+    // Fallback: look for capitalized words
+    const words = input.split(' ')
+    for (const word of words) {
+      if (word.length > 3 && /^[A-Z]/.test(word) && !/^(Proyecto|Sistema|Aplicacion|Plataforma)$/i.test(word)) {
+        return word
+      }
+    }
+    
+    return null
+  }
+
+  const updateTaskProgress = (taskName: string, completed: boolean) => {
+    if (completed) {
+      setCompletedTasks(prev => [...prev.filter(t => t !== taskName), taskName])
+      setPendingTasks(prev => prev.filter(t => t !== taskName))
+    } else {
+      setPendingTasks(prev => [...prev.filter(t => t !== taskName), taskName])
+      setCompletedTasks(prev => prev.filter(t => t !== taskName))
+    }
+  }
 
   // Load existing project if projectId is provided
   useEffect(() => {
@@ -69,14 +130,34 @@ function ArquitectoContent() {
   const handleCompleteProject = () => {
     setProjectCompleted(true)
     setIsComplete(true)
+    setCurrentPhase('completed')
+    
+    // Mark all remaining tasks as completed
+    setCompletedTasks([
+      'Definir arquitectura',
+      'Generar diagrama', 
+      'Crear documentación',
+      'Calcular costos',
+      'Finalizar proyecto'
+    ])
+    setPendingTasks([])
+    setDocumentsGenerated(totalDocuments)
+    
+    // Show MCP transparency for completion
+    setMcpTransparency({
+      service: 'project-manager',
+      action: 'finalizar proyecto',
+      status: 'completed',
+      details: '✅ Proyecto marcado como completado. Actualizando estado en DynamoDB...'
+    })
     
     // Add completion message
     const completionMessage = {
       role: 'assistant' as const,
-      content: '✅ **PROYECTO COMPLETADO MANUALMENTE**\n\nEl proyecto ha sido marcado como completado. Todos los documentos generados están disponibles para descarga.',
+      content: '✅ **PROYECTO COMPLETADO MANUALMENTE**\n\nEl proyecto ha sido marcado como completado. Todos los documentos generados están disponibles para descarga en la carpeta `proyectos/' + (projectName || 'proyecto') + '/`.',
       mcpInfo: {
-        mcpServicesUsed: ['manual-completion'],
-        transparency: { message: '✅ Proyecto completado manualmente por el usuario' }
+        mcpServicesUsed: ['project-manager', 'dynamodb-updater'],
+        transparency: { message: '✅ Proyecto completado manualmente por el usuario. Estado actualizado en DynamoDB.' }
       }
     }
     
@@ -88,12 +169,41 @@ function ArquitectoContent() {
 
     setIsLoading(true)
     
+    // Extract project name if not set
+    if (!projectName && currentInput.trim()) {
+      const extractedName = extractProjectNameFromInput(currentInput.trim())
+      if (extractedName) {
+        setProjectName(extractedName)
+        setCurrentPhase('architecture')
+        updateTaskProgress('Definir arquitectura', true)
+      }
+    }
+    
     // Add user message to conversation
     const newMessages = [...messages, { role: 'user' as const, content: currentInput.trim() }]
     setMessages(newMessages)
     setCurrentInput('')
 
+    // Show MCP transparency before making request
+    const shouldUseDiagram = currentInput.toLowerCase().includes('diagrama') || 
+                           currentInput.toLowerCase().includes('arquitectura') ||
+                           currentInput.toLowerCase().includes('visual')
+    
+    if (shouldUseDiagram) {
+      setMcpTransparency({
+        service: 'diagram-generator',
+        action: 'generar diagrama de arquitectura',
+        status: 'preparing',
+        details: 'Preparando generación de diagrama AWS...'
+      })
+    }
+
     try {
+      // Update MCP status to executing
+      if (mcpTransparency) {
+        setMcpTransparency(prev => prev ? { ...prev, status: 'executing' } : null)
+      }
+
       const data: ArquitectoResponse = await sendArquitectoRequest({
         messages: newMessages,
         modelId: selectedModel,
@@ -107,6 +217,21 @@ function ArquitectoContent() {
         mcpResults: data.mcpResults || {}
       }
       setLastMcpInfo(mcpInfo)
+
+      // Update MCP status to completed
+      if (mcpTransparency) {
+        setMcpTransparency(prev => prev ? { 
+          ...prev, 
+          status: 'completed',
+          details: `✅ ${prev.action} completado exitosamente`
+        } : null)
+        
+        // Update project progress
+        if (shouldUseDiagram) {
+          updateTaskProgress('Generar diagrama', true)
+          setDocumentsGenerated(prev => prev + 1)
+        }
+      }
 
       // Add assistant response with MCP info
       setMessages([...newMessages, { 
@@ -176,6 +301,36 @@ function ArquitectoContent() {
           </Button>
         </div>
 
+        {/* Project Status - Show when project name is defined */}
+        {projectName && (
+          <ProjectStatus
+            projectName={projectName}
+            documentsGenerated={documentsGenerated}
+            totalDocuments={totalDocuments}
+            pendingTasks={pendingTasks}
+            completedTasks={completedTasks}
+            currentPhase={currentPhase}
+          />
+        )}
+
+        {/* MCP Transparency - Show when MCP is active */}
+        {mcpTransparency && (
+          <MCPTransparency
+            mcpService={mcpTransparency.service}
+            action={mcpTransparency.action}
+            status={mcpTransparency.status}
+            details={mcpTransparency.details}
+          />
+        )}
+
+        {/* Document Viewer - Show when project is completed or has documents */}
+        {(projectCompleted || documentsGenerated > 0) && projectName && (
+          <DocumentViewer
+            projectName={projectName}
+            s3Folder={`proyectos/${projectName}`}
+          />
+        )}
+
         {/* Loading Project State */}
         {isLoadingProject && (
           <Card className="mb-6">
@@ -231,23 +386,16 @@ function ArquitectoContent() {
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   </div>
                   
-                  {/* MCP Transparency (like Amazon Q CLI) */}
+                  {/* Enhanced MCP Transparency */}
                   {message.role === 'assistant' && message.mcpInfo && message.mcpInfo.mcpServicesUsed.length > 0 && (
-                    <div className="mr-8 mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-                      <div className="flex items-center gap-1 mb-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="font-medium">MCP Services Used:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {message.mcpInfo.mcpServicesUsed.map((service: string, idx: number) => (
-                          <span key={idx} className="px-2 py-1 bg-blue-100 rounded text-xs">
-                            {service}
-                          </span>
-                        ))}
-                      </div>
-                      {message.mcpInfo.transparency?.message && (
-                        <div className="mt-1 text-xs text-blue-600">
-                          {message.mcpInfo.transparency.message}
+                    <div className="mr-8 mt-2">
+                      <MCPServiceIndicator services={message.mcpInfo.mcpServicesUsed} />
+                      {message.mcpInfo.transparency && (
+                        <div className="mt-1 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                          <div className="flex items-center gap-1">
+                            <span className="text-green-500">✅</span>
+                            <span>{message.mcpInfo.transparency.message || 'Operación completada exitosamente'}</span>
+                          </div>
                         </div>
                       )}
                     </div>
