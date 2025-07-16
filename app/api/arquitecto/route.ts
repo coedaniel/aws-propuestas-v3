@@ -73,20 +73,57 @@ Responde de manera natural y profesional como un consultor AWS real.
 
     const modelResponse = await callBedrockModel(selectedModel, conversation);
 
-    // Step 5: Determine if we need to call additional MCP services
+    // Step 5: Actually call the detected MCP services
     const mcpResults: any = {};
-    const usedServices: string[] = [];
+    const usedServices: string[] = ['core']; // Core is always used
 
-    // Call diagram service if needed
-    if (neededServices.includes('diagram') && shouldGenerateDiagram(modelResponse)) {
+    // Call AWS Documentation service for better responses
+    if (neededServices.includes('awsdocs')) {
+      console.log('📚 Calling AWS DOCS MCP service...');
+      usedServices.push('awsdocs');
+      try {
+        const keyTerms = extractKeyTermsFromMessage(message);
+        const docsResult = await callMCPService('awsdocs', {
+          action: 'search',
+          query: keyTerms,
+          limit: 5
+        });
+        mcpResults.awsdocs = docsResult;
+      } catch (error) {
+        console.error('Error calling AWS docs MCP:', error);
+      }
+    }
+
+    // Call pricing service for cost estimates
+    if (neededServices.includes('pricing')) {
+      console.log('💰 Calling PRICING MCP service...');
+      usedServices.push('pricing');
+      try {
+        const services = extractServicesFromResponse(modelResponse);
+        const pricingResult = await callMCPService('pricing', {
+          action: 'estimate',
+          services: services,
+          region: 'us-east-1',
+          usage: 'standard'
+        });
+        mcpResults.pricing = pricingResult;
+      } catch (error) {
+        console.error('Error calling pricing MCP:', error);
+      }
+    }
+
+    // Call diagram service if architecture is mentioned
+    if (neededServices.includes('diagram') || shouldGenerateDiagram(modelResponse)) {
       console.log('📊 Calling DIAGRAM MCP service...');
       usedServices.push('diagram');
       try {
+        const services = extractServicesFromResponse(modelResponse);
         const diagramResult = await callMCPService('diagram', {
           action: 'generate',
           type: 'aws-architecture',
           description: extractDescriptionFromResponse(modelResponse),
-          services: extractServicesFromResponse(modelResponse)
+          services: services,
+          title: `Arquitectura - ${extractProjectName(message) || 'Proyecto AWS'}`
         });
         mcpResults.diagram = diagramResult;
       } catch (error) {
@@ -94,10 +131,28 @@ Responde de manera natural y profesional como un consultor AWS real.
       }
     }
 
-    // Call documentation service if needed
-    if (neededServices.includes('awsdocs')) {
-      console.log('📚 Calling AWS DOCS MCP service...');
-      usedServices.push('awsdocs');
+    // Call CloudFormation service if infrastructure code is needed
+    if (neededServices.includes('cfn') || shouldGenerateCloudFormation(modelResponse)) {
+      console.log('🏗️ Calling CloudFormation MCP service...');
+      usedServices.push('cfn');
+      try {
+        const services = extractServicesFromResponse(modelResponse);
+        const cfnResult = await callMCPService('cfn', {
+          action: 'generate',
+          services: services,
+          projectName: extractProjectName(message) || 'aws-project',
+          description: extractDescriptionFromResponse(modelResponse)
+        });
+        mcpResults.cloudformation = cfnResult;
+      } catch (error) {
+        console.error('Error calling CloudFormation MCP:', error);
+      }
+    }
+
+    // Call document generation service for deliverables
+    if (neededServices.includes('customdoc') || shouldGenerateDocument(modelResponse)) {
+      console.log('📄 Calling CUSTOM DOC MCP service...');
+      usedServices.push('customdoc');
       try {
         const docsResult = await callMCPService('awsdocs', {
           action: 'search',
@@ -147,12 +202,18 @@ Responde de manera natural y profesional como un consultor AWS real.
       console.log('📄 Calling CUSTOM DOC MCP service...');
       usedServices.push('customdoc');
       try {
+      try {
+        const projectName = extractProjectName(message) || 'Proyecto AWS';
         const docResult = await callMCPService('customdoc', {
           action: 'generate',
-          type: 'proposal',
+          type: 'comprehensive-proposal',
+          projectName: projectName,
           content: modelResponse,
-          format: 'docx',
-          projectData: projectData
+          format: 'multiple', // Generate multiple formats
+          includeCalculator: mcpResults.pricing ? true : false,
+          includeDiagram: mcpResults.diagram ? true : false,
+          includeCloudFormation: mcpResults.cloudformation ? true : false,
+          encoding: 'utf-8' // Explicitly set UTF-8 encoding
         });
         mcpResults.document = docResult;
       } catch (error) {
@@ -160,18 +221,34 @@ Responde de manera natural y profesional como un consultor AWS real.
       }
     }
 
-    // Step 6: Return response with MCP transparency (like Amazon Q CLI)
+    // Step 6: Enhanced response with comprehensive MCP transparency
+    const finalResponse = ensureUTF8(modelResponse);
+    
     return NextResponse.json({
-      response: modelResponse,
+      response: finalResponse,
       selectedModel,
-      mcpServicesUsed: usedServices, // This shows which MCP services were used
+      mode: 'arquitecto',
+      projectInfo: {
+        name: extractProjectName(message) || 'Proyecto AWS',
+        description: extractDescriptionFromResponse(finalResponse),
+        services: extractServicesFromResponse(finalResponse),
+        estimatedCost: mcpResults.pricing?.totalCost || null
+      },
+      currentStep: 1,
+      isComplete: finalResponse.toLowerCase().includes('completad') || finalResponse.toLowerCase().includes('finaliz'),
+      documentsGenerated: Object.keys(mcpResults).length > 1, // More than just core
+      s3Folder: null, // Will be set by document generation
+      mcpServicesUsed: usedServices,
       mcpResults: mcpResults,
       promptUnderstanding: promptUnderstanding,
       transparency: {
-        message: usedServices.length > 0 
-          ? `Used MCP services: ${usedServices.join(', ')}` 
-          : 'Responded using model knowledge only',
-        services: usedServices
+        message: usedServices.length > 1 
+          ? `✅ Servicios MCP utilizados: ${usedServices.filter(s => s !== 'core').join(', ')}. ${Object.keys(mcpResults).length - 1} documentos generados.`
+          : '🤖 Respuesta generada solo con conocimiento del modelo',
+        services: usedServices,
+        documentsGenerated: Object.keys(mcpResults).filter(k => k !== 'core').length,
+        servicesDetected: neededServices,
+        actuallyUsed: usedServices.length > 1
       },
       usage: {
         inputTokens: 0,
@@ -198,20 +275,35 @@ async function callMCPService(service: string, payload: any) {
   }
 
   console.log(`🔧 Calling MCP service: ${service} at ${serviceUrl}`);
+  console.log(`📤 Payload:`, JSON.stringify(payload, null, 2));
   
   const response = await fetch(serviceUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
+      'Accept': 'application/json',
+      'User-Agent': 'AWS-Propuestas-v3-MCP-Client'
     },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ MCP service ${service} failed:`, response.status, errorText);
     throw new Error(`MCP service ${service} failed: ${response.statusText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log(`📥 MCP service ${service} response:`, result);
+  
+  // Ensure UTF-8 encoding in response
+  if (typeof result === 'string') {
+    return ensureUTF8(result);
+  } else if (result && typeof result === 'object') {
+    return JSON.parse(ensureUTF8(JSON.stringify(result)));
+  }
+  
+  return result;
 }
 
 // Detect which MCP services are needed based on user message
@@ -324,7 +416,61 @@ function extractDescriptionFromResponse(response: string): string {
   return sentences.join('.').trim();
 }
 
-// Extract key terms from user message for documentation search
+// Extract project name from user message
+function extractProjectName(message: string): string | null {
+  // Look for patterns like "proyecto X", "sistema X", "aplicación X", etc.
+  const patterns = [
+    /proyecto\s+([^,.\n]+)/i,
+    /sistema\s+([^,.\n]+)/i,
+    /aplicaci[oó]n\s+([^,.\n]+)/i,
+    /plataforma\s+([^,.\n]+)/i,
+    /portal\s+([^,.\n]+)/i,
+    /"([^"]+)"/g, // Text in quotes
+    /llamado\s+([^,.\n]+)/i,
+    /nombre\s+([^,.\n]+)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      const projectName = match[1].trim();
+      // Filter out common words that aren't project names
+      if (projectName.length > 2 && 
+          !['que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el'].includes(projectName.toLowerCase())) {
+        return projectName;
+      }
+    }
+  }
+
+  return null;
+}
+
+// Improve UTF-8 encoding handling
+function ensureUTF8(text: string): string {
+  // Fix common encoding issues
+  return text
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã±/g, 'ñ')
+    .replace(/Ã/g, 'Á')
+    .replace(/Ã‰/g, 'É')
+    .replace(/Ã/g, 'Í')
+    .replace(/Ã"/g, 'Ó')
+    .replace(/Ãš/g, 'Ú')
+    .replace(/Ã'/g, 'Ñ');
+}
+function extractKeyTermsFromMessage(message: string): string {
+  const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'how', 'what', 'when', 'where', 'why'];
+  const words = message.toLowerCase().split(/\s+/);
+  const keyWords = words.filter(word => 
+    word.length > 3 && 
+    !commonWords.includes(word) &&
+    (word.includes('aws') || word.includes('ec2') || word.includes('s3') || word.includes('lambda') || word.includes('rds'))
+  );
+  
 function extractKeyTermsFromMessage(message: string): string {
   const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'how', 'what', 'when', 'where', 'why'];
   const words = message.toLowerCase().split(/\s+/);
