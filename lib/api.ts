@@ -40,10 +40,27 @@ export interface ArquitectoRequest {
 export interface ArquitectoResponse {
   response: string
   modelId: string
+  mode: string
   projectId?: string
   currentStep?: number
   isComplete?: boolean
-  usage?: any
+  documentsGenerated?: boolean
+  s3Folder?: string
+  usage?: {
+    inputTokens?: number
+    outputTokens?: number
+    totalTokens?: number
+  }
+  // MCP Integration properties
+  mcpServicesUsed?: string[]
+  mcpResults?: any
+  transparency?: {
+    message: string
+    services: string[]
+  }
+  promptUnderstanding?: any
+  // Project info for compatibility
+  projectInfo?: any
 }
 
 export interface ProjectRequest {
@@ -128,7 +145,17 @@ export async function sendArquitectoRequest(request: ArquitectoRequest): Promise
       throw new Error(`Arquitecto API error: ${response.status}`)
     }
 
-    return response.json()
+    const data = await response.json()
+    
+    // Ensure legacy API response has required fields
+    return {
+      ...data,
+      mode: data.mode || 'arquitecto',
+      mcpServicesUsed: data.mcpServicesUsed || [],
+      mcpResults: data.mcpResults || {},
+      transparency: data.transparency || null,
+      promptUnderstanding: data.promptUnderstanding || null
+    }
   } catch (error) {
     console.warn('Legacy Arquitecto API failed, trying MCP-enhanced version:', error)
     
@@ -155,11 +182,20 @@ export async function sendArquitectoRequest(request: ArquitectoRequest): Promise
     // Convert to legacy format
     return {
       response: data.response,
-      modelId: data.selectedModel || request.modelId || 'amazon.nova-pro-v1:0',
+      modelId: data.selectedModel || request.modelId || request.selected_model || 'amazon.nova-pro-v1:0',
+      mode: 'arquitecto',
       projectId: request.projectId,
       currentStep: 0,
       isComplete: false,
-      usage: data.usage
+      usage: data.usage,
+      // MCP properties from new API
+      mcpServicesUsed: data.mcpServicesUsed || [],
+      mcpResults: data.mcpResults || {},
+      transparency: data.transparency || null,
+      promptUnderstanding: data.promptUnderstanding || null,
+      projectInfo: data.projectInfo || null,
+      documentsGenerated: data.documentsGenerated || false,
+      s3Folder: data.s3Folder || null
     }
   }
 }

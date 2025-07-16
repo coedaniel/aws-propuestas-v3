@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import ModelSelector from '@/components/ModelSelector'
 import { ArrowLeft, Send, Loader2, Building2, Lightbulb, FolderOpen } from 'lucide-react'
-import { sendArquitectoRequest } from '@/lib/api'
-import { AVAILABLE_MODELS, ArquitectoResponse } from '@/lib/types'
+import { sendArquitectoRequest, ArquitectoResponse } from '@/lib/api'
+import { AVAILABLE_MODELS } from '@/lib/types'
 
 function ArquitectoContent() {
   const router = useRouter()

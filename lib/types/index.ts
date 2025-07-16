@@ -156,22 +156,6 @@ export interface ChatResponse {
   sessionId?: string
 }
 
-export interface ArquitectoResponse extends ChatResponse {
-  projectInfo?: Partial<ProjectInfo>
-  currentStep?: number
-  isComplete?: boolean
-  documentsGenerated?: boolean
-  s3Folder?: string
-  // MCP Integration properties
-  mcpServicesUsed?: string[]
-  mcpResults?: any
-  transparency?: {
-    message: string
-    services: string[]
-  }
-  promptUnderstanding?: any
-}
-
 export interface ProjectsResponse {
   projects: ProjectInfo[]
   total: number
