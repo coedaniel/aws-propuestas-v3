@@ -154,55 +154,6 @@ Responde de manera natural y profesional como un consultor AWS real.
       console.log('📄 Calling CUSTOM DOC MCP service...');
       usedServices.push('customdoc');
       try {
-        const docsResult = await callMCPService('awsdocs', {
-          action: 'search',
-          query: extractKeyTermsFromMessage(message),
-          limit: 5
-        });
-        mcpResults.documentation = docsResult;
-      } catch (error) {
-        console.error('Error calling docs MCP:', error);
-      }
-    }
-
-    // Call pricing service if needed
-    if (neededServices.includes('pricing')) {
-      console.log('💰 Calling PRICING MCP service...');
-      usedServices.push('pricing');
-      try {
-        const pricingResult = await callMCPService('pricing', {
-          action: 'calculate',
-          services: extractServicesFromResponse(modelResponse),
-          region: 'us-east-1'
-        });
-        mcpResults.pricing = pricingResult;
-      } catch (error) {
-        console.error('Error calling pricing MCP:', error);
-      }
-    }
-
-    // Call CloudFormation service if needed
-    if (neededServices.includes('cfn') && shouldGenerateCloudFormation(modelResponse)) {
-      console.log('🏗️ Calling CFN MCP service...');
-      usedServices.push('cfn');
-      try {
-        const cfnResult = await callMCPService('cfn', {
-          action: 'generate',
-          services: extractServicesFromResponse(modelResponse),
-          projectName: projectData?.name || 'aws-project'
-        });
-        mcpResults.cloudformation = cfnResult;
-      } catch (error) {
-        console.error('Error calling CFN MCP:', error);
-      }
-    }
-
-    // Call document generation service if needed
-    if (neededServices.includes('customdoc') && shouldGenerateDocument(modelResponse)) {
-      console.log('📄 Calling CUSTOM DOC MCP service...');
-      usedServices.push('customdoc');
-      try {
-      try {
         const projectName = extractProjectName(message) || 'Proyecto AWS';
         const docResult = await callMCPService('customdoc', {
           action: 'generate',
@@ -462,15 +413,8 @@ function ensureUTF8(text: string): string {
     .replace(/Ãš/g, 'Ú')
     .replace(/Ã'/g, 'Ñ');
 }
-function extractKeyTermsFromMessage(message: string): string {
-  const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'how', 'what', 'when', 'where', 'why'];
-  const words = message.toLowerCase().split(/\s+/);
-  const keyWords = words.filter(word => 
-    word.length > 3 && 
-    !commonWords.includes(word) &&
-    (word.includes('aws') || word.includes('ec2') || word.includes('s3') || word.includes('lambda') || word.includes('rds'))
-  );
-  
+
+// Extract key terms from user message for documentation search
 function extractKeyTermsFromMessage(message: string): string {
   const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'how', 'what', 'when', 'where', 'why'];
   const words = message.toLowerCase().split(/\s+/);
