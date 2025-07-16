@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import ModelSelector from '@/components/ModelSelector'
 import { ArrowLeft, Send, Loader2, Building2, Lightbulb, FolderOpen } from 'lucide-react'
 import { sendArquitectoRequest } from '@/lib/api'
-import { AVAILABLE_MODELS } from '@/lib/types'
+import { AVAILABLE_MODELS, ArquitectoResponse } from '@/lib/types'
 
 function ArquitectoContent() {
   const router = useRouter()
@@ -76,7 +76,7 @@ function ArquitectoContent() {
     setCurrentInput('')
 
     try {
-      const data = await sendArquitectoRequest({
+      const data: ArquitectoResponse = await sendArquitectoRequest({
         messages: newMessages,
         modelId: selectedModel,
         projectId: projectId || undefined
