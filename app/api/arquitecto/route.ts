@@ -33,38 +33,35 @@ export async function POST(request: NextRequest) {
       projectData 
     } = body;
 
-    // Step 1: Use CORE MCP for prompt understanding (like Amazon Q CLI)
-    console.log('🧠 Using CORE MCP for prompt understanding...');
-    const promptUnderstanding = await callMCPService('core', {
-      action: 'understand',
-      message: message,
-      context: conversationHistory
-    });
-
-    // Step 2: Detect which MCP services are needed
+    // Step 1: TEMPORARILY DISABLE MCP prompt understanding to fix basic functionality
+    console.log('🧠 Basic prompt processing (MCP temporarily disabled)...');
+    const promptUnderstanding = null; // Disabled for now
+    
+    // Step 2: Detect which services are mentioned (basic detection)
     const neededServices = detectNeededMCPServices(message);
-    console.log('🔍 Detected MCP services needed:', neededServices);
+    console.log('🔍 Detected services mentioned:', neededServices);
 
-    // Step 3: Enhanced system prompt with MCP awareness
+    // Step 3: Simplified system prompt focused on project extraction
     const systemPrompt = `
-Eres un arquitecto de soluciones AWS experto con acceso a servicios MCP especializados.
+Eres un arquitecto de soluciones AWS experto.
 
-SERVICIOS MCP DISPONIBLES:
-${neededServices.map(service => `- ${service.toUpperCase()}: ${getMCPDescription(service)}`).join('\n')}
+INSTRUCCIONES IMPORTANTES:
+1. Si el usuario menciona un nombre de proyecto específico (como "sukarne", "mi-app", etc.), SIEMPRE úsalo exactamente como lo menciona
+2. Detecta correctamente los servicios AWS mencionados (EC2, RDS, VPC, Load Balancer, etc.)
+3. Proporciona respuestas técnicas detalladas sobre arquitectura AWS
+4. Si mencionan "sistema de tres capas", incluye: presentación, lógica de negocio, y datos
+5. Sé específico sobre la configuración de cada servicio AWS
 
-PROMPT UNDERSTANDING RESULT:
-${JSON.stringify(promptUnderstanding, null, 2)}
+FORMATO DE RESPUESTA:
+- Usa el nombre exacto del proyecto que mencione el usuario
+- Lista los servicios AWS detectados
+- Proporciona detalles técnicos específicos
+- Incluye consideraciones de seguridad y mejores prácticas
 
-INSTRUCCIONES:
-1. Analiza la consulta del usuario usando el prompt understanding
-2. Decide qué servicios MCP necesitas usar
-3. Proporciona respuestas completas y profesionales
-4. Genera entregables cuando sea apropiado (diagramas, documentos, templates)
-
-Responde de manera natural y profesional como un consultor AWS real.
+Responde de manera profesional y técnica como un consultor AWS experimentado.
 `;
 
-    // Step 4: Call Bedrock model
+    // Step 4: Call Bedrock model with simplified conversation
     const conversation = [
       { role: 'system', content: systemPrompt },
       ...conversationHistory,
@@ -73,10 +70,12 @@ Responde de manera natural y profesional como un consultor AWS real.
 
     const modelResponse = await callBedrockModel(selectedModel, conversation);
 
-    // Step 5: Actually call the detected MCP services
+    // Step 5: TEMPORARILY DISABLE MCP calls to fix basic functionality
     const mcpResults: any = {};
-    const usedServices: string[] = ['core']; // Core is always used
-
+    const usedServices: string[] = ['core']; // Only core for now
+    
+    // TODO: Re-enable MCP calls after fixing basic functionality
+    /*
     // Call AWS Documentation service for better responses
     if (neededServices.includes('awsdocs')) {
       console.log('📚 Calling AWS DOCS MCP service...');
@@ -93,113 +92,35 @@ Responde de manera natural y profesional como un consultor AWS real.
         console.error('Error calling AWS docs MCP:', error);
       }
     }
+    */
 
-    // Call pricing service for cost estimates
-    if (neededServices.includes('pricing')) {
-      console.log('💰 Calling PRICING MCP service...');
-      usedServices.push('pricing');
-      try {
-        const services = extractServicesFromResponse(modelResponse);
-        const pricingResult = await callMCPService('pricing', {
-          action: 'estimate',
-          services: services,
-          region: 'us-east-1',
-          usage: 'standard'
-        });
-        mcpResults.pricing = pricingResult;
-      } catch (error) {
-        console.error('Error calling pricing MCP:', error);
-      }
-    }
-
-    // Call diagram service if architecture is mentioned
-    if (neededServices.includes('diagram') || shouldGenerateDiagram(modelResponse)) {
-      console.log('📊 Calling DIAGRAM MCP service...');
-      usedServices.push('diagram');
-      try {
-        const services = extractServicesFromResponse(modelResponse);
-        const diagramResult = await callMCPService('diagram', {
-          action: 'generate',
-          type: 'aws-architecture',
-          description: extractDescriptionFromResponse(modelResponse),
-          services: services,
-          title: `Arquitectura - ${extractProjectName(message) || 'Proyecto AWS'}`
-        });
-        mcpResults.diagram = diagramResult;
-      } catch (error) {
-        console.error('Error calling diagram MCP:', error);
-      }
-    }
-
-    // Call CloudFormation service if infrastructure code is needed
-    if (neededServices.includes('cfn') || shouldGenerateCloudFormation(modelResponse)) {
-      console.log('🏗️ Calling CloudFormation MCP service...');
-      usedServices.push('cfn');
-      try {
-        const services = extractServicesFromResponse(modelResponse);
-        const cfnResult = await callMCPService('cfn', {
-          action: 'generate',
-          services: services,
-          projectName: extractProjectName(message) || 'aws-project',
-          description: extractDescriptionFromResponse(modelResponse)
-        });
-        mcpResults.cloudformation = cfnResult;
-      } catch (error) {
-        console.error('Error calling CloudFormation MCP:', error);
-      }
-    }
-
-    // Call document generation service for deliverables
-    if (neededServices.includes('customdoc') || shouldGenerateDocument(modelResponse)) {
-      console.log('📄 Calling CUSTOM DOC MCP service...');
-      usedServices.push('customdoc');
-      try {
-        const projectName = extractProjectName(message) || 'Proyecto AWS';
-        const docResult = await callMCPService('customdoc', {
-          action: 'generate',
-          type: 'comprehensive-proposal',
-          projectName: projectName,
-          content: modelResponse,
-          format: 'multiple', // Generate multiple formats
-          includeCalculator: mcpResults.pricing ? true : false,
-          includeDiagram: mcpResults.diagram ? true : false,
-          includeCloudFormation: mcpResults.cloudformation ? true : false,
-          encoding: 'utf-8' // Explicitly set UTF-8 encoding
-        });
-        mcpResults.document = docResult;
-      } catch (error) {
-        console.error('Error calling document MCP:', error);
-      }
-    }
-
-    // Step 6: Enhanced response with comprehensive MCP transparency
+    // Step 6: Simplified response - DISABLE MCP calls temporarily to fix basic functionality
     const finalResponse = ensureUTF8(modelResponse);
+    const extractedProjectName = extractProjectName(message);
     
     return NextResponse.json({
       response: finalResponse,
       selectedModel,
       mode: 'arquitecto',
       projectInfo: {
-        name: extractProjectName(message) || 'Proyecto AWS',
+        name: extractedProjectName || 'Proyecto AWS',
         description: extractDescriptionFromResponse(finalResponse),
         services: extractServicesFromResponse(finalResponse),
-        estimatedCost: mcpResults.pricing?.totalCost || null
+        estimatedCost: null
       },
       currentStep: 1,
       isComplete: finalResponse.toLowerCase().includes('completad') || finalResponse.toLowerCase().includes('finaliz'),
-      documentsGenerated: Object.keys(mcpResults).length > 1, // More than just core
-      s3Folder: null, // Will be set by document generation
-      mcpServicesUsed: usedServices,
-      mcpResults: mcpResults,
-      promptUnderstanding: promptUnderstanding,
+      documentsGenerated: false, // Temporarily disabled
+      s3Folder: extractedProjectName || null,
+      mcpServicesUsed: ['core'], // Simplified
+      mcpResults: {},
+      promptUnderstanding: null,
       transparency: {
-        message: usedServices.length > 1 
-          ? `✅ Servicios MCP utilizados: ${usedServices.filter(s => s !== 'core').join(', ')}. ${Object.keys(mcpResults).length - 1} documentos generados.`
-          : '🤖 Respuesta generada solo con conocimiento del modelo',
-        services: usedServices,
-        documentsGenerated: Object.keys(mcpResults).filter(k => k !== 'core').length,
-        servicesDetected: neededServices,
-        actuallyUsed: usedServices.length > 1
+        message: '🤖 Respuesta generada con modelo Bedrock',
+        services: ['core'],
+        documentsGenerated: 0,
+        servicesDetected: [],
+        actuallyUsed: false
       },
       usage: {
         inputTokens: 0,
@@ -371,24 +292,26 @@ function extractDescriptionFromResponse(response: string): string {
 function extractProjectName(message: string): string | null {
   // Look for patterns like "proyecto X", "sistema X", "aplicación X", etc.
   const patterns = [
-    /proyecto\s+([^,.\n]+)/i,
-    /sistema\s+([^,.\n]+)/i,
-    /aplicaci[oó]n\s+([^,.\n]+)/i,
-    /plataforma\s+([^,.\n]+)/i,
-    /portal\s+([^,.\n]+)/i,
+    /llamado\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
+    /nombre\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
+    /proyecto\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
+    /sistema\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
+    /aplicaci[oó]n\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
+    /plataforma\s+([a-zA-Z0-9áéíóúñü\s]+)/i,
     /"([^"]+)"/g, // Text in quotes
-    /llamado\s+([^,.\n]+)/i,
-    /nombre\s+([^,.\n]+)/i
   ];
 
   for (const pattern of patterns) {
     const match = message.match(pattern);
     if (match && match[1]) {
       const projectName = match[1].trim();
-      // Filter out common words that aren't project names
-      if (projectName.length > 2 && 
-          !['que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el'].includes(projectName.toLowerCase())) {
-        return projectName;
+      // Filter out common words and keep real project names
+      const excludeWords = ['que', 'como', 'para', 'con', 'por', 'una', 'uno', 'del', 'de', 'la', 'el', 'se', 'encuentra', 'proyecto', 'sistema'];
+      const words = projectName.toLowerCase().split(/\s+/);
+      const validWords = words.filter(word => !excludeWords.includes(word) && word.length > 2);
+      
+      if (validWords.length > 0) {
+        return validWords.join(' ');
       }
     }
   }
