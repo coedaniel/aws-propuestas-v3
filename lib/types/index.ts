@@ -162,6 +162,14 @@ export interface ArquitectoResponse extends ChatResponse {
   isComplete?: boolean
   documentsGenerated?: boolean
   s3Folder?: string
+  // MCP Integration properties
+  mcpServicesUsed?: string[]
+  mcpResults?: any
+  transparency?: {
+    message: string
+    services: string[]
+  }
+  promptUnderstanding?: any
 }
 
 export interface ProjectsResponse {
