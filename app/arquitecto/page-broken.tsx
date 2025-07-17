@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import ModelSelector from '@/components/ModelSelector'
@@ -23,7 +23,7 @@ export default function ArquitectoPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState<Message[]>([
+  const [localMessages, setLocalMessages] = useState<Message[]>([
     {
       id: generateId(),
       role: 'assistant',
@@ -31,9 +31,11 @@ export default function ArquitectoPage() {
       timestamp: new Date().toISOString()
     }
   ])
-  const [isLoading, setIsLoading] = useState(false)
+  const [localLoading, setLocalLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState('amazon.nova-pro-v1:0')
   const [mcpServices, setMcpServices] = useState<string[]>([])
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [generatedProject, setGeneratedProject] = useState<any>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -41,27 +43,10 @@ export default function ArquitectoPage() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
-
-  const detectMCPServices = (input: string): string[] => {
-    const services: string[] = []
-    const text = input.toLowerCase()
-    
-    if (text.includes('diagrama') || text.includes('arquitectura')) {
-      services.push('diagram')
-    }
-    if (text.includes('costo') || text.includes('precio')) {
-      services.push('pricing')
-    }
-    if (text.includes('documento') || text.includes('generar')) {
-      services.push('documents')
-    }
-    
-    return services
-  }
+  }, [localMessages])
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || localLoading) return
 
     const userMessage: Message = {
       id: generateId(),
@@ -70,17 +55,11 @@ export default function ArquitectoPage() {
       timestamp: new Date().toISOString()
     }
 
-    setMessages(prev => [...prev, userMessage])
-    const currentMessages = [...messages, userMessage]
+    setLocalMessages(prev => [...prev, userMessage])
+    const currentMessages = [...localMessages, userMessage]
     
     setInput('')
-    setIsLoading(true)
-
-    // Detectar MCP services
-    const detectedServices = detectMCPServices(input)
-    if (detectedServices.length > 0) {
-      setMcpServices(detectedServices)
-    }
+    setLocalLoading(true)
 
     try {
       const response = await sendArquitectoRequest({
@@ -99,36 +78,33 @@ export default function ArquitectoPage() {
         mcpServices: response.mcpServicesUsed || []
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setLocalMessages(prev => [...prev, assistantMessage])
       
-      // Solo mostrar modal si REALMENTE se generaron documentos
-      // Buscar palabras clave específicas que indiquen generación completa
-      const responseText = response.response.toLowerCase()
-      const hasGenerated = (responseText.includes('generado') && responseText.includes('documento')) ||
-                          responseText.includes('cloudformation') ||
-                          (responseText.includes('subir') && responseText.includes('s3')) ||
-                          response.documentsGenerated ||
-                          response.projectId
+      // Actualizar MCP services si los hay
+      if (response.mcpServicesUsed && response.mcpServicesUsed.length > 0) {
+        setMcpServices(response.mcpServicesUsed)
+      }
       
-      if (hasGenerated) {
+      // Modal solo si REALMENTE generó documentos
+      if (response.documentsGenerated && response.documentsGenerated.length > 0) {
         setGeneratedProject({
           projectId: response.projectId || generateId(),
           projectName: response.projectName || 'Proyecto AWS',
-          documentsGenerated: response.documentsGenerated || ['CloudFormation', 'Costos', 'Diagrama']
+          documentsGenerated: response.documentsGenerated
         })
         setShowSuccessModal(true)
       }
       
     } catch (error: any) {
       console.error('Error:', error)
-      setMessages(prev => [...prev, {
+      setLocalMessages(prev => [...prev, {
         id: generateId(),
         role: 'assistant',
         content: `Error: ${error.message}`,
         timestamp: new Date().toISOString()
       }])
     } finally {
-      setIsLoading(false)
+      setLocalLoading(false)
     }
   }
 
@@ -140,10 +116,10 @@ export default function ArquitectoPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Header - Fixed */}
-      <div className="border-b bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-3">
+    <div className="min-h-screen flex flex-col">
+      {/* Header - IGUAL QUE CHAT */}
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button variant="outline" size="sm" onClick={() => router.push('/')}>
@@ -155,29 +131,40 @@ export default function ArquitectoPage() {
             <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
           </div>
         </div>
-      </div>
+      </header>
 
       {/* MCP Indicator */}
       {mcpServices.length > 0 && (
-        <div className="px-4 py-2 bg-blue-50 border-b">
-          <div className="max-w-4xl mx-auto">
+        <div className="bg-blue-50 border-b px-4 py-2">
+          <div className="container mx-auto">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-blue-700">🔧 Usando MCP: {mcpServices.join(', ')}</span>
+              <span className="text-sm text-blue-700">
+                🔧 MCP Services: {mcpServices.join(', ')}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Messages - Scrollable */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-4 space-y-4">
-          {messages.map((message) => (
+      {/* Messages - IGUAL QUE CHAT */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="container mx-auto max-w-4xl space-y-4">
+          {localMessages.map((message) => (
             <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <Card className={`max-w-[85%] ${message.role === 'user' ? 'bg-blue-500 text-white' : 'bg-white shadow-sm'}`}>
+              <Card className={`max-w-[80%] ${
+                message.role === 'user' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-white border'
+              }`}>
                 <CardContent className="p-4">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
-                  <div className="text-xs opacity-70 mt-2">{formatDate(message.timestamp)}</div>
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="flex items-center justify-between mt-2 text-xs opacity-70">
+                    <span>{formatDate(message.timestamp)}</span>
+                    {message.mcpServices && message.mcpServices.length > 0 && (
+                      <span>MCP: {message.mcpServices.join(', ')}</span>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -186,24 +173,75 @@ export default function ArquitectoPage() {
         </div>
       </div>
 
-      {/* Input - Fixed Bottom */}
+      {/* Input - IGUAL QUE CHAT */}
       <div className="border-t bg-white p-4">
-        <div className="max-w-4xl mx-auto flex gap-3">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Responde las preguntas del arquitecto..."
-            className="flex-1 min-h-[60px] resize-none"
-            disabled={isLoading}
-          />
-          <Button onClick={sendMessage} disabled={!input.trim() || isLoading} size="lg">
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Responde las preguntas del arquitecto..."
+              className="flex-1 min-h-[60px] resize-none"
+              disabled={localLoading}
+            />
+            <Button
+              onClick={sendMessage}
+              disabled={!input.trim() || localLoading}
+              size="lg"
+            >
+              {localLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
 
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              ¡Proyecto Generado!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Se ha generado exitosamente el proyecto: <strong>{generatedProject?.projectName}</strong>
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Documentos generados:</p>
+              <ul className="text-sm space-y-1">
+                {generatedProject?.documentsGenerated?.map((doc: string, index: number) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-500" />
+                    {doc}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => router.push('/projects')}
+                className="flex-1"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Ver en Proyectos
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowSuccessModal(false)}
+              >
+                Continuar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
