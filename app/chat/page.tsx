@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ModelSelector from '@/components/ModelSelector'
+import { useChatStore } from '@/store/chatStore'
 import { Message, AVAILABLE_MODELS } from '@/lib/types'
 import { generateId, formatDate } from '@/lib/utils'
 import { 
@@ -24,9 +25,16 @@ export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState('amazon.nova-pro-v1:0')
+  
+  const {
+    messages,
+    isLoading,
+    selectedModel,
+    addMessage,
+    setLoading,
+    setSelectedModel,
+    clearCurrentSession
+  } = useChatStore()
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
@@ -48,9 +56,9 @@ export default function ChatPage() {
       timestamp: new Date().toISOString()
     }
 
-    setMessages(prev => [...prev, userMessage])
+    addMessage(userMessage)
     setInput('')
-    setIsLoading(true)
+    setLoading(true)
 
     try {
       // Llamada al endpoint específico de chat libre (solo AWS)
@@ -85,7 +93,7 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      addMessage(assistantMessage)
       
     } catch (error: any) {
       console.error('Error sending message:', error)
@@ -97,9 +105,9 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
       
-      setMessages(prev => [...prev, errorMessage])
+      addMessage(errorMessage)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -108,6 +116,10 @@ export default function ChatPage() {
       e.preventDefault()
       sendMessage()
     }
+  }
+
+  const clearChat = () => {
+    clearCurrentSession()
   }
 
   return (
