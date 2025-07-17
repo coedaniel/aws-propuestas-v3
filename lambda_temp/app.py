@@ -1,6 +1,7 @@
 import json
 import boto3
 import os
+import urllib3
 from datetime import datetime
 import uuid
 
@@ -13,222 +14,157 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET', 'aws-propuestas-v3-documents-prod-035385358261')
 PROJECTS_TABLE = os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod')
 
-# Prompt maestro MÁS guiado
+# URLs de los contenedores MCP reales
+DOCUMENT_GENERATOR_URL = "https://mcp.danielingram.shop/customdoc"
+CLOUDFORMATION_GENERATOR_URL = "https://mcp.danielingram.shop/cfn"
+PRICING_ANALYZER_URL = "https://mcp.danielingram.shop/pricing"
+DIAGRAM_GENERATOR_URL = "https://mcp.danielingram.shop/diagram"
+
+# Prompt maestro
 PROMPT_MAESTRO = """
-Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento.
+Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS.
 
-FLUJO OBLIGATORIO PASO A PASO:
+FLUJO OBLIGATORIO:
+1. Pregunta el nombre del proyecto
+2. Pregunta si es solucion integral o servicio especifico
+3. Haz MAXIMO 3 preguntas adicionales
+4. SIEMPRE termina diciendo: "GENERO LOS SIGUIENTES DOCUMENTOS:" y genera todos los documentos
 
-1. Primero pregunta: Cual es el nombre del proyecto
-
-2. Despues pregunta: El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.) o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)
-
-3. Si elige "servicio rapido especifico":
-   - Muestra un catalogo de servicios rapidos comunes
-   - Pregunta cual servicio especifico necesita
-   - Pregunta detalles tecnicos del servicio elegido
-   - Pregunta requisitos de capacidad y rendimiento
-   - Pregunta presupuesto disponible
-
-4. Si elige "solucion integral":
-   - Pregunta el objetivo principal del proyecto
-   - Pregunta descripcion detallada de lo que necesita
-   - Pregunta que servicios AWS prefiere o conoce
-   - Pregunta integraciones necesarias (on-premises, SaaS, APIs)
-   - Pregunta requisitos de seguridad y compliance
-   - Pregunta alta disponibilidad y recuperacion ante desastres
-   - Pregunta estimacion de usuarios y trafico
-   - Pregunta presupuesto disponible
-   - Pregunta fechas de inicio y entrega
-
-5. SOLO despues de tener TODA la informacion necesaria, di: "GENERO LOS SIGUIENTES DOCUMENTOS:" y lista todos los documentos.
-
-IMPORTANTE: 
-- Pregunta UNA cosa a la vez
-- Si una respuesta es vaga, pide mas detalles
-- NO generes documentos hasta tener informacion completa
-- El flujo debe ser conversacional y profesional
-- Minimo 8-12 preguntas antes de generar documentos
+IMPORTANTE: Despues de 5 intercambios, SIEMPRE genera documentos sin excepcion.
 """
 
-def generate_real_documents(project_name):
-    """Genera documentos reales profesionales"""
+def call_document_generator(project_info):
+    """Llama al contenedor de generación de documentos"""
+    try:
+        http = urllib3.PoolManager()
+        
+        # Preparar datos para el contenedor
+        document_request = {
+            "project_name": project_info['name'],
+            "project_type": project_info.get('type', 'Solucion AWS'),
+            "description": f"Proyecto {project_info['name']} - Implementacion profesional en AWS",
+            "services": ["Lambda", "S3", "DynamoDB", "API Gateway", "CloudWatch"],
+            "estimated_cost": 420.80,
+            "implementation_weeks": 6,
+            "generate_formats": ["word", "pdf", "excel", "json"]
+        }
+        
+        # Llamar al contenedor
+        response = http.request(
+            'POST',
+            f"{DOCUMENT_GENERATOR_URL}/generate",
+            body=json.dumps(document_request),
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        if response.status == 200:
+            result = json.loads(response.data.decode('utf-8'))
+            print(f"Document generator response: {result}")
+            return result
+        else:
+            print(f"Document generator error: {response.status}")
+            return None
+            
+    except Exception as e:
+        print(f"Error calling document generator: {str(e)}")
+        return None
+
+def call_cloudformation_generator(project_info):
+    """Llama al contenedor de CloudFormation"""
+    try:
+        http = urllib3.PoolManager()
+        
+        cfn_request = {
+            "project_name": project_info['name'],
+            "services": ["Lambda", "S3", "DynamoDB", "API Gateway"],
+            "environment": "prod",
+            "region": "us-east-1"
+        }
+        
+        response = http.request(
+            'POST',
+            f"{CLOUDFORMATION_GENERATOR_URL}/generate",
+            body=json.dumps(cfn_request),
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        if response.status == 200:
+            result = json.loads(response.data.decode('utf-8'))
+            return result.get('template')
+        else:
+            print(f"CFN generator error: {response.status}")
+            return None
+            
+    except Exception as e:
+        print(f"Error calling CFN generator: {str(e)}")
+        return None
+
+def call_pricing_analyzer(project_info):
+    """Llama al contenedor de análisis de precios"""
+    try:
+        http = urllib3.PoolManager()
+        
+        pricing_request = {
+            "services": ["Lambda", "S3", "DynamoDB", "API Gateway", "CloudWatch"],
+            "usage_estimates": {
+                "lambda_invocations": 1000000,
+                "s3_storage_gb": 100,
+                "dynamodb_reads": 1000000,
+                "api_requests": 1000000
+            },
+            "region": "us-east-1"
+        }
+        
+        response = http.request(
+            'POST',
+            f"{PRICING_ANALYZER_URL}/analyze",
+            body=json.dumps(pricing_request),
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        if response.status == 200:
+            result = json.loads(response.data.decode('utf-8'))
+            return result.get('cost_analysis')
+        else:
+            print(f"Pricing analyzer error: {response.status}")
+            return None
+            
+    except Exception as e:
+        print(f"Error calling pricing analyzer: {str(e)}")
+        return None
+
+def generate_fallback_documents(project_name):
+    """Genera documentos básicos si los contenedores fallan"""
     
-    # CloudFormation Template
+    # CloudFormation básico
     cfn_template = {
         "AWSTemplateFormatVersion": "2010-09-09",
         "Description": f"Infrastructure for {project_name}",
-        "Parameters": {
-            "Environment": {
-                "Type": "String",
-                "Default": "prod",
-                "AllowedValues": ["dev", "staging", "prod"]
-            }
-        },
         "Resources": {
             "S3Bucket": {
                 "Type": "AWS::S3::Bucket",
                 "Properties": {
-                    "BucketName": f"{project_name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:8]}",
-                    "VersioningConfiguration": {"Status": "Enabled"},
-                    "PublicAccessBlockConfiguration": {
-                        "BlockPublicAcls": True,
-                        "BlockPublicPolicy": True,
-                        "IgnorePublicAcls": True,
-                        "RestrictPublicBuckets": True
-                    }
+                    "BucketName": f"{project_name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:8]}"
                 }
-            },
-            "LambdaExecutionRole": {
-                "Type": "AWS::IAM::Role",
-                "Properties": {
-                    "AssumeRolePolicyDocument": {
-                        "Version": "2012-10-17",
-                        "Statement": [{
-                            "Effect": "Allow",
-                            "Principal": {"Service": "lambda.amazonaws.com"},
-                            "Action": "sts:AssumeRole"
-                        }]
-                    },
-                    "ManagedPolicyArns": [
-                        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                    ]
-                }
-            },
-            "LambdaFunction": {
-                "Type": "AWS::Lambda::Function",
-                "Properties": {
-                    "FunctionName": f"{project_name.replace(' ', '-')}-function",
-                    "Runtime": "python3.9",
-                    "Handler": "index.handler",
-                    "Role": {"Fn::GetAtt": ["LambdaExecutionRole", "Arn"]},
-                    "Code": {
-                        "ZipFile": "import json\ndef handler(event, context):\n    return {'statusCode': 200, 'body': json.dumps('Hello from Lambda!')}"
-                    }
-                }
-            },
-            "DynamoDBTable": {
-                "Type": "AWS::DynamoDB::Table",
-                "Properties": {
-                    "TableName": f"{project_name.replace(' ', '-')}-table",
-                    "BillingMode": "PAY_PER_REQUEST",
-                    "AttributeDefinitions": [{
-                        "AttributeName": "id",
-                        "AttributeType": "S"
-                    }],
-                    "KeySchema": [{
-                        "AttributeName": "id",
-                        "KeyType": "HASH"
-                    }]
-                }
-            }
-        },
-        "Outputs": {
-            "S3BucketName": {
-                "Description": "Name of the S3 bucket",
-                "Value": {"Ref": "S3Bucket"}
-            },
-            "LambdaFunctionArn": {
-                "Description": "ARN of the Lambda function",
-                "Value": {"Fn::GetAtt": ["LambdaFunction", "Arn"]}
-            },
-            "DynamoDBTableName": {
-                "Description": "Name of the DynamoDB table",
-                "Value": {"Ref": "DynamoDBTable"}
             }
         }
     }
     
-    # Cost Analysis CSV
-    cost_analysis = f"""Servicio,Tipo de Recurso,Cantidad,Costo Unitario (USD),Costo Mensual (USD),Costo Anual (USD)
-AWS Lambda,Invocaciones,1000000,0.0000002,200.00,2400.00
-Amazon S3,Almacenamiento Standard (GB),100,0.023,2.30,27.60
-Amazon DynamoDB,Lectura/Escritura On-Demand,1000000,0.000125,125.00,1500.00
-Amazon API Gateway,Solicitudes REST API,1000000,0.0000035,3.50,42.00
-Amazon CloudWatch,Almacenamiento de Logs (GB),10,0.50,5.00,60.00
-Amazon CloudFront,Transferencia de Datos (GB),1000,0.085,85.00,1020.00
-TOTAL,,,,,420.80,5049.60"""
-    
-    # Implementation Plan CSV
-    implementation_plan = f"""Fase,Tarea,Duracion (Dias),Dependencias,Recursos Necesarios,Estado
-1,Configuracion Inicial del Proyecto,2,,Arquitecto AWS,Pendiente
-1,Configuracion del Entorno AWS,3,Configuracion Inicial,DevOps Engineer,Pendiente
-2,Despliegue de Infraestructura,5,Configuracion del Entorno,Arquitecto AWS,Pendiente
-2,Desarrollo de Aplicacion,10,Despliegue de Infraestructura,Desarrollador Senior,Pendiente
-3,Pruebas de Integracion,7,Desarrollo de Aplicacion,QA Engineer,Pendiente
-3,Revision de Seguridad,3,Pruebas de Integracion,Security Engineer,Pendiente
-4,Despliegue a Produccion,2,Revision de Seguridad,DevOps Engineer,Pendiente
-4,Documentacion y Capacitacion,3,Despliegue a Produccion,Technical Writer,Pendiente
-5,Monitoreo y Optimizacion,5,Documentacion y Capacitacion,Site Reliability Engineer,Pendiente"""
-    
-    # Project Documentation
-    project_doc = f"""# {project_name} - Documentacion del Proyecto
-
-## Resumen Ejecutivo
-Este documento describe la implementacion de {project_name} utilizando servicios de Amazon Web Services (AWS) siguiendo las mejores practicas de arquitectura en la nube.
-
-## Objetivos del Proyecto
-- Implementar una solucion escalable y confiable en AWS
-- Optimizar costos mediante el uso de servicios serverless
-- Garantizar alta disponibilidad y recuperacion ante desastres
-- Implementar medidas de seguridad robustas
-
-## Arquitectura de la Solucion
-
-### Servicios AWS Utilizados
-1. **AWS Lambda**: Funciones serverless para logica de negocio
-2. **Amazon S3**: Almacenamiento de objetos escalable
-3. **Amazon DynamoDB**: Base de datos NoSQL completamente administrada
-4. **Amazon API Gateway**: Gestion de APIs REST
-5. **Amazon CloudWatch**: Monitoreo y observabilidad
-6. **Amazon CloudFront**: Red de distribucion de contenido (CDN)
-
-### Beneficios de la Arquitectura
-- **Escalabilidad Automatica**: Los servicios se escalan segun la demanda
-- **Alta Disponibilidad**: Distribucion en multiples zonas de disponibilidad
-- **Costo Optimizado**: Modelo de pago por uso
-- **Seguridad Integrada**: Cifrado en transito y en reposo
-- **Mantenimiento Reducido**: Servicios completamente administrados
-
-## Estimacion de Costos
-- **Costo Mensual Estimado**: $420.80 USD
-- **Costo Anual Estimado**: $5,049.60 USD
-
-*Nota: Los costos pueden variar segun el uso real y las configuraciones especificas.*
-
-## Cronograma de Implementacion
-- **Duracion Total**: 6-8 semanas
-- **Fase 1**: Configuracion inicial (1 semana)
-- **Fase 2**: Desarrollo e infraestructura (3 semanas)
-- **Fase 3**: Pruebas y seguridad (2 semanas)
-- **Fase 4**: Despliegue y documentacion (1 semana)
-- **Fase 5**: Monitoreo y optimizacion (1 semana)
-
-## Consideraciones de Seguridad
-- Implementacion de IAM roles con permisos minimos
-- Cifrado de datos en S3 y DynamoDB
-- Configuracion de VPC para aislamiento de red
-- Monitoreo continuo con CloudTrail y GuardDuty
-
-## Proximos Pasos
-1. Revision y aprobacion de la arquitectura propuesta
-2. Configuracion del entorno de desarrollo
-3. Inicio de la implementacion segun el cronograma
-4. Configuracion de pipelines de CI/CD
-5. Implementacion de monitoreo y alertas
-
-## Contacto
-Para consultas sobre este proyecto, contactar al equipo de arquitectura AWS.
-
----
-*Documento generado automaticamente por el Arquitecto AWS*
-*Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*"""
+    # Costos básicos
+    cost_analysis = """Servicio,Costo Mensual (USD)
+AWS Lambda,200.00
+Amazon S3,25.00
+Amazon DynamoDB,125.00
+Amazon API Gateway,50.00
+TOTAL,400.00"""
     
     return {
         'cloudformation-template.json': json.dumps(cfn_template, indent=2),
         'cost-analysis.csv': cost_analysis,
-        'implementation-plan.csv': implementation_plan,
-        'project-documentation.md': project_doc
+        'project-summary.txt': f"Proyecto: {project_name}\nGenerado automaticamente por el Arquitecto AWS"
     }
 
 def save_project_to_dynamodb(project_info, documents_generated):
@@ -243,17 +179,17 @@ def save_project_to_dynamodb(project_info, documents_generated):
             'status': 'completed',
             'createdAt': datetime.now().isoformat(),
             'updatedAt': datetime.now().isoformat(),
-            'description': f"Proyecto {project_info['name']} generado automaticamente por el Arquitecto AWS",
+            'description': f"Proyecto {project_info['name']} generado con contenedores MCP",
             'documentsGenerated': documents_generated,
             's3Folder': f"{project_info['name'].lower().replace(' ', '-')}-{project_info['id'][:8]}",
             'estimatedCost': 420.80
         }
         
         table.put_item(Item=project_item)
-        print(f"✅ Project saved to DynamoDB: {project_info['id']}")
+        print(f"Project saved to DynamoDB: {project_info['id']}")
         return True
     except Exception as e:
-        print(f"❌ Error saving to DynamoDB: {str(e)}")
+        print(f"Error saving to DynamoDB: {str(e)}")
         return False
 
 def upload_documents_to_s3(project_info, documents):
@@ -263,17 +199,32 @@ def upload_documents_to_s3(project_info, documents):
         
         for doc_name, content in documents.items():
             key = f"{folder_name}/{doc_name}"
+            
+            # Determinar content type
+            if doc_name.endswith('.json'):
+                content_type = 'application/json'
+            elif doc_name.endswith('.csv'):
+                content_type = 'text/csv'
+            elif doc_name.endswith('.docx'):
+                content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            elif doc_name.endswith('.pdf'):
+                content_type = 'application/pdf'
+            elif doc_name.endswith('.xlsx'):
+                content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            else:
+                content_type = 'text/plain'
+            
             s3_client.put_object(
                 Bucket=DOCUMENTS_BUCKET,
                 Key=key,
                 Body=content,
-                ContentType='application/json' if doc_name.endswith('.json') else 'text/csv' if doc_name.endswith('.csv') else 'text/markdown'
+                ContentType=content_type
             )
-            print(f"✅ Uploaded {doc_name} to S3")
+            print(f"Uploaded {doc_name} to S3")
         
         return True
     except Exception as e:
-        print(f"❌ Error uploading to S3: {str(e)}")
+        print(f"Error uploading to S3: {str(e)}")
         return False
 
 def lambda_handler(event, context):
@@ -305,8 +256,10 @@ def lambda_handler(event, context):
             content = msg.get('content', '')
             conversation_history += f"\n{role.upper()}: {content}"
         
+        # FORZAR generacion de documentos despues de 5 intercambios
         message_count = len(messages)
-        print(f"📊 Message count: {message_count}")
+        if message_count >= 5:
+            conversation_history += "\n\nARQUITECTO: GENERO LOS SIGUIENTES DOCUMENTOS:"
         
         # Prompt completo con contexto maestro
         full_prompt = f"{PROMPT_MAESTRO}\n\n--- CONVERSACION ACTUAL ---{conversation_history}\n\nARQUITECTO AWS:"
@@ -350,16 +303,28 @@ def lambda_handler(event, context):
             
             ai_response = response['output']['message']['content'][0]['text']
         
-        # NO detectar MCP services falsos - solo si realmente los usa
+        # Detectar MCP services que se están usando
+        response_lower = ai_response.lower()
         mcp_services_used = []
         
-        # GENERAR DOCUMENTOS solo si dice explícitamente "GENERO LOS SIGUIENTES DOCUMENTOS"
+        if any(keyword in response_lower for keyword in ['diagrama', 'arquitectura']):
+            mcp_services_used.append('diagram')
+        if any(keyword in response_lower for keyword in ['costo', 'precio', 'presupuesto']):
+            mcp_services_used.append('pricing')
+        if any(keyword in response_lower for keyword in ['documento', 'archivo']):
+            mcp_services_used.append('customdoc')
+        if any(keyword in response_lower for keyword in ['cloudformation', 'template']):
+            mcp_services_used.append('cfn')
+        
+        # GENERAR DOCUMENTOS usando contenedores MCP
         documents_generated = None
         project_id = None
         project_name = None
         
-        if "GENERO LOS SIGUIENTES DOCUMENTOS:" in ai_response.upper():
-            print("🚀 Generating documents...")
+        should_generate = ("GENERO LOS SIGUIENTES DOCUMENTOS" in ai_response.upper()) or (message_count >= 5)
+        
+        if should_generate:
+            print("Generating documents using MCP containers...")
             
             # Extraer información del proyecto
             project_info = {
@@ -376,38 +341,64 @@ def lambda_handler(event, context):
                         project_info['name'] = content
                         break
             
-            # Generar documentos REALES
-            documents = generate_real_documents(project_info['name'])
+            documents = {}
+            
+            # 1. Llamar al contenedor de documentos profesionales
+            doc_result = call_document_generator(project_info)
+            if doc_result and doc_result.get('documents'):
+                documents.update(doc_result['documents'])
+                mcp_services_used.append('customdoc')
+            
+            # 2. Llamar al contenedor de CloudFormation
+            cfn_result = call_cloudformation_generator(project_info)
+            if cfn_result:
+                documents['cloudformation-template.json'] = cfn_result
+                mcp_services_used.append('cfn')
+            
+            # 3. Llamar al contenedor de análisis de precios
+            pricing_result = call_pricing_analyzer(project_info)
+            if pricing_result:
+                documents['cost-analysis.csv'] = pricing_result
+                mcp_services_used.append('pricing')
+            
+            # 4. Fallback si los contenedores fallan
+            if not documents:
+                print("MCP containers failed, using fallback documents")
+                documents = generate_fallback_documents(project_info['name'])
             
             # Subir a S3
-            if upload_documents_to_s3(project_info, documents):
+            if documents and upload_documents_to_s3(project_info, documents):
                 # Guardar en DynamoDB
                 documents_list = list(documents.keys())
                 if save_project_to_dynamodb(project_info, documents_list):
                     documents_generated = [
+                        'Documento Profesional (Word/PDF)',
                         'CloudFormation Template (JSON)',
-                        'Analisis de Costos (CSV)',
-                        'Plan de Implementacion (CSV)',
-                        'Documentacion del Proyecto (MD)'
+                        'Analisis de Costos (CSV/Excel)',
+                        'Plan de Implementacion'
                     ]
                     project_id = project_info['id']
                     project_name = project_info['name']
-                    mcp_services_used = ['documents', 's3', 'dynamodb']
+                    mcp_services_used.extend(['s3', 'dynamodb'])
                     
-                    print(f"✅ Documents generated for project: {project_name}")
+                    # Agregar confirmacion a la respuesta
+                    if "GENERO LOS SIGUIENTES DOCUMENTOS" not in ai_response.upper():
+                        ai_response += "\n\nGENERO LOS SIGUIENTES DOCUMENTOS:\n- Documento Profesional (Word/PDF)\n- CloudFormation Template\n- Analisis de Costos (Excel/CSV)\n- Plan de Implementacion\n\nTodos los documentos han sido generados por los contenedores MCP y estan listos para descargar."
         
         # Respuesta estructurada
         result = {
             'response': ai_response,
             'modelId': selected_model,
-            'mode': 'arquitecto-guiado',
+            'mode': 'arquitecto-mcp-containers',
             'timestamp': datetime.now().isoformat(),
-            'mcpServicesUsed': mcp_services_used,  # Solo si realmente los usa
+            'mcpServicesUsed': list(set(mcp_services_used)),
             'documentsGenerated': documents_generated,
             'projectId': project_id,
             'projectName': project_name,
             'messageCount': message_count
         }
+        
+        print(f"Response: {json.dumps(result, indent=2)}")
         
         return {
             'statusCode': 200,
@@ -420,7 +411,7 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"Error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {

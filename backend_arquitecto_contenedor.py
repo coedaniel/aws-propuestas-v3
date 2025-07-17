@@ -14,8 +14,11 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET', 'aws-propuestas-v3-documents-prod-035385358261')
 PROJECTS_TABLE = os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod')
 
-# URL del contenedor de generación de documentos
-DOCUMENT_GENERATOR_URL = "https://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/customdoc"
+# URLs de los contenedores MCP reales
+DOCUMENT_GENERATOR_URL = "https://mcp.danielingram.shop/customdoc"
+CLOUDFORMATION_GENERATOR_URL = "https://mcp.danielingram.shop/cfn"
+PRICING_ANALYZER_URL = "https://mcp.danielingram.shop/pricing"
+DIAGRAM_GENERATOR_URL = "https://mcp.danielingram.shop/diagram"
 
 # Prompt maestro
 PROMPT_MAESTRO = """
@@ -81,7 +84,7 @@ def call_cloudformation_generator(project_info):
         
         response = http.request(
             'POST',
-            "https://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/cfn/generate",
+            f"{CLOUDFORMATION_GENERATOR_URL}/generate",
             body=json.dumps(cfn_request),
             headers={'Content-Type': 'application/json'},
             timeout=30
@@ -116,7 +119,7 @@ def call_pricing_analyzer(project_info):
         
         response = http.request(
             'POST',
-            "https://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com/pricing/analyze",
+            f"{PRICING_ANALYZER_URL}/analyze",
             body=json.dumps(pricing_request),
             headers={'Content-Type': 'application/json'},
             timeout=30
