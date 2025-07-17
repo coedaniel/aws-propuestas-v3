@@ -3,10 +3,11 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import ModelSelector from '@/components/ModelSelector'
-import { ArrowLeft, Send, Loader2 } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download } from 'lucide-react'
 import { sendArquitectoRequest } from '@/lib/api'
 import { generateId, formatDate } from '@/lib/utils'
 
@@ -75,6 +76,7 @@ export default function ArquitectoPage() {
     setInput('')
     setIsLoading(true)
 
+    // Detectar MCP services
     const detectedServices = detectMCPServices(input)
     if (detectedServices.length > 0) {
       setMcpServices(detectedServices)
@@ -99,6 +101,24 @@ export default function ArquitectoPage() {
 
       setMessages(prev => [...prev, assistantMessage])
       
+      // Solo mostrar modal si REALMENTE se generaron documentos
+      // Buscar palabras clave específicas que indiquen generación completa
+      const responseText = response.response.toLowerCase()
+      const hasGenerated = (responseText.includes('generado') && responseText.includes('documento')) ||
+                          responseText.includes('cloudformation') ||
+                          (responseText.includes('subir') && responseText.includes('s3')) ||
+                          response.documentsGenerated ||
+                          response.projectId
+      
+      if (hasGenerated) {
+        setGeneratedProject({
+          projectId: response.projectId || generateId(),
+          projectName: response.projectName || 'Proyecto AWS',
+          documentsGenerated: response.documentsGenerated || ['CloudFormation', 'Costos', 'Diagrama']
+        })
+        setShowSuccessModal(true)
+      }
+      
     } catch (error: any) {
       console.error('Error:', error)
       setMessages(prev => [...prev, {
@@ -121,6 +141,7 @@ export default function ArquitectoPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header - Fixed */}
       <div className="border-b bg-white shadow-sm">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -136,6 +157,7 @@ export default function ArquitectoPage() {
         </div>
       </div>
 
+      {/* MCP Indicator */}
       {mcpServices.length > 0 && (
         <div className="px-4 py-2 bg-blue-50 border-b">
           <div className="max-w-4xl mx-auto">
@@ -147,6 +169,7 @@ export default function ArquitectoPage() {
         </div>
       )}
 
+      {/* Messages - Scrollable */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-4 space-y-4">
           {messages.map((message) => (
@@ -163,6 +186,7 @@ export default function ArquitectoPage() {
         </div>
       </div>
 
+      {/* Input - Fixed Bottom */}
       <div className="border-t bg-white p-4">
         <div className="max-w-4xl mx-auto flex gap-3">
           <Textarea
@@ -178,6 +202,8 @@ export default function ArquitectoPage() {
           </Button>
         </div>
       </div>
+    </div>
+
     </div>
   )
 }
