@@ -255,10 +255,10 @@ function ArquitectoContent() {
         setDocumentsGenerated(prev => prev + 1)
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en la solicitud:', error)
       setMcpNotification({
-        message: `❌ Error: ${error.message}`,
+        message: `❌ Error: ${error?.message || 'Error desconocido'}`,
         type: 'error'
       })
     } finally {
