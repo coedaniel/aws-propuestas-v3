@@ -29,7 +29,7 @@ export const AVAILABLE_MODELS: Model[] = [
     costPer1kTokens: 0.008
   },
   {
-    id: 'anthropic.claude-3-5-sonnet-20241022-v1:0',
+    id: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
     description: 'Modelo de lenguaje avanzado con excelente razonamiento',
