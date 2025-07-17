@@ -27,7 +27,7 @@ export default function ArquitectoPage() {
     {
       id: generateId(),
       role: 'assistant',
-      content: 'Hola! Soy tu Arquitecto AWS. Para comenzar, ¿cuál es el nombre del proyecto?',
+      content: '¡Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso.\n\n**PASO 1:** Para comenzar, necesito que me digas únicamente el **nombre del proyecto**.\n\nEjemplos:\n• "E-commerce Platform"\n• "Sistema de Inventario" \n• "Portal de Clientes"\n• "App de Delivery"\n\n¿Cuál es el nombre de tu proyecto?',
       timestamp: new Date().toISOString()
     }
   ])
@@ -103,8 +103,16 @@ export default function ArquitectoPage() {
 
       setMessages(prev => [...prev, assistantMessage])
       
-      // Si se generaron documentos
-      if (response.documentsGenerated || response.projectId) {
+      // Solo mostrar modal si REALMENTE se generaron documentos
+      // Buscar palabras clave específicas que indiquen generación completa
+      const responseText = response.response.toLowerCase()
+      const hasGenerated = (responseText.includes('generado') && responseText.includes('documento')) ||
+                          responseText.includes('cloudformation') ||
+                          (responseText.includes('subir') && responseText.includes('s3')) ||
+                          response.documentsGenerated ||
+                          response.projectId
+      
+      if (hasGenerated) {
         setGeneratedProject({
           projectId: response.projectId || generateId(),
           projectName: response.projectName || 'Proyecto AWS',
@@ -134,9 +142,9 @@ export default function ArquitectoPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b bg-white sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -158,8 +166,8 @@ export default function ArquitectoPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+      {/* Main Content - Full Height */}
+      <div className="flex-1 flex flex-col">
         {/* MCP Services Indicator */}
         {mcpServices.length > 0 && (
           <div className="px-4 pt-4">
@@ -168,7 +176,7 @@ export default function ArquitectoPage() {
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   <span className="text-sm text-blue-700">
-                    Usando MCP: {mcpServices.join(', ')}
+                    🔧 Usando MCP: {mcpServices.join(', ')}
                   </span>
                 </div>
               </CardContent>
@@ -176,55 +184,62 @@ export default function ArquitectoPage() {
           </div>
         )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <Card className={`max-w-[80%] ${
-                message.role === 'user' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-white border'
-              }`}>
-                <CardContent className="p-4">
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                  <div className="flex items-center justify-between mt-2 text-xs opacity-70">
-                    <span>{formatDate(message.timestamp)}</span>
-                    {message.mcpServices && message.mcpServices.length > 0 && (
-                      <span>MCP: {message.mcpServices.join(', ')}</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+        {/* Messages Container - Scrollable */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <Card className={`max-w-[85%] ${
+                  message.role === 'user' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white border shadow-sm'
+                }`}>
+                  <CardContent className="p-4">
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                    <div className="flex items-center justify-between mt-3 text-xs opacity-70">
+                      <span>{formatDate(message.timestamp)}</span>
+                      {message.mcpServices && message.mcpServices.length > 0 && (
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          MCP: {message.mcpServices.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* Input Area */}
-        <div className="border-t bg-white p-4">
-          <div className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Describe tu proyecto AWS..."
-              className="flex-1 min-h-[60px] resize-none"
-              disabled={isLoading}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
-              size="lg"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+        {/* Input Area - Fixed Bottom */}
+        <div className="border-t bg-white p-4 shadow-lg">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex gap-3">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Responde paso a paso las preguntas del arquitecto..."
+                className="flex-1 min-h-[80px] resize-none text-sm"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!input.trim() || isLoading}
+                size="lg"
+                className="px-6"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
