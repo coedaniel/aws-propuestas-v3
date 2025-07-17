@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { AVAILABLE_MODELS, AIModel } from '@/lib/types'
+import { AVAILABLE_MODELS, Model } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface ModelSelectorProps {
@@ -33,12 +33,12 @@ export default function ModelSelector({
         >
           {AVAILABLE_MODELS.map((model) => (
             <option key={model.id} value={model.id}>
-              {model.icon} {model.name}
+              {model.icon || '🤖'} {model.name}
             </option>
           ))}
         </select>
         <div className="text-xs text-gray-500">
-          ${currentModel.costPer1kTokens}/1k tokens
+          ${currentModel.costPer1kTokens || 0}/1k tokens
         </div>
       </div>
     )
@@ -78,7 +78,7 @@ export default function ModelSelector({
 }
 
 interface ModelCardProps {
-  model: AIModel
+  model: Model
   isSelected: boolean
   onSelect: () => void
   disabled: boolean
@@ -98,14 +98,14 @@ function ModelCard({ model, isSelected, onSelect, disabled }: ModelCardProps) {
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-3">
-          <div className="text-2xl">{model.icon}</div>
+          <div className="text-2xl">{model.icon || '🤖'}</div>
           <div>
-            <h4 className={cn("font-semibold", model.color)}>{model.name}</h4>
+            <h4 className="font-semibold">{model.name}</h4>
             <p className="text-sm text-gray-600 mt-1">{model.description}</p>
             <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
               <span>Proveedor: {model.provider}</span>
               <span>Max tokens: {model.maxTokens.toLocaleString()}</span>
-              <span className="font-medium">${model.costPer1kTokens}/1k tokens</span>
+              <span className="font-medium">${model.costPer1kTokens || 0}/1k tokens</span>
             </div>
           </div>
         </div>
@@ -120,7 +120,7 @@ function ModelCard({ model, isSelected, onSelect, disabled }: ModelCardProps) {
       </div>
       
       <div className="mt-3 flex flex-wrap gap-1">
-        {model.capabilities.map((capability) => (
+        {model.capabilities.map((capability: string) => (
           <span
             key={capability}
             className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"

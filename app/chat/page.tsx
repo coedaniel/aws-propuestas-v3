@@ -38,7 +38,7 @@ export default function ChatPage() {
     isLoading,
     selectedModel,
     addMessage,
-    setIsLoading,
+    setLoading,
     setSelectedModel
   } = useChatStore()
 
@@ -56,7 +56,7 @@ export default function ChatPage() {
     if (!input.trim() || isLoading) return
 
     // Detectar servicios MCP necesarios
-    const detectedServices = detectMCPServices(input, messages.map(m => m.content))
+    const detectedServices = detectMCPServices(input, messages.map((m: Message) => m.content))
     if (detectedServices.length > 0) {
       setMcpServices(detectedServices)
       setMcpNotification({
@@ -69,13 +69,12 @@ export default function ChatPage() {
       id: generateId(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date(),
-      modelId: selectedModel
+      timestamp: new Date().toISOString()
     }
 
     addMessage(userMessage)
     setInput('')
-    setIsLoading(true)
+    setLoading(true)
 
     try {
       const { sendChatMessage } = await import('@/lib/api')
@@ -100,8 +99,7 @@ export default function ChatPage() {
         id: generateId(),
         role: 'assistant',
         content: data.response,
-        timestamp: new Date(),
-        modelId: selectedModel,
+        timestamp: new Date().toISOString(),
         usage: data.usage,
         mcpServicesUsed: data.mcpServicesUsed || []
       }
@@ -124,12 +122,11 @@ export default function ChatPage() {
         id: generateId(),
         role: 'assistant',
         content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, inténtalo de nuevo.',
-        timestamp: new Date(),
-        modelId: selectedModel
+        timestamp: new Date().toISOString()
       }
       addMessage(errorMessage)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
       
       // Limpiar notificación después de 5 segundos
       setTimeout(() => {
@@ -243,7 +240,7 @@ export default function ChatPage() {
           {messages.length === 0 ? (
             <WelcomeMessage model={currentModel} />
           ) : (
-            messages.map((message) => (
+            messages.map((message: Message) => (
               <MessageBubble key={message.id} message={message} />
             ))
           )}
@@ -324,7 +321,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
             </div>
             
             <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-              <span>{formatDate(message.timestamp)}</span>
+              <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
               <div className="flex items-center gap-2">
                 {message.mcpServicesUsed && message.mcpServicesUsed.length > 0 && (
                   <span className="text-blue-600 font-medium">

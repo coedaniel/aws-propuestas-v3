@@ -25,6 +25,7 @@ export interface ChatResponse {
     outputTokens?: number
     totalTokens?: number
   }
+  mcpServicesUsed?: string[]
 }
 
 export interface ArquitectoRequest {
