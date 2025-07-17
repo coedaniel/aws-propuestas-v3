@@ -1,105 +1,170 @@
-# AWS Propuestas v3
+# AWS Propuestas v3 - Sistema de Arquitectura Inteligente
 
-Aplicación web para generar propuestas de arquitectura AWS utilizando servicios MCP (Model Composition Protocol).
+Sistema profesional de generación automática de propuestas técnicas AWS utilizando inteligencia artificial y servicios MCP (Model Context Protocol).
 
-## Características Principales
+## 🚀 Estado del Sistema
 
-- **Chat Libre**: Interfaz de chat que permite utilizar dos modelos de IA diferentes:
-  - Amazon Nova Pro v1: Ideal para análisis multimodal y diagramas
-  - Claude 3.5 Sonnet v2: Perfecto para análisis técnico profundo
+✅ **PRODUCCIÓN** - Sistema completamente funcional  
+🌐 **URL**: https://main.d2xsphsjdxlk24.amplifyapp.com/  
+🤖 **Chat Arquitecto**: https://main.d2xsphsjdxlk24.amplifyapp.com/arquitecto/
 
-- **Arquitecto AWS**: Asistente especializado para diseñar arquitecturas AWS con:
-  - Generación de diagramas de arquitectura
-  - Creación de documentación técnica
-  - Estimación de costos
-  - Plantillas de CloudFormation
-
-- **Integración MCP**: Utiliza servicios MCP para extender las capacidades:
-  - `core-mcp`: Análisis básico y procesamiento de consultas
-  - `diagram-mcp`: Generación de diagramas de arquitectura
-  - `awsdocs-mcp`: Acceso a documentación oficial de AWS
-  - `pricing-mcp`: Estimación de costos de servicios AWS
-  - `cfn-mcp`: Generación de plantillas CloudFormation
-  - `customdoc-mcp`: Creación de documentos personalizados
-
-## Estructura del Proyecto
+## 🏗️ Arquitectura
 
 ```
-aws-propuestas-v3-github/
-├── app/                    # Páginas de la aplicación (Next.js App Router)
-│   ├── arquitecto/         # Página del Arquitecto AWS
-│   ├── chat/               # Página de Chat Libre
-│   └── projects/           # Página de gestión de proyectos
-├── components/             # Componentes reutilizables
-│   ├── mcp-transparency.tsx # Componentes de transparencia MCP
-│   ├── project-status.tsx  # Componente de estado del proyecto
-│   └── document-viewer.tsx # Visor de documentos generados
-├── lib/                    # Utilidades y funciones
-│   ├── api.ts              # Funciones de API
-│   ├── mcpIntegration.ts   # Integración con servicios MCP
-│   └── types/              # Tipos TypeScript
-└── scripts/                # Scripts de utilidad
-    └── cleanup.sh          # Script de limpieza
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Load Balancer  │    │   ECS Services  │
+│   (Amplify)     │───▶│   (ALB)          │───▶│   (MCP Servers) │
+│   Next.js       │    │   Target Groups  │    │   Official MCP  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │
+                                ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   AI Models     │    │   API Gateway    │    │   Storage       │
+│   Nova Pro      │◀───│   REST API       │───▶│   DynamoDB      │
+│   Claude Sonnet │    │   /arquitecto    │    │   S3 Bucket     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-## Despliegue
+### Componentes Principales
 
-La aplicación está desplegada en AWS Amplify con la siguiente URL:
+- **Frontend**: Next.js en AWS Amplify (SSG)
+- **Backend**: ECS Services con MCP Servers oficiales
+- **AI**: Amazon Bedrock (Nova Pro + Claude 3.5 Sonnet)
+- **Storage**: DynamoDB + S3
+- **API**: API Gateway + Lambda (solo para chat arquitecto)
 
-```
-https://main.d2xsphsjdxlk24.amplifyapp.com/
-```
+## 🤖 Modelos de IA Disponibles
 
-### Variables de Entorno
+### Amazon Nova Pro v1.0
+- **ID**: `amazon.nova-pro-v1:0`
+- **Uso**: Análisis técnico y documentación
+- **API**: `invoke_model` (formato específico)
+- **Estado**: ✅ Funcionando
 
-Las siguientes variables de entorno son necesarias para el funcionamiento de la aplicación:
+### Claude 3.5 Sonnet v1
+- **ID**: `anthropic.claude-3-5-sonnet-20240620-v1:0`
+- **Uso**: Análisis profundo y documentación detallada
+- **API**: `converse` (formato estándar)
+- **Estado**: ✅ Funcionando
 
-```
-# Bedrock Configuration
-AWS_REGION=us-east-1
+## 🛠️ Servicios MCP
 
-# MCP Services (ECS Cluster)
-NEXT_PUBLIC_MCP_BASE_URL=https://mcp.danielingram.shop
-NEXT_PUBLIC_CORE_MCP_URL=https://mcp.danielingram.shop/core
-NEXT_PUBLIC_AWSDOCS_MCP_URL=https://mcp.danielingram.shop/awsdocs
-NEXT_PUBLIC_DIAGRAM_MCP_URL=https://mcp.danielingram.shop/diagram
-NEXT_PUBLIC_PRICING_MCP_URL=https://mcp.danielingram.shop/pricing
-NEXT_PUBLIC_CUSTOMDOC_MCP_URL=https://mcp.danielingram.shop/customdoc
-NEXT_PUBLIC_CFN_MCP_URL=https://mcp.danielingram.shop/cfn
+Los servicios MCP se invocan automáticamente cuando el modelo los necesita:
 
-# API Configuration
-NEXT_PUBLIC_API_URL=https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod
-NEXT_PUBLIC_ENVIRONMENT=production
-```
+- **Core MCP** (puerto 8000): Chat principal y coordinación
+- **Pricing MCP** (puerto 8001): Cálculos de costos AWS
+- **AWS Docs MCP** (puerto 8002): Documentación oficial AWS
+- **CloudFormation MCP** (puerto 8003): Generación de templates IaC
+- **Diagram MCP** (puerto 8004): Diagramas de arquitectura
+- **Document Generator MCP** (puerto 8005): Generación de documentos
 
-## Desarrollo Local
+## 📋 Funcionalidades
 
-1. Clonar el repositorio:
+### Chat del Arquitecto
+- Conversación inteligente con modelos de IA
+- Detección automática de servicios AWS necesarios
+- Generación de propuestas técnicas profesionales
+- Invocación inteligente de servicios MCP
+
+### Generación de Documentos
+- Propuestas técnicas en formato TXT
+- Planes de actividades en CSV
+- Estimaciones de costos en CSV
+- Guías para AWS Calculator
+- Diagramas de arquitectura (SVG/PNG)
+
+### Gestión de Proyectos
+- Almacenamiento en DynamoDB
+- Seguimiento de estado de proyectos
+- Historial de conversaciones
+- Archivos generados en S3
+
+## 🚀 Desarrollo Local
+
+### Prerrequisitos
 ```bash
-git clone https://github.com/username/aws-propuestas-v3-github.git
-cd aws-propuestas-v3-github
+node >= 18.0.0
+npm >= 8.0.0
 ```
 
-2. Instalar dependencias:
+### Instalación
 ```bash
+git clone https://github.com/coedaniel/aws-propuestas-v3.git
+cd aws-propuestas-v3
 npm install
 ```
 
-3. Crear archivo `.env.local` con las variables de entorno necesarias.
+### Variables de Entorno
+```bash
+cp .env.example .env.local
+# Configurar variables según .env.local.example
+```
 
-4. Iniciar el servidor de desarrollo:
+### Ejecutar en Desarrollo
 ```bash
 npm run dev
+# Aplicación disponible en http://localhost:3000
 ```
 
-5. Abrir [http://localhost:3000](http://localhost:3000) en el navegador.
+## 🔧 Configuración de Producción
 
-## Construcción para Producción
+### AWS Amplify
+- **Hosting**: Amplify con Next.js SSG
+- **Build**: `npm run build`
+- **Deploy**: Automático desde GitHub main branch
 
-```bash
-npm run build
+### Variables de Entorno Requeridas
+```
+NEXT_PUBLIC_API_URL=https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod
+NEXT_PUBLIC_MCP_CORE_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8000
+NEXT_PUBLIC_MCP_PRICING_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8001
+NEXT_PUBLIC_MCP_AWSDOCS_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8002
+NEXT_PUBLIC_MCP_CFN_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8003
+NEXT_PUBLIC_MCP_DIAGRAM_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8004
+NEXT_PUBLIC_MCP_CUSTOMDOC_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8005
 ```
 
-## Licencia
+## 📚 Documentación Técnica
 
-Este proyecto está licenciado bajo la licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+- [**ARCHITECTURE.md**](./ARCHITECTURE.md) - Arquitectura detallada del sistema
+- [**API.md**](./API.md) - Documentación de endpoints y APIs
+- [**DEPLOYMENT.md**](./DEPLOYMENT.md) - Guía de despliegue
+- [**TROUBLESHOOTING.md**](./TROUBLESHOOTING.md) - Solución de problemas
+- [**MCP_INTEGRATION_GUIDE.md**](./MCP_INTEGRATION_GUIDE.md) - Integración con MCP
+
+## 🔍 Monitoreo y Estado
+
+### Health Checks
+- **Frontend**: https://main.d2xsphsjdxlk24.amplifyapp.com/system-status
+- **API**: https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod/health
+- **MCP Services**: Verificación automática en system-status
+
+### Logs
+- **Amplify**: Console de AWS Amplify
+- **Lambda**: CloudWatch Logs `/aws/lambda/aws-propuestas-v3-arquitecto-prod`
+- **ECS**: CloudWatch Logs grupos por servicio
+
+## 🤝 Contribución
+
+1. Fork del repositorio
+2. Crear branch para feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push al branch (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver [LICENSE](LICENSE) para más detalles.
+
+## 📞 Soporte
+
+Para soporte técnico o preguntas:
+- **Issues**: GitHub Issues
+- **Documentación**: Ver archivos MD en el repositorio
+- **Estado del Sistema**: https://main.d2xsphsjdxlk24.amplifyapp.com/system-status
+
+---
+
+**Última actualización**: 2025-07-17  
+**Versión**: 3.0.0  
+**Estado**: ✅ Producción Estable
