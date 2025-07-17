@@ -1,176 +1,120 @@
-// Función para mostrar notificaciones MCP de forma estandarizada
-export function showMCPNotification(service: string, action: string): string {
-  return `✅ *Voy a usar el MCP \`${service}\` para ${action}...*`;
+// MCP Integration utilities for AWS Propuestas v3
+
+import { MCP_SERVICES } from './types'
+
+/**
+ * Detecta qué servicios MCP podrían ser necesarios basado en el texto del usuario
+ * @param currentInput Texto actual del usuario
+ * @param previousMessages Mensajes anteriores en la conversación
+ * @returns Array de nombres de servicios MCP
+ */
+export function detectMCPServices(currentInput: string, previousMessages: string[]): string[] {
+  const detectedServices: string[] = []
+  const input = currentInput.toLowerCase()
+  const context = previousMessages.join(' ').toLowerCase()
+  
+  // Detectar servicios basados en palabras clave
+  if (input.includes('diagrama') || input.includes('arquitectura') || input.includes('diseño')) {
+    detectedServices.push('diagram')
+  }
+  
+  if (input.includes('documento') || input.includes('documentación') || input.includes('pdf')) {
+    detectedServices.push('docgen')
+  }
+  
+  if (input.includes('precio') || input.includes('costo') || input.includes('presupuesto')) {
+    detectedServices.push('pricing')
+  }
+  
+  if (input.includes('cloudformation') || input.includes('template') || input.includes('plantilla')) {
+    detectedServices.push('cfn')
+  }
+  
+  if (input.includes('documentación aws') || input.includes('manual') || input.includes('guía')) {
+    detectedServices.push('awsdocs')
+  }
+  
+  // Siempre incluir el servicio core
+  if (!detectedServices.includes('core')) {
+    detectedServices.push('core')
+  }
+  
+  return detectedServices
 }
 
-// Función mejorada para detectar servicios MCP necesarios
-export function detectMCPServices(userInput: string, conversationContext: string[] = []): string[] {
-  const input = userInput.toLowerCase();
-  const context = conversationContext.join(' ').toLowerCase();
-  const combinedText = `${input} ${context}`;
-
-  const neededServices: string[] = [];
+/**
+ * Valida la información del proyecto
+ * @param projectInfo Información del proyecto
+ * @returns Objeto con resultado de validación
+ */
+export function validateProjectInfo(projectInfo: any): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
   
-  // Patrones mejorados para detección de servicios
-  const patterns = {
-    'diagram-mcp': ['diagrama', 'arquitectura', 'visual', 'dibujo', 'esquema'],
-    'awsdocs-mcp': ['documentación', 'docs', 'guía', 'manual', 'referencia'],
-    'pricing-mcp': ['costo', 'precio', 'presupuesto', 'calculadora', 'estimación'],
-    'cfn-mcp': ['cloudformation', 'template', 'infraestructura', 'iac', 'despliegue'],
-    'customdoc-mcp': ['documento', 'word', 'propuesta', 'informe', 'entregable'],
-    'core-mcp': ['análisis', 'entender', 'procesar', 'evaluar']
-  };
-  
-  // Detectar servicios basados en patrones
-  Object.entries(patterns).forEach(([service, keywords]) => {
-    if (keywords.some(keyword => combinedText.includes(keyword))) {
-      neededServices.push(service);
-    }
-  });
-  
-  // Detección inteligente basada en contexto
-  if (combinedText.includes('generar') || combinedText.includes('crear')) {
-    if (combinedText.includes('diagrama') || combinedText.includes('arquitectura')) {
-      if (!neededServices.includes('diagram-mcp')) neededServices.push('diagram-mcp');
-    }
-    if (combinedText.includes('documento') || combinedText.includes('propuesta')) {
-      if (!neededServices.includes('customdoc-mcp')) neededServices.push('customdoc-mcp');
-    }
-    if (combinedText.includes('cloudformation') || combinedText.includes('template')) {
-      if (!neededServices.includes('cfn-mcp')) neededServices.push('cfn-mcp');
-    }
+  if (!projectInfo.name) {
+    errors.push('El nombre del proyecto es obligatorio')
   }
   
-  // Siempre incluir core-mcp para análisis básico si no hay otros servicios
-  if (neededServices.length === 0) {
-    neededServices.push('core-mcp');
+  if (projectInfo.name && projectInfo.name.length < 3) {
+    errors.push('El nombre del proyecto debe tener al menos 3 caracteres')
   }
   
-  return neededServices;
+  if (projectInfo.type && !['basic', 'standard', 'premium'].includes(projectInfo.type)) {
+    errors.push('El tipo de proyecto debe ser basic, standard o premium')
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  }
 }
 
-// Función para validar información del proyecto
-export function validateProjectInfo(projectInfo: any): { valid: boolean; message: string } {
-  if (!projectInfo?.name) {
-    return { valid: false, message: "Por favor, define un nombre para el proyecto antes de continuar." };
-  }
-  if (!projectInfo?.type) {
-    return { valid: false, message: "Por favor, define el tipo de solución para el proyecto antes de continuar." };
-  }
-  return { valid: true, message: "Información del proyecto validada correctamente." };
-}
-
-// Función para actualizar estado en DynamoDB
-export async function updateProjectStatus(projectId: string, status: string = 'completed'): Promise<boolean> {
+/**
+ * Actualiza el estado de un proyecto en DynamoDB
+ * @param projectId ID del proyecto
+ * @param status Nuevo estado
+ * @returns Promise<boolean> Éxito de la operación
+ */
+export async function updateProjectStatus(projectId: string, status: 'in_progress' | 'completed'): Promise<boolean> {
   try {
-    // En una implementación real, esto haría una llamada a la API para actualizar DynamoDB
-    // Por ahora, simulamos una respuesta exitosa
-    console.log(`Actualizando estado del proyecto ${projectId} a ${status}`);
+    // En una implementación real, esto haría una llamada a la API para actualizar el estado
+    // Por ahora, simulamos una operación exitosa
+    console.log(`Actualizando estado del proyecto ${projectId} a ${status}`)
     
     // Simular retraso de red
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000))
     
-    return true;
+    return true
   } catch (error) {
-    console.error('Error updating project status:', error);
-    return false;
+    console.error('Error al actualizar estado del proyecto:', error)
+    return false
   }
 }
 
-// Función para obtener documentos de un proyecto desde S3
-export async function getProjectDocuments(projectName: string, s3Folder: string): Promise<any[]> {
+/**
+ * Obtiene los servicios MCP disponibles
+ * @returns Array de servicios MCP
+ */
+export function getAvailableMCPServices(): typeof MCP_SERVICES {
+  return MCP_SERVICES
+}
+
+/**
+ * Verifica el estado de los servicios MCP
+ * @returns Promise con el estado de los servicios
+ */
+export async function checkMCPServicesStatus(): Promise<{ [key: string]: boolean }> {
   try {
-    // En una implementación real, esto haría una llamada a la API para obtener los documentos de S3
-    // Por ahora, simulamos una respuesta con documentos ficticios
-    console.log(`Obteniendo documentos del proyecto ${projectName} desde ${s3Folder}`);
+    // En una implementación real, esto haría una llamada a la API para verificar el estado
+    // Por ahora, simulamos que todos los servicios están activos
+    const status: { [key: string]: boolean } = {}
     
-    // Simular retraso de red
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    MCP_SERVICES.forEach(service => {
+      status[service.name] = service.status === 'active'
+    })
     
-    return [
-      {
-        name: `${projectName}-arquitectura.docx`,
-        path: `${s3Folder}/${projectName}-arquitectura.docx`,
-        type: 'text',
-        size: 245000,
-        lastModified: new Date().toISOString()
-      },
-      {
-        name: `${projectName}-costos.xlsx`,
-        path: `${s3Folder}/${projectName}-costos.xlsx`,
-        type: 'spreadsheet',
-        size: 125000,
-        lastModified: new Date().toISOString()
-      },
-      {
-        name: `${projectName}-cloudformation.yaml`,
-        path: `${s3Folder}/${projectName}-cloudformation.yaml`,
-        type: 'code',
-        size: 35000,
-        lastModified: new Date().toISOString()
-      },
-      {
-        name: `${projectName}-diagrama.svg`,
-        path: `${s3Folder}/${projectName}-diagrama.svg`,
-        type: 'image',
-        size: 85000,
-        lastModified: new Date().toISOString()
-      }
-    ];
+    return status
   } catch (error) {
-    console.error('Error getting project documents:', error);
-    return [];
+    console.error('Error al verificar estado de servicios MCP:', error)
+    return {}
   }
-}
-
-// Función para extraer el nombre del proyecto de la entrada del usuario
-export function extractProjectNameFromInput(input: string): string | null {
-  // Patrones para detectar nombres de proyecto
-  const patterns = [
-    /proyecto\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
-    /llamado\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
-    /nombre\s+([a-zA-Z0-9áéíóúñü\s_-]+)/i,
-    /"([^"]+)"/g
-  ]
-  
-  for (const pattern of patterns) {
-    const match = input.match(pattern)
-    if (match && match[1]) {
-      return match[1].trim()
-    }
-  }
-  
-  // Buscar palabras capitalizadas que podrían ser nombres de proyecto
-  const words = input.split(' ')
-  for (const word of words) {
-    if (word.length > 3 && /^[A-Z]/.test(word) && !/^(Proyecto|Sistema|Aplicacion|Plataforma)$/i.test(word)) {
-      return word
-    }
-  }
-  
-  return null
-}
-
-// Función para determinar la fase del proyecto basada en el contexto
-export function determineProjectPhase(messages: any[]): 'planning' | 'architecture' | 'documentation' | 'costing' | 'completed' {
-  // Buscar palabras clave en los mensajes para determinar la fase
-  const combinedText = messages.map(m => m.content).join(' ').toLowerCase();
-  
-  if (combinedText.includes('completado') || combinedText.includes('finalizado')) {
-    return 'completed';
-  }
-  
-  if (combinedText.includes('costo') || combinedText.includes('precio') || combinedText.includes('presupuesto')) {
-    return 'costing';
-  }
-  
-  if (combinedText.includes('documento') || combinedText.includes('word') || combinedText.includes('excel')) {
-    return 'documentation';
-  }
-  
-  if (combinedText.includes('arquitectura') || combinedText.includes('diagrama') || combinedText.includes('diseño')) {
-    return 'architecture';
-  }
-  
-  return 'planning';
 }
