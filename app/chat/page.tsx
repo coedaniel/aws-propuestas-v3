@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ModelSelector from '@/components/ModelSelector'
-import { useChatStore } from '@/store/chatStore'
 import { Message, AVAILABLE_MODELS } from '@/lib/types'
 import { generateId, formatDate } from '@/lib/utils'
 import { 
@@ -25,15 +24,9 @@ export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  
-  const {
-    messages,
-    isLoading,
-    selectedModel,
-    addMessage,
-    setLoading,
-    setSelectedModel
-  } = useChatStore()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState('amazon.nova-pro-v1:0')
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
@@ -55,9 +48,9 @@ export default function ChatPage() {
       timestamp: new Date().toISOString()
     }
 
-    addMessage(userMessage)
+    setMessages(prev => [...prev, userMessage])
     setInput('')
-    setLoading(true)
+    setIsLoading(true)
 
     try {
       // Llamada al endpoint específico de chat libre (solo AWS)
@@ -92,7 +85,7 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
 
-      addMessage(assistantMessage)
+      setMessages(prev => [...prev, assistantMessage])
       
     } catch (error: any) {
       console.error('Error sending message:', error)
@@ -104,9 +97,9 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
       
-      addMessage(errorMessage)
+      setMessages(prev => [...prev, errorMessage])
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
