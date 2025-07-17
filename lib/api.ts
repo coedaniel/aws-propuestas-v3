@@ -217,10 +217,15 @@ export async function checkHealth(): Promise<{
 
   // Check legacy API
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
+    
     const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',
-      timeout: 5000
+      signal: controller.signal
     })
+    
+    clearTimeout(timeoutId)
     legacyApiStatus = response.ok
   } catch (error) {
     console.warn('Legacy API health check failed:', error)
@@ -245,10 +250,15 @@ export async function checkHealth(): Promise<{
       }
 
       try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 3000)
+        
         const response = await fetch(`${service.url}/health`, {
           method: 'GET',
-          signal: AbortSignal.timeout(3000) // 3 second timeout
+          signal: controller.signal
         })
+        
+        clearTimeout(timeoutId)
         mcpServers[service.name] = response.ok
       } catch (error) {
         console.warn(`MCP ${service.name} health check failed:`, error)
