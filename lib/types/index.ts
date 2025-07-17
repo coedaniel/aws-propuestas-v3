@@ -129,8 +129,8 @@ export const AVAILABLE_MODELS: AIModel[] = [
     costPer1kTokens: 0.008
   },
   {
-    id: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
-    name: 'Claude 3.5 Sonnet v2',
+    id: 'anthropic.claude-3-5-sonnet-20241022-v1:0',
+    name: 'Claude 3.5 Sonnet v1',
     description: 'Ideal para análisis técnico profundo y documentación detallada',
     icon: '🧠',
     color: 'text-purple-600',
