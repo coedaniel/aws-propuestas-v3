@@ -1,7 +1,7 @@
 import json
 import boto3
 import os
-import urllib3
+import requests
 from datetime import datetime
 import uuid
 
@@ -13,6 +13,17 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 # Variables de entorno
 DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET', 'aws-propuestas-v3-documents-prod-035385358261')
 PROJECTS_TABLE = os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod')
+
+# URLs de los servicios MCP
+MCP_BASE_URL = "https://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com"
+MCP_SERVICES = {
+    'core': f"{MCP_BASE_URL}:8000",
+    'pricing': f"{MCP_BASE_URL}:8001", 
+    'awsdocs': f"{MCP_BASE_URL}:8002",
+    'cfn': f"{MCP_BASE_URL}:8003",
+    'diagram': f"{MCP_BASE_URL}:8004",
+    'customdoc': f"{MCP_BASE_URL}:8005"
+}
 
 # Prompt maestro completo
 PROMPT_MAESTRO = """
@@ -32,109 +43,95 @@ NO generes documentos hasta tener toda la informacion completa del proyecto.
 Pregunta una cosa a la vez. Se detallado y minucioso.
 """
 
-def generate_mock_documents(project_info):
-    """Genera documentos mock mientras se configuran los MCP services"""
-    
-    # CloudFormation Template
-    cfn_template = {
-        "AWSTemplateFormatVersion": "2010-09-09",
-        "Description": f"CloudFormation template for {project_info.get('name', 'AWS Project')}",
-        "Resources": {
-            "S3Bucket": {
-                "Type": "AWS::S3::Bucket",
-                "Properties": {
-                    "BucketName": f"{project_info.get('name', 'project').lower().replace(' ', '-')}-bucket"
-                }
-            },
-            "LambdaFunction": {
-                "Type": "AWS::Lambda::Function",
-                "Properties": {
-                    "FunctionName": f"{project_info.get('name', 'project').replace(' ', '-')}-function",
-                    "Runtime": "python3.9",
-                    "Handler": "index.handler",
-                    "Code": {
-                        "ZipFile": "def handler(event, context): return {'statusCode': 200}"
-                    }
-                }
+def call_mcp_service(service_name, endpoint, data):
+    """Llama a un servicio MCP específico"""
+    try:
+        url = f"{MCP_SERVICES[service_name]}/{endpoint}"
+        headers = {'Content-Type': 'application/json'}
+        
+        response = requests.post(url, json=data, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error calling {service_name}: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Exception calling {service_name}: {str(e)}")
+        return None
+
+def generate_architecture_diagram(project_info):
+    """Genera diagrama de arquitectura usando MCP diagram service"""
+    try:
+        diagram_request = {
+            "project_name": project_info.get('name', 'AWS Project'),
+            "project_type": project_info.get('type', 'Web Application'),
+            "services": ["Lambda", "API Gateway", "DynamoDB", "S3", "CloudFront"]
+        }
+        
+        result = call_mcp_service('diagram', 'generate', diagram_request)
+        if result:
+            return result.get('diagram_code', 'Diagram generation failed')
+        return None
+    except Exception as e:
+        print(f"Error generating diagram: {str(e)}")
+        return None
+
+def generate_cloudformation_template(project_info):
+    """Genera template CloudFormation usando MCP CFN service"""
+    try:
+        cfn_request = {
+            "project_name": project_info.get('name', 'AWS Project'),
+            "services": ["Lambda", "API Gateway", "DynamoDB", "S3"],
+            "environment": "prod"
+        }
+        
+        result = call_mcp_service('cfn', 'generate', cfn_request)
+        if result:
+            return result.get('template', 'CloudFormation generation failed')
+        return None
+    except Exception as e:
+        print(f"Error generating CloudFormation: {str(e)}")
+        return None
+
+def generate_cost_analysis(project_info):
+    """Genera análisis de costos usando MCP pricing service"""
+    try:
+        pricing_request = {
+            "services": ["Lambda", "API Gateway", "DynamoDB", "S3", "CloudFront"],
+            "usage_estimates": {
+                "lambda_invocations": 1000000,
+                "api_requests": 1000000,
+                "dynamodb_reads": 1000000,
+                "s3_storage_gb": 100
             }
         }
-    }
-    
-    # Cost Analysis CSV
-    cost_analysis = """Service,Resource Type,Quantity,Unit Cost (USD),Monthly Cost (USD),Annual Cost (USD)
-Lambda,Function Invocations,1000000,0.0000002,200,2400
-S3,Standard Storage (GB),100,0.023,2.30,27.60
-API Gateway,REST API Requests,1000000,0.0000035,3.50,42.00
-DynamoDB,On-Demand Read/Write,1000000,0.000125,125,1500
-CloudWatch,Log Storage (GB),10,0.50,5.00,60.00
-Total,,,,,335.80,4029.60"""
-    
-    # Implementation Plan CSV
-    implementation_plan = """Phase,Task,Duration (Days),Dependencies,Resources,Status
-1,Project Setup,2,,AWS Architect,Pending
-1,Environment Configuration,3,Project Setup,DevOps Engineer,Pending
-2,Infrastructure Deployment,5,Environment Configuration,AWS Architect,Pending
-2,Application Development,10,Infrastructure Deployment,Developer,Pending
-3,Testing and QA,7,Application Development,QA Engineer,Pending
-3,Security Review,3,Testing and QA,Security Engineer,Pending
-4,Production Deployment,2,Security Review,DevOps Engineer,Pending
-4,Documentation and Training,3,Production Deployment,Technical Writer,Pending"""
-    
-    # Project Documentation
-    project_doc = f"""
-# PROYECTO: {project_info.get('name', 'AWS Project')}
+        
+        result = call_mcp_service('pricing', 'analyze', pricing_request)
+        if result:
+            return result.get('cost_analysis', 'Cost analysis failed')
+        return None
+    except Exception as e:
+        print(f"Error generating cost analysis: {str(e)}")
+        return None
 
-## OBJETIVO
-Implementar una solucion robusta y escalable en AWS que cumpla con los requerimientos del negocio.
-
-## DESCRIPCION
-{project_info.get('description', 'Proyecto de implementacion en AWS con mejores practicas.')}
-
-## SERVICIOS AWS UTILIZADOS
-- Amazon S3: Almacenamiento de objetos
-- AWS Lambda: Funciones serverless
-- Amazon API Gateway: APIs REST
-- Amazon DynamoDB: Base de datos NoSQL
-- Amazon CloudWatch: Monitoreo y logs
-
-## ARQUITECTURA
-La solucion implementa una arquitectura serverless que garantiza:
-- Alta disponibilidad
-- Escalabilidad automatica
-- Costos optimizados
-- Seguridad integrada
-
-## BENEFICIOS
-- Reduccion de costos operativos
-- Mayor agilidad en el desarrollo
-- Escalabilidad automatica
-- Seguridad mejorada
-
-## CRONOGRAMA
-Duracion estimada: 4-6 semanas
-Fases principales:
-1. Configuracion inicial (1 semana)
-2. Desarrollo e implementacion (3 semanas)
-3. Testing y deployment (1-2 semanas)
-
-## COSTOS ESTIMADOS
-Costo mensual aproximado: $335.80 USD
-Costo anual aproximado: $4,029.60 USD
-
-## PROXIMOS PASOS
-1. Aprobacion del proyecto
-2. Configuracion del entorno AWS
-3. Inicio del desarrollo
-4. Testing y validacion
-5. Deployment a produccion
-"""
-    
-    return {
-        'cloudformation-template.json': json.dumps(cfn_template, indent=2),
-        'cost-analysis.csv': cost_analysis,
-        'implementation-plan.csv': implementation_plan,
-        'project-documentation.md': project_doc
-    }
+def generate_project_documentation(project_info):
+    """Genera documentación del proyecto usando MCP customdoc service"""
+    try:
+        doc_request = {
+            "project_name": project_info.get('name', 'AWS Project'),
+            "project_type": project_info.get('type', 'Web Application'),
+            "description": project_info.get('description', 'AWS project implementation'),
+            "services": ["Lambda", "API Gateway", "DynamoDB", "S3"]
+        }
+        
+        result = call_mcp_service('customdoc', 'generate', doc_request)
+        if result:
+            return result.get('documentation', 'Documentation generation failed')
+        return None
+    except Exception as e:
+        print(f"Error generating documentation: {str(e)}")
+        return None
 
 def save_project_to_dynamodb(project_info, documents_generated):
     """Guarda el proyecto en DynamoDB"""
@@ -262,11 +259,11 @@ def lambda_handler(event, context):
         if any(keyword in response_lower for keyword in ['costo', 'precio', 'presupuesto']):
             mcp_services_used.append('pricing')
         if any(keyword in response_lower for keyword in ['documento', 'archivo']):
-            mcp_services_used.append('documents')
+            mcp_services_used.append('customdoc')
         if any(keyword in response_lower for keyword in ['cloudformation', 'template']):
             mcp_services_used.append('cfn')
         
-        # Detectar si debe generar documentos REALES
+        # Detectar si debe generar documentos REALES usando MCP
         documents_generated = None
         project_id = None
         project_name = None
@@ -289,23 +286,47 @@ def lambda_handler(event, context):
                         project_info['name'] = content
                         break
             
-            # Generar documentos usando mock data (mientras se configuran MCP services)
-            documents = generate_mock_documents(project_info)
+            # Generar documentos REALES usando MCP services
+            documents = {}
             
-            # Subir a S3
-            if upload_documents_to_s3(project_info, documents):
+            # 1. Generar diagrama de arquitectura
+            diagram = generate_architecture_diagram(project_info)
+            if diagram:
+                documents['architecture-diagram.py'] = diagram
+                mcp_services_used.append('diagram')
+            
+            # 2. Generar template CloudFormation
+            cfn_template = generate_cloudformation_template(project_info)
+            if cfn_template:
+                documents['cloudformation-template.json'] = cfn_template
+                mcp_services_used.append('cfn')
+            
+            # 3. Generar análisis de costos
+            cost_analysis = generate_cost_analysis(project_info)
+            if cost_analysis:
+                documents['cost-analysis.csv'] = cost_analysis
+                mcp_services_used.append('pricing')
+            
+            # 4. Generar documentación del proyecto
+            project_doc = generate_project_documentation(project_info)
+            if project_doc:
+                documents['project-documentation.md'] = project_doc
+                mcp_services_used.append('customdoc')
+            
+            # Subir a S3 si se generaron documentos
+            if documents and upload_documents_to_s3(project_info, documents):
                 # Guardar en DynamoDB
                 documents_list = list(documents.keys())
                 if save_project_to_dynamodb(project_info, documents_list):
                     documents_generated = [
+                        'Diagrama de Arquitectura (Python)',
                         'CloudFormation Template (JSON)',
                         'Analisis de Costos (CSV)',
-                        'Plan de Implementacion (CSV)',
                         'Documentacion del Proyecto (MD)'
                     ]
                     project_id = project_info['id']
                     project_name = project_info['name']
-                    mcp_services_used.extend(['documents', 'cfn', 'pricing', 's3', 'dynamodb'])
+                    mcp_services_used.extend(['s3', 'dynamodb'])
         
         # Respuesta estructurada
         result = {

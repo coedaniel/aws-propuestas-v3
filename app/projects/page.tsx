@@ -53,36 +53,11 @@ export default function ProjectsPage() {
     try {
       setIsLoading(true)
       const response = await getProjects()
+      console.log('Projects loaded:', response)
       setProjects(response.projects || [])
     } catch (error) {
       console.error('Error loading projects:', error)
-      // Mock data para demo
-      setProjects([
-        {
-          projectId: '1',
-          projectName: 'E-commerce Platform',
-          projectType: 'Aplicación Web',
-          status: 'completed',
-          createdAt: '2025-01-15T10:00:00Z',
-          updatedAt: '2025-01-16T15:30:00Z',
-          estimatedCost: 2500,
-          description: 'Plataforma de comercio electrónico con alta disponibilidad',
-          documentsGenerated: ['CloudFormation Template', 'Análisis de Costos', 'Diagrama de Arquitectura', 'Guía de Implementación'],
-          s3Folder: 'e-commerce-platform-2025'
-        },
-        {
-          projectId: '2',
-          projectName: 'Sistema de Inventario',
-          projectType: 'Sistema Empresarial',
-          status: 'in_progress',
-          createdAt: '2025-01-17T09:00:00Z',
-          updatedAt: '2025-01-17T14:20:00Z',
-          estimatedCost: 1800,
-          description: 'Sistema de gestión de inventario con integración IoT',
-          documentsGenerated: ['CloudFormation Template', 'Análisis de Costos'],
-          s3Folder: 'sistema-inventario-2025'
-        }
-      ])
+      setProjects([])
     } finally {
       setIsLoading(false)
     }
@@ -116,11 +91,9 @@ export default function ProjectsPage() {
   }
 
   const handleDownload = (project: Project) => {
-    // Simular descarga
-    const link = document.createElement('a')
-    link.href = `https://aws-propuestas-v3-documents-prod-035385358261.s3.amazonaws.com/${project.s3Folder}/`
-    link.target = '_blank'
-    link.click()
+    // Abrir S3 bucket folder
+    const s3Url = `https://aws-propuestas-v3-documents-prod-035385358261.s3.amazonaws.com/${project.s3Folder}/`
+    window.open(s3Url, '_blank')
   }
 
   const handleDelete = async (projectId: string) => {
@@ -137,7 +110,10 @@ export default function ProjectsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Cargando proyectos...</p>
+        </div>
       </div>
     )
   }
@@ -236,7 +212,7 @@ export default function ProjectsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-gray-700 line-clamp-2">
-                  {project.description}
+                  {project.description || 'Proyecto generado por el Arquitecto AWS'}
                 </p>
                 
                 <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -257,7 +233,7 @@ export default function ProjectsPage() {
                   <div className="flex flex-wrap gap-1">
                     {project.documentsGenerated?.slice(0, 2).map((doc, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {doc}
+                        {doc.replace(/\.(json|csv|md)$/, '')}
                       </Badge>
                     ))}
                     {project.documentsGenerated && project.documentsGenerated.length > 2 && (
@@ -299,15 +275,24 @@ export default function ProjectsPage() {
           ))}
         </div>
 
-        {filteredProjects.length === 0 && (
+        {filteredProjects.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay proyectos</h3>
-            <p className="text-gray-600 mb-4">Comienza creando tu primer proyecto AWS</p>
-            <Button onClick={() => router.push('/arquitecto')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Proyecto
-            </Button>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {projects.length === 0 ? 'No hay proyectos' : 'No se encontraron proyectos'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {projects.length === 0 
+                ? 'Comienza creando tu primer proyecto AWS' 
+                : 'Intenta con otros términos de búsqueda'
+              }
+            </p>
+            {projects.length === 0 && (
+              <Button onClick={() => router.push('/arquitecto')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Proyecto
+              </Button>
+            )}
           </div>
         )}
       </div>

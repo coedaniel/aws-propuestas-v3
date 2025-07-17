@@ -1,9 +1,10 @@
 import json
 import boto3
 import os
-import urllib3
 from datetime import datetime
 import uuid
+import subprocess
+import tempfile
 
 # Clientes AWS
 bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-east-1')
@@ -32,18 +33,27 @@ NO generes documentos hasta tener toda la informacion completa del proyecto.
 Pregunta una cosa a la vez. Se detallado y minucioso.
 """
 
-def generate_mock_documents(project_info):
-    """Genera documentos mock mientras se configuran los MCP services"""
-    
-    # CloudFormation Template
-    cfn_template = {
+def generate_cloudformation_template(project_info):
+    """Genera template CloudFormation basado en la información del proyecto"""
+    template = {
         "AWSTemplateFormatVersion": "2010-09-09",
         "Description": f"CloudFormation template for {project_info.get('name', 'AWS Project')}",
+        "Parameters": {
+            "Environment": {
+                "Type": "String",
+                "Default": "prod",
+                "AllowedValues": ["dev", "staging", "prod"],
+                "Description": "Environment name"
+            }
+        },
         "Resources": {
             "S3Bucket": {
                 "Type": "AWS::S3::Bucket",
                 "Properties": {
-                    "BucketName": f"{project_info.get('name', 'project').lower().replace(' ', '-')}-bucket"
+                    "BucketName": f"{project_info.get('name', 'project').lower().replace(' ', '-')}-bucket",
+                    "VersioningConfiguration": {
+                        "Status": "Enabled"
+                    }
                 }
             },
             "LambdaFunction": {
@@ -53,24 +63,55 @@ def generate_mock_documents(project_info):
                     "Runtime": "python3.9",
                     "Handler": "index.handler",
                     "Code": {
-                        "ZipFile": "def handler(event, context): return {'statusCode': 200}"
-                    }
+                        "ZipFile": "def handler(event, context): return {'statusCode': 200, 'body': 'Hello World'}"
+                    },
+                    "Role": {"Fn::GetAtt": ["LambdaRole", "Arn"]}
                 }
+            },
+            "LambdaRole": {
+                "Type": "AWS::IAM::Role",
+                "Properties": {
+                    "AssumeRolePolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [{
+                            "Effect": "Allow",
+                            "Principal": {"Service": "lambda.amazonaws.com"},
+                            "Action": "sts:AssumeRole"
+                        }]
+                    },
+                    "ManagedPolicyArns": [
+                        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    ]
+                }
+            }
+        },
+        "Outputs": {
+            "BucketName": {
+                "Description": "Name of the S3 bucket",
+                "Value": {"Ref": "S3Bucket"}
+            },
+            "LambdaFunctionArn": {
+                "Description": "ARN of the Lambda function",
+                "Value": {"Fn::GetAtt": ["LambdaFunction", "Arn"]}
             }
         }
     }
-    
-    # Cost Analysis CSV
-    cost_analysis = """Service,Resource Type,Quantity,Unit Cost (USD),Monthly Cost (USD),Annual Cost (USD)
+    return json.dumps(template, indent=2)
+
+def generate_cost_analysis(project_info):
+    """Genera análisis de costos en formato CSV"""
+    csv_content = """Service,Resource Type,Quantity,Unit Cost (USD),Monthly Cost (USD),Annual Cost (USD)
 Lambda,Function Invocations,1000000,0.0000002,200,2400
 S3,Standard Storage (GB),100,0.023,2.30,27.60
 API Gateway,REST API Requests,1000000,0.0000035,3.50,42.00
 DynamoDB,On-Demand Read/Write,1000000,0.000125,125,1500
 CloudWatch,Log Storage (GB),10,0.50,5.00,60.00
 Total,,,,,335.80,4029.60"""
-    
-    # Implementation Plan CSV
-    implementation_plan = """Phase,Task,Duration (Days),Dependencies,Resources,Status
+    return csv_content
+
+def generate_implementation_plan(project_info):
+    """Genera plan de implementación en formato CSV"""
+    csv_content = """Phase,Task,Duration (Days),Dependencies,Resources,Status
 1,Project Setup,2,,AWS Architect,Pending
 1,Environment Configuration,3,Project Setup,DevOps Engineer,Pending
 2,Infrastructure Deployment,5,Environment Configuration,AWS Architect,Pending
@@ -79,62 +120,58 @@ Total,,,,,335.80,4029.60"""
 3,Security Review,3,Testing and QA,Security Engineer,Pending
 4,Production Deployment,2,Security Review,DevOps Engineer,Pending
 4,Documentation and Training,3,Production Deployment,Technical Writer,Pending"""
-    
-    # Project Documentation
-    project_doc = f"""
-# PROYECTO: {project_info.get('name', 'AWS Project')}
+    return csv_content
 
-## OBJETIVO
+def generate_project_document(project_info):
+    """Genera documento del proyecto"""
+    doc_content = f"""
+PROYECTO: {project_info.get('name', 'AWS Project')}
+
+OBJETIVO:
 Implementar una solucion robusta y escalable en AWS que cumpla con los requerimientos del negocio.
 
-## DESCRIPCION
+DESCRIPCION:
 {project_info.get('description', 'Proyecto de implementacion en AWS con mejores practicas.')}
 
-## SERVICIOS AWS UTILIZADOS
+SERVICIOS AWS UTILIZADOS:
 - Amazon S3: Almacenamiento de objetos
 - AWS Lambda: Funciones serverless
 - Amazon API Gateway: APIs REST
 - Amazon DynamoDB: Base de datos NoSQL
 - Amazon CloudWatch: Monitoreo y logs
 
-## ARQUITECTURA
+ARQUITECTURA:
 La solucion implementa una arquitectura serverless que garantiza:
 - Alta disponibilidad
 - Escalabilidad automatica
 - Costos optimizados
 - Seguridad integrada
 
-## BENEFICIOS
+BENEFICIOS:
 - Reduccion de costos operativos
 - Mayor agilidad en el desarrollo
 - Escalabilidad automatica
 - Seguridad mejorada
 
-## CRONOGRAMA
+CRONOGRAMA:
 Duracion estimada: 4-6 semanas
 Fases principales:
 1. Configuracion inicial (1 semana)
 2. Desarrollo e implementacion (3 semanas)
 3. Testing y deployment (1-2 semanas)
 
-## COSTOS ESTIMADOS
+COSTOS ESTIMADOS:
 Costo mensual aproximado: $335.80 USD
 Costo anual aproximado: $4,029.60 USD
 
-## PROXIMOS PASOS
+PROXIMOS PASOS:
 1. Aprobacion del proyecto
 2. Configuracion del entorno AWS
 3. Inicio del desarrollo
 4. Testing y validacion
 5. Deployment a produccion
 """
-    
-    return {
-        'cloudformation-template.json': json.dumps(cfn_template, indent=2),
-        'cost-analysis.csv': cost_analysis,
-        'implementation-plan.csv': implementation_plan,
-        'project-documentation.md': project_doc
-    }
+    return doc_content
 
 def save_project_to_dynamodb(project_info, documents_generated):
     """Guarda el proyecto en DynamoDB"""
@@ -253,7 +290,7 @@ def lambda_handler(event, context):
             
             ai_response = response['output']['message']['content'][0]['text']
         
-        # Detectar MCP services que se están usando
+        # Detectar MCP services
         response_lower = ai_response.lower()
         mcp_services_used = []
         
@@ -263,8 +300,6 @@ def lambda_handler(event, context):
             mcp_services_used.append('pricing')
         if any(keyword in response_lower for keyword in ['documento', 'archivo']):
             mcp_services_used.append('documents')
-        if any(keyword in response_lower for keyword in ['cloudformation', 'template']):
-            mcp_services_used.append('cfn')
         
         # Detectar si debe generar documentos REALES
         documents_generated = None
@@ -289,8 +324,13 @@ def lambda_handler(event, context):
                         project_info['name'] = content
                         break
             
-            # Generar documentos usando mock data (mientras se configuran MCP services)
-            documents = generate_mock_documents(project_info)
+            # Generar documentos REALES
+            documents = {
+                'cloudformation-template.json': generate_cloudformation_template(project_info),
+                'cost-analysis.csv': generate_cost_analysis(project_info),
+                'implementation-plan.csv': generate_implementation_plan(project_info),
+                'project-document.txt': generate_project_document(project_info)
+            }
             
             # Subir a S3
             if upload_documents_to_s3(project_info, documents):
@@ -298,20 +338,20 @@ def lambda_handler(event, context):
                 documents_list = list(documents.keys())
                 if save_project_to_dynamodb(project_info, documents_list):
                     documents_generated = [
-                        'CloudFormation Template (JSON)',
+                        'CloudFormation Template',
                         'Analisis de Costos (CSV)',
                         'Plan de Implementacion (CSV)',
-                        'Documentacion del Proyecto (MD)'
+                        'Documento del Proyecto'
                     ]
                     project_id = project_info['id']
                     project_name = project_info['name']
-                    mcp_services_used.extend(['documents', 'cfn', 'pricing', 's3', 'dynamodb'])
+                    mcp_services_used.extend(['documents', 's3', 'dynamodb'])
         
         # Respuesta estructurada
         result = {
             'response': ai_response,
             'modelId': selected_model,
-            'mode': 'arquitecto-maestro-mcp',
+            'mode': 'arquitecto-maestro',
             'timestamp': datetime.now().isoformat(),
             'mcpServicesUsed': list(set(mcp_services_used)),
             'documentsGenerated': documents_generated,
