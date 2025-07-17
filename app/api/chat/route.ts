@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+
+// Configurar cliente de Bedrock
+const bedrockClient = new BedrockRuntimeClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  }
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,11 +17,47 @@ export async function POST(request: NextRequest) {
 
     const lastMessage = messages[messages.length - 1]?.content || ''
     
-    // Simular respuesta inteligente basada en el contenido
+    // Usar Bedrock directamente
+    const modelToUse = modelId || 'amazon.nova-pro-v1:0'
+    
     let response = ''
     
-    if (lastMessage.toLowerCase().includes('aws')) {
-      response = `Excelente pregunta sobre AWS. Te puedo ayudar con:
+    try {
+      // Preparar el prompt para el modelo
+      const prompt = messages.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n\n')
+      
+      const command = new InvokeModelCommand({
+        modelId: modelToUse,
+        body: JSON.stringify({
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          max_tokens: 2000,
+          temperature: 0.7,
+          anthropic_version: "bedrock-2023-05-31"
+        }),
+        contentType: 'application/json',
+        accept: 'application/json'
+      })
+
+      const bedrockResponse = await bedrockClient.send(command)
+      const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body))
+      
+      if (responseBody.content && responseBody.content[0] && responseBody.content[0].text) {
+        response = responseBody.content[0].text
+      } else if (responseBody.completion) {
+        response = responseBody.completion
+      } else {
+        throw new Error('Formato de respuesta inesperado de Bedrock')
+      }
+      
+    } catch (bedrockError) {
+      console.error('Error con Bedrock, usando respuesta de fallback:', bedrockError)
+      
+      // Respuesta de fallback inteligente
+      if (lastMessage.toLowerCase().includes('aws')) {
+        response = `Excelente pregunta sobre AWS. Te puedo ayudar con:
 
 • **Servicios de Compute**: Lambda, EC2, ECS, Fargate
 • **Bases de datos**: DynamoDB, RDS, Aurora
@@ -21,8 +67,8 @@ export async function POST(request: NextRequest) {
 • **AI/ML**: Bedrock, SageMaker, Rekognition
 
 ¿Sobre qué servicio específico te gustaría saber más?`
-    } else if (lastMessage.toLowerCase().includes('arquitectura')) {
-      response = `Para diseñar una arquitectura AWS efectiva, consideremos:
+      } else if (lastMessage.toLowerCase().includes('arquitectura')) {
+        response = `Para diseñar una arquitectura AWS efectiva, consideremos:
 
 🏗️ **Patrones Arquitectónicos**:
 - Serverless (Lambda + API Gateway + DynamoDB)
@@ -37,8 +83,8 @@ export async function POST(request: NextRequest) {
 5. Optimización de costos
 
 ¿Qué tipo de aplicación estás planeando construir?`
-    } else if (lastMessage.toLowerCase().includes('costo')) {
-      response = `Para optimizar costos en AWS:
+      } else if (lastMessage.toLowerCase().includes('costo')) {
+        response = `Para optimizar costos en AWS:
 
 💰 **Estrategias de Ahorro**:
 - Reserved Instances para cargas predecibles
@@ -53,8 +99,8 @@ export async function POST(request: NextRequest) {
 - Trusted Advisor
 
 ¿Necesitas ayuda con algún servicio específico para reducir costos?`
-    } else {
-      response = `Hola! Soy tu asistente AWS especializado. Puedo ayudarte con:
+      } else {
+        response = `Hola! Soy tu asistente AWS especializado. Puedo ayudarte con:
 
 🔧 **Servicios AWS**: Configuración y mejores prácticas
 🏗️ **Arquitecturas**: Diseño de soluciones escalables
@@ -63,13 +109,14 @@ export async function POST(request: NextRequest) {
 📊 **Monitoreo**: CloudWatch y observabilidad
 
 ¿En qué puedo ayudarte hoy?`
+      }
     }
 
     const apiResponse = {
       response,
-      modelId: modelId || 'amazon.nova-pro-v1:0',
+      modelId: modelToUse,
       mode: 'chat',
-      mcpServicesUsed: ['core'],
+      mcpServicesUsed: [],
       usage: {
         inputTokens: lastMessage.length,
         outputTokens: response.length,

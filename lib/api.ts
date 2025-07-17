@@ -1,8 +1,5 @@
 // API configuration for AWS Propuestas v3
-import { mcpClient, type ChatMessage as MCPChatMessage } from './mcp-client'
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
-const USE_MCP_FALLBACK = true // Enable MCP fallback when legacy API fails
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -13,7 +10,7 @@ export interface ChatRequest {
   messages: ChatMessage[]
   modelId?: string
   mode?: string
-  selected_model?: string  // Para el selector de modelos duales
+  selected_model?: string
 }
 
 export interface ChatResponse {
@@ -32,10 +29,10 @@ export interface ArquitectoRequest {
   messages: ChatMessage[]
   modelId?: string
   projectId?: string
-  selected_model?: string  // Para el selector de modelos duales
-  project_info?: any  // Información del proyecto
-  query?: string  // Query del usuario
-  session_id?: string  // ID de sesión
+  selected_model?: string
+  project_info?: any
+  query?: string
+  session_id?: string
 }
 
 export interface ArquitectoResponse {
@@ -52,7 +49,6 @@ export interface ArquitectoResponse {
     outputTokens?: number
     totalTokens?: number
   }
-  // MCP Integration properties
   mcpServicesUsed?: string[]
   mcpResults?: any
   transparency?: {
@@ -60,7 +56,6 @@ export interface ArquitectoResponse {
     services: string[]
   }
   promptUnderstanding?: any
-  // Project info for compatibility
   projectInfo?: any
 }
 
@@ -73,7 +68,7 @@ export interface ProjectRequest {
 
 export interface ProjectResponse {
   projectId: string
-  projectName: string  // API returns projectName, not name
+  projectName: string
   status: string
   currentStep: string
   createdAt: string
@@ -87,8 +82,8 @@ export interface ProjectResponse {
 // API functions
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
   try {
-    // Try legacy API first
-    const response = await fetch(`${API_BASE_URL}/chat`, {
+    // Intentar con la API local primero
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -96,71 +91,33 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       body: JSON.stringify(request),
     })
 
-    if (!response.ok) {
-      throw new Error(`Chat API error: ${response.status} ${response.statusText}`)
+    if (response.ok) {
+      return response.json()
     }
 
-    return response.json()
-  } catch (error) {
-    console.warn('Legacy API failed, trying MCP fallback:', error)
-    
-    if (USE_MCP_FALLBACK) {
-      try {
-        // Convert to MCP format and use MCP client
-        const mcpMessages: MCPChatMessage[] = request.messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        }))
-        
-        const mcpResponse = await mcpClient.sendChatMessage(mcpMessages, request.modelId)
-        
-        // Convert MCP response to legacy format
-        return {
-          response: mcpResponse.response,
-          modelId: mcpResponse.modelId,
-          mode: mcpResponse.mode || 'chat',
-          usage: mcpResponse.usage
-        }
-      } catch (mcpError) {
-        console.error('MCP fallback also failed:', mcpError)
-        throw new Error('Both legacy API and MCP servers are unavailable')
-      }
+    // Si falla, intentar con la API externa
+    const externalResponse = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
+
+    if (!externalResponse.ok) {
+      throw new Error(`Chat API error: ${externalResponse.status} ${externalResponse.statusText}`)
     }
-    
+
+    return externalResponse.json()
+  } catch (error) {
+    console.error('Error sending chat message:', error)
     throw error
   }
 }
 
 export async function sendArquitectoRequest(request: ArquitectoRequest): Promise<ArquitectoResponse> {
   try {
-    // Try legacy API first
-    const response = await fetch(`${API_BASE_URL}/arquitecto`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Arquitecto API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    
-    // Ensure legacy API response has required fields
-    return {
-      ...data,
-      mode: data.mode || 'arquitecto',
-      mcpServicesUsed: data.mcpServicesUsed || [],
-      mcpResults: data.mcpResults || {},
-      transparency: data.transparency || null,
-      promptUnderstanding: data.promptUnderstanding || null
-    }
-  } catch (error) {
-    console.warn('Legacy Arquitecto API failed, trying MCP-enhanced version:', error)
-    
-    // Use new MCP-enhanced arquitecto endpoint
+    // Intentar con la API local primero
     const response = await fetch('/api/arquitecto', {
       method: 'POST',
       headers: {
@@ -174,30 +131,54 @@ export async function sendArquitectoRequest(request: ArquitectoRequest): Promise
       }),
     })
 
-    if (!response.ok) {
-      throw new Error(`MCP Arquitecto API error: ${response.status}`)
+    if (response.ok) {
+      const data = await response.json()
+      
+      // Convertir a formato esperado
+      return {
+        response: data.response,
+        modelId: data.selectedModel || request.modelId || request.selected_model || 'amazon.nova-pro-v1:0',
+        mode: 'arquitecto',
+        projectId: request.projectId,
+        currentStep: 0,
+        isComplete: false,
+        usage: data.usage,
+        mcpServicesUsed: data.mcpServicesUsed || [],
+        mcpResults: data.mcpResults || {},
+        transparency: data.transparency || null,
+        promptUnderstanding: data.promptUnderstanding || null,
+        projectInfo: data.projectInfo || null,
+        documentsGenerated: data.documentsGenerated || false,
+        s3Folder: data.s3Folder || null
+      }
     }
 
-    const data = await response.json()
+    // Si falla, intentar con la API externa
+    const externalResponse = await fetch(`${API_BASE_URL}/arquitecto`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
+
+    if (!externalResponse.ok) {
+      throw new Error(`Arquitecto API error: ${externalResponse.status}`)
+    }
+
+    const data = await externalResponse.json()
     
-    // Convert to legacy format
     return {
-      response: data.response,
-      modelId: data.selectedModel || request.modelId || request.selected_model || 'amazon.nova-pro-v1:0',
-      mode: 'arquitecto',
-      projectId: request.projectId,
-      currentStep: 0,
-      isComplete: false,
-      usage: data.usage,
-      // MCP properties from new API
+      ...data,
+      mode: data.mode || 'arquitecto',
       mcpServicesUsed: data.mcpServicesUsed || [],
       mcpResults: data.mcpResults || {},
       transparency: data.transparency || null,
-      promptUnderstanding: data.promptUnderstanding || null,
-      projectInfo: data.projectInfo || null,
-      documentsGenerated: data.documentsGenerated || false,
-      s3Folder: data.s3Folder || null
+      promptUnderstanding: data.promptUnderstanding || null
     }
+  } catch (error) {
+    console.error('Error sending arquitecto request:', error)
+    throw error
   }
 }
 
@@ -231,17 +212,14 @@ export async function getProjects(): Promise<ProjectResponse[]> {
 
   const data = await response.json()
   
-  // Handle the API response structure that includes projects array
   if (data.projects && Array.isArray(data.projects)) {
     return data.projects
   }
   
-  // Fallback: if it's already an array, return it directly
   if (Array.isArray(data)) {
     return data
   }
   
-  // If neither, return empty array to prevent errors
   console.warn('Unexpected API response structure:', data)
   return []
 }
@@ -282,11 +260,28 @@ export async function checkHealth(): Promise<{
   status: string
   timestamp: string
   legacy_api?: boolean
-  mcp_servers?: { [key: string]: boolean }
+  local_api?: boolean
 }> {
   const timestamp = new Date().toISOString()
   let legacyApiStatus = false
-  let mcpServersStatus: { [key: string]: boolean } = {}
+  let localApiStatus = false
+
+  // Check local API
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'test' }],
+        modelId: 'amazon.nova-pro-v1:0'
+      }),
+    })
+    localApiStatus = response.ok
+  } catch (error) {
+    console.warn('Local API health check failed:', error)
+  }
 
   // Check legacy API
   try {
@@ -298,21 +293,12 @@ export async function checkHealth(): Promise<{
     console.warn('Legacy API health check failed:', error)
   }
 
-  // Check MCP servers
-  try {
-    mcpServersStatus = await mcpClient.checkHealth()
-  } catch (error) {
-    console.warn('MCP servers health check failed:', error)
-  }
-
-  // Determine overall status
-  const mcpHealthy = Object.values(mcpServersStatus).some(status => status)
-  const overallStatus = legacyApiStatus || mcpHealthy ? 'healthy' : 'unhealthy'
+  const overallStatus = localApiStatus || legacyApiStatus ? 'healthy' : 'unhealthy'
 
   return {
     status: overallStatus,
     timestamp,
     legacy_api: legacyApiStatus,
-    mcp_servers: mcpServersStatus
+    local_api: localApiStatus
   }
 }
