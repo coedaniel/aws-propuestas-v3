@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ModelSelector from '@/components/ModelSelector'
-import { MCPServiceIndicator, MCPNotification } from '@/components/mcp-transparency'
 import { useChatStore } from '@/store/chatStore'
 import { Message, AVAILABLE_MODELS } from '@/lib/types'
 import { generateId, formatDate } from '@/lib/utils'
-import { detectMCPServices } from '@/lib/mcpIntegration'
 import { 
   ArrowLeft, 
   Send, 
@@ -27,11 +25,6 @@ export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  const [mcpServices, setMcpServices] = useState<string[]>([])
-  const [mcpNotification, setMcpNotification] = useState<{
-    message: string
-    type: 'info' | 'success' | 'warning' | 'error'
-  } | null>(null)
   
   const {
     messages,
@@ -55,16 +48,6 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
 
-    // Detectar servicios MCP necesarios
-    const detectedServices = detectMCPServices(input, messages.map((m: Message) => m.content))
-    if (detectedServices.length > 0) {
-      setMcpServices(detectedServices)
-      setMcpNotification({
-        message: `✅ Voy a usar los MCP ${detectedServices.join(', ')} para procesar tu solicitud...`,
-        type: 'info'
-      })
-    }
-
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
@@ -77,61 +60,53 @@ export default function ChatPage() {
     setLoading(true)
 
     try {
-      const { sendChatMessage } = await import('@/lib/api')
-      const data = await sendChatMessage({
-        messages: [...messages, userMessage].map(m => ({
-          role: m.role,
-          content: m.content
-        })),
-        modelId: selectedModel,
-        mode: 'chat-libre'
+      // Llamada directa al endpoint del arquitecto (sin MCP)
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+      
+      const response = await fetch(`${API_BASE_URL}/arquitecto`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: input.trim()
+            }
+          ],
+          selected_model: selectedModel
+        }),
       })
 
-      // Si se detectaron servicios MCP, mostrar notificación de éxito
-      if (detectedServices.length > 0) {
-        setMcpNotification({
-          message: '✅ Servicios MCP utilizados correctamente en la respuesta.',
-          type: 'success'
-        })
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
+
+      const data = await response.json()
 
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: data.response,
-        timestamp: new Date().toISOString(),
-        usage: data.usage,
-        mcpServicesUsed: data.mcpServicesUsed || []
+        content: data.response || 'Lo siento, no pude generar una respuesta.',
+        timestamp: new Date().toISOString()
       }
 
       addMessage(assistantMessage)
       
-      // Si hay servicios MCP utilizados en la respuesta, actualizarlos
-      if (data.mcpServicesUsed && data.mcpServicesUsed.length > 0) {
-        setMcpServices(data.mcpServicesUsed)
-      }
-      
     } catch (error: any) {
       console.error('Error sending message:', error)
-      setMcpNotification({
-        message: `❌ Error: ${error?.message || 'Error desconocido'}`,
-        type: 'error'
-      })
       
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, inténtalo de nuevo.',
+        content: `Error al procesar la solicitud: ${error?.message || 'Error desconocido'}`,
         timestamp: new Date().toISOString()
       }
+      
       addMessage(errorMessage)
     } finally {
       setLoading(false)
-      
-      // Limpiar notificación después de 5 segundos
-      setTimeout(() => {
-        setMcpNotification(null)
-      }, 5000)
     }
   }
 
