@@ -207,7 +207,7 @@ function ArquitectoContent() {
     }
 
     // Detectar servicios MCP necesarios
-    const detectedServices = detectMCPServices(currentInput, messages.map(m => m.content))
+    const detectedServices = detectMCPServices(currentInput, messages.map((m: { content: string }) => m.content))
     if (detectedServices.length > 0) {
       setMcpNotification({
         message: `✅ Voy a usar los MCP ${detectedServices.join(', ')} para procesar tu solicitud...`,
