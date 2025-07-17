@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import ModelSelector from '@/components/ModelSelector'
-import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download, Building2 } from 'lucide-react'
 import { sendArquitectoRequest } from '@/lib/api'
 import { generateId, formatDate } from '@/lib/utils'
 
@@ -70,6 +70,8 @@ export default function ArquitectoPage() {
         selected_model: selectedModel
       })
 
+      console.log('Arquitecto response:', response)
+
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
@@ -87,6 +89,7 @@ export default function ArquitectoPage() {
       
       // Modal solo si REALMENTE generó documentos
       if (response.documentsGenerated && response.documentsGenerated.length > 0) {
+        console.log('Documents generated:', response.documentsGenerated)
         setGeneratedProject({
           projectId: response.projectId || generateId(),
           projectName: response.projectName || 'Proyecto AWS',
@@ -117,65 +120,87 @@ export default function ArquitectoPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header - IGUAL QUE CHAT */}
+      {/* Header - EXACTAMENTE IGUAL QUE CHAT */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" onClick={() => router.push('/')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Inicio
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/')}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver
               </Button>
-              <h1 className="text-xl font-semibold">Arquitecto AWS</h1>
+              <div className="flex items-center space-x-3">
+                <Building2 className="w-6 h-6 text-blue-600" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Arquitecto AWS</h1>
+                  <p className="text-sm text-gray-600">Genera propuestas profesionales</p>
+                </div>
+              </div>
             </div>
-            <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
+            
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={localLoading}
+              compact={true}
+            />
           </div>
         </div>
       </header>
 
-      {/* MCP Indicator */}
-      {mcpServices.length > 0 && (
-        <div className="bg-blue-50 border-b px-4 py-2">
-          <div className="container mx-auto">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-blue-700">
-                🔧 MCP Services: {mcpServices.join(', ')}
-              </span>
-            </div>
+      {/* Chat Container - EXACTAMENTE IGUAL QUE CHAT */}
+      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
+        {/* MCP Indicator */}
+        {mcpServices.length > 0 && (
+          <div className="px-4 pt-4">
+            <Card className="mb-4 bg-blue-50 border-blue-200">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-blue-700 font-medium">
+                    🔧 MCP Services Activos: {mcpServices.join(', ')}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Messages - EXACTAMENTE IGUAL QUE CHAT */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-4">
+            {localMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <Card className={`max-w-[80%] ${
+                  message.role === 'user' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white border'
+                }`}>
+                  <CardContent className="p-4">
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="flex items-center justify-between mt-2 text-xs opacity-70">
+                      <span>{formatDate(message.timestamp)}</span>
+                      {message.mcpServices && message.mcpServices.length > 0 && (
+                        <span>MCP: {message.mcpServices.join(', ')}</span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
           </div>
         </div>
-      )}
 
-      {/* Messages - IGUAL QUE CHAT */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="container mx-auto max-w-4xl space-y-4">
-          {localMessages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <Card className={`max-w-[80%] ${
-                message.role === 'user' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-white border'
-              }`}>
-                <CardContent className="p-4">
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                  <div className="flex items-center justify-between mt-2 text-xs opacity-70">
-                    <span>{formatDate(message.timestamp)}</span>
-                    {message.mcpServices && message.mcpServices.length > 0 && (
-                      <span>MCP: {message.mcpServices.join(', ')}</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input - IGUAL QUE CHAT */}
-      <div className="border-t bg-white p-4">
-        <div className="container mx-auto max-w-4xl">
+        {/* Input Area - EXACTAMENTE IGUAL QUE CHAT */}
+        <div className="border-t bg-white p-4">
           <div className="flex gap-2">
             <Textarea
               value={input}
