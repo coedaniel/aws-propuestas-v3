@@ -56,12 +56,16 @@ export default function ChatPage() {
       timestamp: new Date().toISOString()
     }
 
+    // Agregar mensaje del usuario inmediatamente
     addMessage(userMessage)
+    const currentMessages = [...messages, userMessage]
+    
     setInput('')
     setLoading(true)
 
     try {
-      // Llamada al endpoint específico de chat libre (solo AWS)
+      console.log('Enviando request...', { messages: currentMessages.length, model: selectedModel })
+      
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
       
       const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -70,7 +74,7 @@ export default function ChatPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
+          messages: currentMessages.map(m => ({
             role: m.role,
             content: m.content
           })),
@@ -78,11 +82,14 @@ export default function ChatPage() {
         }),
       })
 
+      console.log('Response status:', response.status)
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
+      console.log('Response data:', data)
 
       const assistantMessage: Message = {
         id: generateId(),
