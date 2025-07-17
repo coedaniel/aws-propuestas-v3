@@ -1,123 +1,51 @@
 # Changelog
 
-Todos los cambios notables de este proyecto serán documentados en este archivo.
+Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - 2024-12-16
+## [1.2.0] - 2025-07-17
 
-### 🎉 Lanzamiento Inicial
+### Añadido
+- Integración mejorada con servicios MCP
+- Componente de transparencia MCP para mostrar servicios utilizados
+- Notificaciones MCP en tiempo real
+- Visor de documentos con filtrado por tipo
+- Componente de estado del proyecto con seguimiento de tareas
+- Soporte para múltiples modelos de IA (Nova Pro y Claude 3.5)
+- Validación de información del proyecto
+- Función para finalizar proyectos y actualizar estado en DynamoDB
 
-#### Agregado
-- **Arquitecto AWS Inteligente**
-  - Análisis automático de requerimientos de proyecto
-  - Generación de arquitecturas AWS personalizadas
-  - Detección inteligente de servicios AWS necesarios
-  - Extracción automática de nombres de proyecto con múltiples patrones regex
+### Mejorado
+- Interfaz de usuario más profesional y responsive
+- Estructura de carpetas estandarizada para documentos en S3
+- Navegación entre páginas y estados del frontend
+- Detección automática de servicios MCP necesarios
+- Mensajes de error y bloqueo más claros
+- Documentación del proyecto
 
-- **Integración MCP Completa**
-  - 6 servicios MCP corriendo en ECS cluster
-  - Transparencia completa de servicios utilizados (estilo Amazon Q CLI)
-  - Generación automática de documentos técnicos
-  - Diagramas de arquitectura automáticos
+### Corregido
+- Problemas de compatibilidad con Amplify
+- Errores en la detección de servicios MCP
+- Problemas de visualización en dispositivos móviles
 
-- **Modelos de IA Soportados**
-  - Amazon Nova Pro v1 (`amazon.nova-pro-v1:0`)
-  - Claude 3.5 Sonnet v2 (`anthropic.claude-3-5-sonnet-20241022-v2:0`)
+## [1.1.0] - 2025-07-10
 
-- **Funcionalidades Core**
-  - Chat libre para consultas generales de AWS
-  - Gestión completa de proyectos
-  - Analytics y métricas de uso
-  - Generación de múltiples tipos de documentos
+### Añadido
+- Página de Arquitecto AWS
+- Integración básica con servicios MCP
+- Almacenamiento de documentos en S3
+- Página de proyectos
 
-#### Servicios MCP Implementados
-- **Core MCP**: Análisis y comprensión de prompts
-- **AWS Docs MCP**: Búsqueda en documentación oficial
-- **Diagram MCP**: Generación automática de diagramas
-- **Pricing MCP**: Cálculos de costos estimados
-- **Custom Doc MCP**: Generación de documentos técnicos
-- **CloudFormation MCP**: Templates de infraestructura
+### Mejorado
+- Rendimiento general de la aplicación
+- Interfaz de usuario
 
-#### Características Técnicas
-- **Frontend**: Next.js 14 con App Router
-- **Backend**: Amazon Bedrock integration
-- **Estado**: Zustand para gestión de estado
-- **Estilos**: Tailwind CSS con componentes personalizados
-- **TypeScript**: Tipado estricto en toda la aplicación
+## [1.0.0] - 2025-07-01
 
-#### Correcciones Implementadas
-- Resolución de conflictos de interfaces TypeScript
-- Configuración correcta de modelos Bedrock
-- Manejo de encoding UTF-8 para contenido en español
-- Extracción mejorada de nombres de proyecto
-- Controles manuales de completación de proyecto
-- Integración gradual de servicios MCP
-
-### 🔧 Configuración y Deployment
-- **AWS Amplify**: Configuración completa para deployment
-- **Docker**: Soporte para contenedores
-- **Environment Variables**: Configuración flexible para diferentes entornos
-- **CI/CD**: Pipeline automatizado con GitHub Actions
-
-### 📚 Documentación
-- README completo con guías de uso
-- Guía de contribución detallada
-- Documentación de arquitectura
-- Ejemplos de código y configuración
-
-### 🛠️ Herramientas de Desarrollo
-- ESLint y Prettier configurados
-- Husky para git hooks
-- Conventional commits
-- TypeScript strict mode
-
----
-
-## Próximas Versiones
-
-### [3.1.0] - Planificado
-- [ ] Integración con DynamoDB para persistencia
-- [ ] Visor de documentos integrado
-- [ ] Métricas avanzadas de uso
-- [ ] Soporte para más modelos de IA
-
-### [3.2.0] - Futuro
-- [ ] Colaboración en tiempo real
-- [ ] Templates personalizables
-- [ ] Integración con AWS Organizations
-- [ ] API pública para integraciones
-
----
-
-## Notas de Migración
-
-### Desde v2.x
-- Actualizar variables de entorno para servicios MCP
-- Revisar configuración de modelos Bedrock
-- Actualizar dependencias de Node.js a v18+
-
-### Configuración Requerida
-```env
-# Servicios MCP
-NEXT_PUBLIC_MCP_BASE_URL=https://mcp.danielingram.shop
-NEXT_PUBLIC_CORE_MCP_URL=https://mcp.danielingram.shop/core
-# ... otros servicios MCP
-
-# API Configuration
-NEXT_PUBLIC_API_URL=https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod
-```
-
----
-
-## Contribuidores
-
-- **Daniel Ingram** - Desarrollo principal y arquitectura
-- **Comunidad AWS** - Feedback y testing
-
-## Agradecimientos
-
-- Amazon Web Services por Bedrock y servicios de IA
-- Comunidad de desarrolladores por feedback y contribuciones
-- Equipo de MCP por el protocolo y especificaciones
+### Añadido
+- Versión inicial de la aplicación
+- Página de Chat Libre
+- Integración con Amazon Bedrock
+- Autenticación de usuarios

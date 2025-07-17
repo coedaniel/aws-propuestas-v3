@@ -1,75 +1,60 @@
-# AWS Propuestas v3 🚀
+# AWS Propuestas v3
 
-Una aplicación web avanzada para generar propuestas arquitectónicas de AWS con integración MCP (Model Context Protocol) y capacidades de IA generativa.
+Aplicación web para generar propuestas de arquitectura AWS utilizando servicios MCP (Model Composition Protocol).
 
-## 🌟 Características Principales
+## Características Principales
 
-### 🤖 **Arquitecto AWS Inteligente**
-- Análisis automático de requerimientos de proyecto
-- Generación de arquitecturas AWS personalizadas
-- Detección inteligente de servicios AWS necesarios
-- Extracción automática de nombres de proyecto
+- **Chat Libre**: Interfaz de chat que permite utilizar dos modelos de IA diferentes:
+  - Amazon Nova Pro v1: Ideal para análisis multimodal y diagramas
+  - Claude 3.5 Sonnet v2: Perfecto para análisis técnico profundo
 
-### 🔧 **Integración MCP Avanzada**
-- **6 Servicios MCP** corriendo en ECS
-- Transparencia completa de servicios utilizados (estilo Amazon Q CLI)
-- Generación automática de documentos técnicos
-- Diagramas de arquitectura automáticos
+- **Arquitecto AWS**: Asistente especializado para diseñar arquitecturas AWS con:
+  - Generación de diagramas de arquitectura
+  - Creación de documentación técnica
+  - Estimación de costos
+  - Plantillas de CloudFormation
 
-### 📊 **Generación de Documentos**
-- Documentos técnicos en múltiples formatos
-- Diagramas de arquitectura visuales
-- Calculadoras de costos AWS
-- Templates de CloudFormation
-- Guías de implementación
+- **Integración MCP**: Utiliza servicios MCP para extender las capacidades:
+  - `core-mcp`: Análisis básico y procesamiento de consultas
+  - `diagram-mcp`: Generación de diagramas de arquitectura
+  - `awsdocs-mcp`: Acceso a documentación oficial de AWS
+  - `pricing-mcp`: Estimación de costos de servicios AWS
+  - `cfn-mcp`: Generación de plantillas CloudFormation
+  - `customdoc-mcp`: Creación de documentos personalizados
 
-### 🎨 **Modelos de IA Soportados**
-- **Amazon Nova Pro v1** - Ideal para análisis multimodal y diagramas
-- **Claude 3.5 Sonnet v2** - Perfecto para análisis técnico profundo
-
-## 🏗️ **Arquitectura del Sistema**
+## Estructura del Proyecto
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend       │    │   MCP Services  │
-│   (Next.js)     │◄──►│   (Bedrock)     │◄──►│   (ECS Cluster) │
-│                 │    │                 │    │                 │
-│ • Chat Libre    │    │ • API Routes    │    │ • Core MCP      │
-│ • Arquitecto    │    │ • Model Calls   │    │ • AWS Docs      │
-│ • Proyectos     │    │ • MCP Client    │    │ • Diagrams      │
-│ • Analytics     │    │                 │    │ • Pricing       │
-└─────────────────┘    └─────────────────┘    │ • Custom Docs   │
-                                              │ • CloudFormation│
-                                              └─────────────────┘
+aws-propuestas-v3-github/
+├── app/                    # Páginas de la aplicación (Next.js App Router)
+│   ├── arquitecto/         # Página del Arquitecto AWS
+│   ├── chat/               # Página de Chat Libre
+│   └── projects/           # Página de gestión de proyectos
+├── components/             # Componentes reutilizables
+│   ├── mcp-transparency.tsx # Componentes de transparencia MCP
+│   ├── project-status.tsx  # Componente de estado del proyecto
+│   └── document-viewer.tsx # Visor de documentos generados
+├── lib/                    # Utilidades y funciones
+│   ├── api.ts              # Funciones de API
+│   ├── mcpIntegration.ts   # Integración con servicios MCP
+│   └── types/              # Tipos TypeScript
+└── scripts/                # Scripts de utilidad
+    └── cleanup.sh          # Script de limpieza
 ```
 
-## 🚀 **Inicio Rápido**
+## Despliegue
 
-### Prerrequisitos
-- Node.js 18+
-- AWS CLI configurado
-- Acceso a Amazon Bedrock
+La aplicación está desplegada en AWS Amplify con la siguiente URL:
 
-### Instalación Local
-
-```bash
-# Clonar el repositorio
-git clone https://github.com/coedaniel/aws-propuestas-v3.git
-cd aws-propuestas-v3
-
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno
-cp .env.example .env.local
-
-# Ejecutar en desarrollo
-npm run dev
+```
+https://main.d2xsphsjdxlk24.amplifyapp.com/
 ```
 
 ### Variables de Entorno
 
-```env
+Las siguientes variables de entorno son necesarias para el funcionamiento de la aplicación:
+
+```
 # Bedrock Configuration
 AWS_REGION=us-east-1
 
@@ -87,213 +72,34 @@ NEXT_PUBLIC_API_URL=https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod
 NEXT_PUBLIC_ENVIRONMENT=production
 ```
 
-## 📖 **Guía de Uso**
+## Desarrollo Local
 
-### 🎯 **Arquitecto AWS**
-
-1. **Iniciar Proyecto**
-   ```
-   Navegue a /arquitecto
-   Proporcione el nombre del proyecto (ej: "sukarne", "mi-ecommerce")
-   ```
-
-2. **Describir Requerimientos**
-   ```
-   Describa su arquitectura deseada:
-   "Sistema de tres capas con EC2, Load Balancer, VPC y RDS"
-   ```
-
-3. **Completar Proyecto**
-   ```
-   Use el botón "Completar Proyecto" cuando esté satisfecho
-   Los documentos se generarán automáticamente
-   ```
-
-### 💬 **Chat Libre**
-
-- Conversaciones generales sobre AWS
-- Consultas técnicas específicas
-- Soporte para ambos modelos de IA
-
-### 📊 **Gestión de Proyectos**
-
-- Vista de todos los proyectos creados
-- Estado de completación
-- Acceso a documentos generados
-- Métricas de uso
-
-## 🔧 **Servicios MCP**
-
-### **Core MCP**
-- Análisis y comprensión de prompts
-- Detección de intenciones del usuario
-
-### **AWS Docs MCP**
-- Búsqueda en documentación oficial de AWS
-- Mejores prácticas y guías
-
-### **Diagram MCP**
-- Generación automática de diagramas de arquitectura
-- Visualización de servicios AWS
-
-### **Pricing MCP**
-- Cálculos de costos estimados
-- Optimización de presupuestos
-
-### **Custom Doc MCP**
-- Generación de documentos técnicos
-- Múltiples formatos de salida
-
-### **CloudFormation MCP**
-- Templates de infraestructura como código
-- Configuraciones optimizadas
-
-## 🛠️ **Desarrollo**
-
-### Estructura del Proyecto
-
-```
-aws-propuestas-v3/
-├── app/                    # Next.js App Router
-│   ├── api/               # API Routes
-│   │   ├── arquitecto/    # Arquitecto endpoint
-│   │   └── chat/          # Chat libre endpoint
-│   ├── arquitecto/        # Arquitecto page
-│   ├── chat/              # Chat libre page
-│   ├── projects/          # Projects management
-│   └── analytics/         # Usage analytics
-├── components/            # React components
-├── lib/                   # Utilities and API clients
-│   ├── api.ts            # API functions
-│   ├── types/            # TypeScript types
-│   └── utils.ts          # Helper functions
-├── store/                # Zustand state management
-└── public/               # Static assets
-```
-
-### Scripts Disponibles
-
+1. Clonar el repositorio:
 ```bash
-# Desarrollo
-npm run dev          # Servidor de desarrollo
-npm run build        # Build de producción
-npm run start        # Servidor de producción
-npm run lint         # Linting
-npm run type-check   # Verificación de tipos
+git clone https://github.com/username/aws-propuestas-v3-github.git
+cd aws-propuestas-v3-github
 ```
 
-## 🚀 **Deployment**
-
-### AWS Amplify (Recomendado)
-
-La aplicación está configurada para deployment automático en AWS Amplify:
-
-1. **Conectar Repositorio**
-   - Fork este repositorio
-   - Conectar a AWS Amplify
-
-2. **Variables de Entorno**
-   - Configurar todas las variables MCP
-   - Configurar credenciales AWS
-
-3. **Build Settings**
-   ```yaml
-   version: 1
-   frontend:
-     phases:
-       preBuild:
-         commands:
-           - npm ci
-       build:
-         commands:
-           - npm run build
-     artifacts:
-       baseDirectory: .next
-       files:
-         - '**/*'
-   ```
-
-### Docker (Alternativo)
-
+2. Instalar dependencias:
 ```bash
-# Build imagen
-docker build -t aws-propuestas-v3 .
-
-# Ejecutar contenedor
-docker run -p 3000:3000 aws-propuestas-v3
-```
-
-## 🔍 **Troubleshooting**
-
-### Problemas Comunes
-
-**1. Modelos de Bedrock no disponibles**
-```bash
-# Verificar acceso a modelos
-aws bedrock list-foundation-models --region us-east-1
-```
-
-**2. Servicios MCP no responden**
-```bash
-# Verificar conectividad
-curl https://mcp.danielingram.shop/core/health
-```
-
-**3. Errores de compilación TypeScript**
-```bash
-# Limpiar y reinstalar
-rm -rf node_modules .next
 npm install
+```
+
+3. Crear archivo `.env.local` con las variables de entorno necesarias.
+
+4. Iniciar el servidor de desarrollo:
+```bash
+npm run dev
+```
+
+5. Abrir [http://localhost:3000](http://localhost:3000) en el navegador.
+
+## Construcción para Producción
+
+```bash
 npm run build
 ```
 
-### Logs y Debugging
+## Licencia
 
-- **Frontend**: Consola del navegador
-- **Backend**: CloudWatch Logs (Amplify)
-- **MCP Services**: ECS CloudWatch Logs
-
-## 🤝 **Contribución**
-
-1. Fork el proyecto
-2. Crear feature branch (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Push al branch (`git push origin feature/nueva-funcionalidad`)
-5. Abrir Pull Request
-
-### Estándares de Código
-
-- **TypeScript**: Tipado estricto
-- **ESLint**: Configuración estándar
-- **Prettier**: Formateo automático
-- **Conventional Commits**: Mensajes de commit estandarizados
-
-## 📄 **Licencia**
-
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
-
-## 🆘 **Soporte**
-
-- **Issues**: [GitHub Issues](https://github.com/coedaniel/aws-propuestas-v3/issues)
-- **Documentación**: [Wiki del Proyecto](https://github.com/coedaniel/aws-propuestas-v3/wiki)
-- **Discusiones**: [GitHub Discussions](https://github.com/coedaniel/aws-propuestas-v3/discussions)
-
-## 🎯 **Roadmap**
-
-### v3.1 (Próximo)
-- [ ] Integración con DynamoDB para persistencia
-- [ ] Visor de documentos integrado
-- [ ] Métricas avanzadas de uso
-- [ ] Soporte para más modelos de IA
-
-### v3.2 (Futuro)
-- [ ] Colaboración en tiempo real
-- [ ] Templates personalizables
-- [ ] Integración con AWS Organizations
-- [ ] API pública para integraciones
-
----
-
-**Desarrollado con ❤️ para la comunidad AWS**
-
-[![Deploy with Amplify](https://oneclick.amplifyapp.com/button.svg)](https://console.aws.amazon.com/amplify/home#/deploy?repo=https://github.com/coedaniel/aws-propuestas-v3)
+Este proyecto está licenciado bajo la licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.

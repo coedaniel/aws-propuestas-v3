@@ -24,11 +24,11 @@ export function MCPTransparency({ mcpService, action, status, details }: MCPTran
 
   const getStatusColor = () => {
     switch (status) {
-      case 'preparing': return 'text-blue-600 bg-blue-50'
-      case 'executing': return 'text-yellow-600 bg-yellow-50'
-      case 'completed': return 'text-green-600 bg-green-50'
-      case 'error': return 'text-red-600 bg-red-50'
-      default: return 'text-gray-600 bg-gray-50'
+      case 'preparing': return 'text-blue-600 bg-blue-50 border-blue-200'
+      case 'executing': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+      case 'completed': return 'text-green-600 bg-green-50 border-green-200'
+      case 'error': return 'text-red-600 bg-red-50 border-red-200'
+      default: return 'text-gray-600 bg-gray-50 border-gray-200'
     }
   }
 
@@ -43,7 +43,7 @@ export function MCPTransparency({ mcpService, action, status, details }: MCPTran
   }
 
   return (
-    <div className={`border rounded-lg p-3 mb-3 ${getStatusColor()} border-current border-opacity-20`}>
+    <div className={`border rounded-lg p-3 mb-3 ${getStatusColor()}`}>
       <div 
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -80,6 +80,38 @@ export function MCPServiceIndicator({ services }: { services: string[] }) {
           {service}
         </span>
       ))}
+    </div>
+  )
+}
+
+// Nuevo componente para notificaciones MCP en tiempo real
+export function MCPNotification({ message, type = 'info' }: { message: string, type?: 'info' | 'success' | 'warning' | 'error' }) {
+  const getTypeStyles = () => {
+    switch (type) {
+      case 'info': return 'bg-blue-50 border-blue-200 text-blue-700'
+      case 'success': return 'bg-green-50 border-green-200 text-green-700'
+      case 'warning': return 'bg-yellow-50 border-yellow-200 text-yellow-700'
+      case 'error': return 'bg-red-50 border-red-200 text-red-700'
+      default: return 'bg-blue-50 border-blue-200 text-blue-700'
+    }
+  }
+
+  const getTypeIcon = () => {
+    switch (type) {
+      case 'info': return '✅'
+      case 'success': return '✅'
+      case 'warning': return '⚠️'
+      case 'error': return '❌'
+      default: return '✅'
+    }
+  }
+
+  return (
+    <div className={`border rounded-lg p-3 mb-3 ${getTypeStyles()}`}>
+      <div className="flex items-center space-x-2">
+        <span className="text-lg">{getTypeIcon()}</span>
+        <span className="font-medium text-sm">{message}</span>
+      </div>
     </div>
   )
 }

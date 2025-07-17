@@ -3,11 +3,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ModelSelector from '@/components/ModelSelector'
+import { MCPServiceIndicator, MCPNotification } from '@/components/mcp-transparency'
 import { useChatStore } from '@/store/chatStore'
 import { Message, AVAILABLE_MODELS } from '@/lib/types'
 import { generateId, formatDate } from '@/lib/utils'
+import { detectMCPServices } from '@/lib/mcpIntegration'
 import { 
   ArrowLeft, 
   Send, 
@@ -15,13 +17,21 @@ import {
   User, 
   Loader2,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  Zap,
+  Lightbulb,
+  Cpu
 } from 'lucide-react'
 
 export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+  const [mcpServices, setMcpServices] = useState<string[]>([])
+  const [mcpNotification, setMcpNotification] = useState<{
+    message: string
+    type: 'info' | 'success' | 'warning' | 'error'
+  } | null>(null)
   
   const {
     messages,
@@ -44,6 +54,16 @@ export default function ChatPage() {
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
+
+    // Detectar servicios MCP necesarios
+    const detectedServices = detectMCPServices(input, messages.map(m => m.content))
+    if (detectedServices.length > 0) {
+      setMcpServices(detectedServices)
+      setMcpNotification({
+        message: `✅ Voy a usar los MCP ${detectedServices.join(', ')} para procesar tu solicitud...`,
+        type: 'info'
+      })
+    }
 
     const userMessage: Message = {
       id: generateId(),
@@ -68,18 +88,38 @@ export default function ChatPage() {
         mode: 'chat-libre'
       })
 
+      // Si se detectaron servicios MCP, mostrar notificación de éxito
+      if (detectedServices.length > 0) {
+        setMcpNotification({
+          message: '✅ Servicios MCP utilizados correctamente en la respuesta.',
+          type: 'success'
+        })
+      }
+
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
         content: data.response,
         timestamp: new Date(),
         modelId: selectedModel,
-        usage: data.usage
+        usage: data.usage,
+        mcpServicesUsed: data.mcpServicesUsed || []
       }
 
       addMessage(assistantMessage)
+      
+      // Si hay servicios MCP utilizados en la respuesta, actualizarlos
+      if (data.mcpServicesUsed && data.mcpServicesUsed.length > 0) {
+        setMcpServices(data.mcpServicesUsed)
+      }
+      
     } catch (error) {
       console.error('Error sending message:', error)
+      setMcpNotification({
+        message: `❌ Error: ${error.message}`,
+        type: 'error'
+      })
+      
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
@@ -90,6 +130,11 @@ export default function ChatPage() {
       addMessage(errorMessage)
     } finally {
       setIsLoading(false)
+      
+      // Limpiar notificación después de 5 segundos
+      setTimeout(() => {
+        setMcpNotification(null)
+      }, 5000)
     }
   }
 
@@ -135,7 +180,64 @@ export default function ChatPage() {
       </header>
 
       {/* Chat Container */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
+        {/* MCP Notification */}
+        {mcpNotification && (
+          <div className="px-4 pt-4">
+            <MCPNotification 
+              message={mcpNotification.message} 
+              type={mcpNotification.type} 
+            />
+          </div>
+        )}
+        
+        {/* Model Comparison Card */}
+        {messages.length === 0 && (
+          <div className="px-4 pt-4">
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-blue-600" />
+                  Modelos Disponibles
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="h-5 w-5 text-blue-600" />
+                      <h3 className="font-semibold text-blue-900">Amazon Nova Pro v1</h3>
+                    </div>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Ideal para análisis multimodal y diagramas</li>
+                      <li>• Excelente para explicaciones técnicas</li>
+                      <li>• Optimizado para servicios AWS</li>
+                      <li>• Integración nativa con servicios MCP</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-5 w-5 text-purple-600" />
+                      <h3 className="font-semibold text-purple-900">Claude 3.5 Sonnet v2</h3>
+                    </div>
+                    <ul className="text-sm text-purple-700 space-y-1">
+                      <li>• Perfecto para análisis técnico profundo</li>
+                      <li>• Excelente para código y soluciones complejas</li>
+                      <li>• Razonamiento detallado y estructurado</li>
+                      <li>• Respuestas precisas y bien fundamentadas</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div className="mt-4 text-sm text-gray-600">
+                  <p>Selecciona el modelo que mejor se adapte a tu consulta. Puedes cambiar de modelo en cualquier momento.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
@@ -149,6 +251,13 @@ export default function ChatPage() {
           {isLoading && <LoadingMessage model={currentModel} />}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* MCP Services Used */}
+        {mcpServices.length > 0 && (
+          <div className="px-4 pb-2">
+            <MCPServiceIndicator services={mcpServices} />
+          </div>
+        )}
 
         {/* Input Area */}
         <div className="border-t bg-white p-4">
@@ -216,11 +325,18 @@ function MessageBubble({ message }: MessageBubbleProps) {
             
             <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
               <span>{formatDate(message.timestamp)}</span>
-              {message.usage && (
-                <span>
-                  {message.usage.inputTokens}→{message.usage.outputTokens} tokens
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {message.mcpServicesUsed && message.mcpServicesUsed.length > 0 && (
+                  <span className="text-blue-600 font-medium">
+                    MCP: {message.mcpServicesUsed.join(', ')}
+                  </span>
+                )}
+                {message.usage && (
+                  <span>
+                    {message.usage.inputTokens}→{message.usage.outputTokens} tokens
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
