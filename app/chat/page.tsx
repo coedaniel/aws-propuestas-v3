@@ -60,10 +60,10 @@ export default function ChatPage() {
     setLoading(true)
 
     try {
-      // Llamada directa al endpoint del arquitecto (sin MCP)
+      // Llamada al endpoint específico de chat libre (solo AWS)
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
       
-      const response = await fetch(`${API_BASE_URL}/arquitecto`, {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ export default function ChatPage() {
               content: input.trim()
             }
           ],
-          selected_model: selectedModel
+          modelId: selectedModel
         }),
       })
 
