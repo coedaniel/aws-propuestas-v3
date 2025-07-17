@@ -49,19 +49,41 @@ def clean_filename(filename: str) -> str:
     return cleaned
 
 def invoke_bedrock_model(messages: List[Dict], model_id: str = "anthropic.claude-3-haiku-20240307-v1:0") -> str:
-    """Invoca un modelo de Bedrock Runtime usando la API Converse"""
+    """Invoca un modelo de Bedrock Runtime con la API correcta según el modelo"""
     try:
-        # Usar la nueva API Converse
-        response = bedrock_client.converse(
-            modelId=model_id,
-            messages=messages,
-            inferenceConfig={
-                'maxTokens': 4000,
-                'temperature': 0.7
+        # Nova Pro usa invoke_model (API antigua)
+        if "nova" in model_id.lower():
+            # Preparar payload para Nova Pro
+            payload = {
+                "messages": messages,
+                "inferenceConfig": {
+                    "maxTokens": 4000,
+                    "temperature": 0.7
+                }
             }
-        )
+            
+            response = bedrock_client.invoke_model(
+                modelId=model_id,
+                body=json.dumps(payload),
+                contentType='application/json',
+                accept='application/json'
+            )
+            
+            response_body = json.loads(response['body'].read())
+            return response_body['output']['message']['content'][0]['text']
         
-        return response['output']['message']['content'][0]['text']
+        # Claude usa converse (API nueva)
+        else:
+            response = bedrock_client.converse(
+                modelId=model_id,
+                messages=messages,
+                inferenceConfig={
+                    'maxTokens': 4000,
+                    'temperature': 0.7
+                }
+            )
+            
+            return response['output']['message']['content'][0]['text']
         
     except Exception as e:
         logger.error(f"Error invoking Bedrock model: {str(e)}")
