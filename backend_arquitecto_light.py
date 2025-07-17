@@ -51,11 +51,26 @@ def clean_filename(filename: str) -> str:
 def invoke_bedrock_model(messages: List[Dict], model_id: str = "anthropic.claude-3-haiku-20240307-v1:0") -> str:
     """Invoca un modelo de Bedrock Runtime con la API correcta según el modelo"""
     try:
+        # Convertir formato de mensajes para Bedrock
+        bedrock_messages = []
+        for msg in messages:
+            content = msg.get('content', '')
+            # Si content es string, convertir a formato array
+            if isinstance(content, str):
+                bedrock_content = [{"text": content}]
+            else:
+                bedrock_content = content
+            
+            bedrock_messages.append({
+                "role": msg.get('role', 'user'),
+                "content": bedrock_content
+            })
+        
         # Nova Pro usa invoke_model (API antigua)
         if "nova" in model_id.lower():
             # Preparar payload para Nova Pro
             payload = {
-                "messages": messages,
+                "messages": bedrock_messages,
                 "inferenceConfig": {
                     "maxTokens": 4000,
                     "temperature": 0.7
@@ -76,7 +91,7 @@ def invoke_bedrock_model(messages: List[Dict], model_id: str = "anthropic.claude
         else:
             response = bedrock_client.converse(
                 modelId=model_id,
-                messages=messages,
+                messages=bedrock_messages,
                 inferenceConfig={
                     'maxTokens': 4000,
                     'temperature': 0.7
