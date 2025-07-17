@@ -79,11 +79,10 @@ export interface ProjectResponse {
   lastMessage: string
 }
 
-// API functions
+// API functions - usando únicamente la API externa
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
   try {
-    // Intentar con la API local primero
-    const response = await fetch('/api/chat', {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,24 +90,11 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       body: JSON.stringify(request),
     })
 
-    if (response.ok) {
-      return response.json()
+    if (!response.ok) {
+      throw new Error(`Chat API error: ${response.status} ${response.statusText}`)
     }
 
-    // Si falla, intentar con la API externa
-    const externalResponse = await fetch(`${API_BASE_URL}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    })
-
-    if (!externalResponse.ok) {
-      throw new Error(`Chat API error: ${externalResponse.status} ${externalResponse.statusText}`)
-    }
-
-    return externalResponse.json()
+    return response.json()
   } catch (error) {
     console.error('Error sending chat message:', error)
     throw error
@@ -117,44 +103,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 
 export async function sendArquitectoRequest(request: ArquitectoRequest): Promise<ArquitectoResponse> {
   try {
-    // Intentar con la API local primero
-    const response = await fetch('/api/arquitecto', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: request.query || '',
-        conversationHistory: request.messages || [],
-        selectedModel: request.modelId || request.selected_model || 'amazon.nova-pro-v1:0',
-        projectData: request.project_info
-      }),
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      
-      // Convertir a formato esperado
-      return {
-        response: data.response,
-        modelId: data.selectedModel || request.modelId || request.selected_model || 'amazon.nova-pro-v1:0',
-        mode: 'arquitecto',
-        projectId: request.projectId,
-        currentStep: 0,
-        isComplete: false,
-        usage: data.usage,
-        mcpServicesUsed: data.mcpServicesUsed || [],
-        mcpResults: data.mcpResults || {},
-        transparency: data.transparency || null,
-        promptUnderstanding: data.promptUnderstanding || null,
-        projectInfo: data.projectInfo || null,
-        documentsGenerated: data.documentsGenerated || false,
-        s3Folder: data.s3Folder || null
-      }
-    }
-
-    // Si falla, intentar con la API externa
-    const externalResponse = await fetch(`${API_BASE_URL}/arquitecto`, {
+    const response = await fetch(`${API_BASE_URL}/arquitecto`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,11 +111,11 @@ export async function sendArquitectoRequest(request: ArquitectoRequest): Promise
       body: JSON.stringify(request),
     })
 
-    if (!externalResponse.ok) {
-      throw new Error(`Arquitecto API error: ${externalResponse.status}`)
+    if (!response.ok) {
+      throw new Error(`Arquitecto API error: ${response.status}`)
     }
 
-    const data = await externalResponse.json()
+    const data = await response.json()
     
     return {
       ...data,
@@ -259,46 +208,23 @@ export async function deleteProject(projectId: string): Promise<{ success: boole
 export async function checkHealth(): Promise<{ 
   status: string
   timestamp: string
-  legacy_api?: boolean
-  local_api?: boolean
+  api_status?: boolean
 }> {
   const timestamp = new Date().toISOString()
-  let legacyApiStatus = false
-  let localApiStatus = false
+  let apiStatus = false
 
-  // Check local API
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: 'test' }],
-        modelId: 'amazon.nova-pro-v1:0'
-      }),
-    })
-    localApiStatus = response.ok
-  } catch (error) {
-    console.warn('Local API health check failed:', error)
-  }
-
-  // Check legacy API
   try {
     const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',
     })
-    legacyApiStatus = response.ok
+    apiStatus = response.ok
   } catch (error) {
-    console.warn('Legacy API health check failed:', error)
+    console.warn('API health check failed:', error)
   }
 
-  const overallStatus = localApiStatus || legacyApiStatus ? 'healthy' : 'unhealthy'
-
   return {
-    status: overallStatus,
+    status: apiStatus ? 'healthy' : 'unhealthy',
     timestamp,
-    legacy_api: legacyApiStatus,
-    local_api: localApiStatus
+    api_status: apiStatus
   }
 }

@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuración para Amplify - sin export estático para permitir API routes
+  // Keep original export configuration that was working
+  output: 'export',
   trailingSlash: true,
+  skipTrailingSlashRedirect: true,
+  distDir: 'out',
   images: {
     unoptimized: true
   },
