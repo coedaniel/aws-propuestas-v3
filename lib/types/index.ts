@@ -13,6 +13,7 @@ export interface Message {
     outputTokens?: number
     totalTokens?: number
   }
+  mcpServicesUsed?: string[]
 }
 
 export interface ChatSession {
