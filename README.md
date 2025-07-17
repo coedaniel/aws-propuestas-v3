@@ -2,11 +2,28 @@
 
 Sistema profesional de generación automática de propuestas técnicas AWS utilizando inteligencia artificial y servicios MCP (Model Context Protocol).
 
-## 🚀 Estado del Sistema
+## 🚀 Estado del Sistema - ACTUALIZADO
 
 ✅ **PRODUCCIÓN** - Sistema completamente funcional  
 🌐 **URL**: https://main.d2xsphsjdxlk24.amplifyapp.com/  
 🤖 **Chat Arquitecto**: https://main.d2xsphsjdxlk24.amplifyapp.com/arquitecto/
+💬 **Chat Libre**: https://main.d2xsphsjdxlk24.amplifyapp.com/chat/ ✅ **REPARADO**
+
+## 🔧 **CORRECCIONES RECIENTES APLICADAS:**
+
+### **Chat Libre (/chat) - FUNCIONAL**
+- ✅ **Problema resuelto**: Estado local en lugar de Zustand complejo
+- ✅ **Contexto mantenido**: Historial completo de conversación  
+- ✅ **Sin restricciones**: Respuestas naturales como consola Bedrock
+- ✅ **Modelos**: Nova Pro + Claude Sonnet operativos
+- ✅ **Endpoint**: `/chat` directo a Bedrock sin filtros restrictivos
+
+### **Lecciones Aprendidas:**
+1. **Zustand Store**: Complejo para chat simple, usar estado local cuando sea apropiado
+2. **Debugging**: Console.logs esenciales para identificar problemas de renderizado
+3. **API Testing**: Siempre probar endpoints directamente antes de culpar al frontend
+4. **Build Process**: Verificar builds locales antes de deployments
+5. **Arquitectura**: Respetar diseños establecidos, no simplificar sin razón
 
 ## 🏗️ Arquitectura
 
