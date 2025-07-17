@@ -153,16 +153,6 @@ export default function ChatPage() {
 
       {/* Chat Container */}
       <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
-        {/* MCP Notification */}
-        {mcpNotification && (
-          <div className="px-4 pt-4">
-            <MCPNotification 
-              message={mcpNotification.message} 
-              type={mcpNotification.type} 
-            />
-          </div>
-        )}
-        
         {/* Model Comparison Card */}
         {messages.length === 0 && (
           <div className="px-4 pt-4">
@@ -184,7 +174,7 @@ export default function ChatPage() {
                       <li>• Ideal para análisis multimodal y diagramas</li>
                       <li>• Excelente para explicaciones técnicas</li>
                       <li>• Optimizado para servicios AWS</li>
-                      <li>• Integración nativa con servicios MCP</li>
+                      <li>• Respuestas directas sobre AWS</li>
                     </ul>
                   </div>
                   
@@ -223,13 +213,6 @@ export default function ChatPage() {
           {isLoading && <LoadingMessage model={currentModel} />}
           <div ref={messagesEndRef} />
         </div>
-
-        {/* MCP Services Used */}
-        {mcpServices.length > 0 && (
-          <div className="px-4 pb-2">
-            <MCPServiceIndicator services={mcpServices} />
-          </div>
-        )}
 
         {/* Input Area */}
         <div className="border-t bg-white p-4">
@@ -298,11 +281,6 @@ function MessageBubble({ message }: MessageBubbleProps) {
             <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
               <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
               <div className="flex items-center gap-2">
-                {message.mcpServicesUsed && message.mcpServicesUsed.length > 0 && (
-                  <span className="text-blue-600 font-medium">
-                    MCP: {message.mcpServicesUsed.join(', ')}
-                  </span>
-                )}
                 {message.usage && (
                   <span>
                     {message.usage.inputTokens}→{message.usage.outputTokens} tokens
