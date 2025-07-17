@@ -3,6 +3,17 @@
 import { MCP_SERVICES } from './types'
 
 /**
+ * Función simulada para MCP Core prompt understanding
+ */
+export async function awslabscore_mcp_server___prompt_understanding() {
+  return {
+    analysis: 'Prompt analizado usando MCP Core',
+    services_recommended: ['core', 'diagram', 'pricing'],
+    confidence: 0.95
+  }
+}
+
+/**
  * Detecta qué servicios MCP podrían ser necesarios basado en el texto del usuario
  * @param currentInput Texto actual del usuario
  * @param previousMessages Mensajes anteriores en la conversación

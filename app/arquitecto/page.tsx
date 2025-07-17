@@ -451,6 +451,16 @@ function ArquitectoContent() {
                   </Select>
                 </div>
                 
+                {/* Selector de modelo */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Modelo de IA</label>
+                  <ModelSelector
+                    selectedModel={selectedModel}
+                    onModelChange={setSelectedModel}
+                    disabled={isLoading}
+                  />
+                </div>
+                
                 {/* Botón para finalizar proyecto */}
                 {projectInfo.id && (
                   <Button

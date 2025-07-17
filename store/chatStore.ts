@@ -12,10 +12,10 @@ export const useChatStore = create<ChatStore>()(
         isLoading: false,
         selectedModel: 'amazon.nova-pro-v1:0',
 
-        // Computed property
-        get messages() {
-          const { sessions, currentSessionId } = get()
-          const currentSession = sessions.find(s => s.id === currentSessionId)
+        // Computed property getter
+        get messages(): Message[] {
+          const state = get()
+          const currentSession = state.sessions.find(s => s.id === state.currentSessionId)
           return currentSession?.messages || []
         },
 
@@ -33,7 +33,22 @@ export const useChatStore = create<ChatStore>()(
 
         addMessage: (message: Message) => {
           const { currentSessionId, sessions } = get()
-          if (!currentSessionId) return
+          if (!currentSessionId) {
+            // Si no hay sesión actual, crear una nueva
+            const newSession: ChatSession = {
+              id: Date.now().toString(),
+              name: 'Nueva conversación',
+              messages: [message],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              modelId: get().selectedModel
+            }
+            set((state) => ({
+              sessions: [...state.sessions, newSession],
+              currentSessionId: newSession.id
+            }))
+            return
+          }
 
           set({
             sessions: sessions.map(session =>
