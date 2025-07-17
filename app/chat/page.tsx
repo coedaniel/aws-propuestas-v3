@@ -25,16 +25,17 @@ export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+  const [localMessages, setLocalMessages] = useState<Message[]>([])
+  const [localLoading, setLocalLoading] = useState(false)
   
   const {
-    messages,
-    isLoading,
     selectedModel,
-    addMessage,
-    setLoading,
     setSelectedModel,
-    clearCurrentSession
   } = useChatStore()
+
+  // Usar mensajes locales si hay problemas con el store
+  const messages = localMessages
+  const isLoading = localLoading
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
@@ -57,11 +58,11 @@ export default function ChatPage() {
     }
 
     // Agregar mensaje del usuario inmediatamente
-    addMessage(userMessage)
-    const currentMessages = [...messages, userMessage]
+    setLocalMessages(prev => [...prev, userMessage])
+    const currentMessages = [...localMessages, userMessage]
     
     setInput('')
-    setLoading(true)
+    setLocalLoading(true)
 
     try {
       console.log('Enviando request...', { messages: currentMessages.length, model: selectedModel })
@@ -98,7 +99,9 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
 
-      addMessage(assistantMessage)
+      console.log('Adding assistant message:', assistantMessage)
+      setLocalMessages(prev => [...prev, assistantMessage])
+      console.log('Messages after adding:', localMessages.length + 1)
       
     } catch (error: any) {
       console.error('Error sending message:', error)
@@ -110,9 +113,11 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
       
-      addMessage(errorMessage)
+      console.log('Adding error message:', errorMessage)
+      setLocalMessages(prev => [...prev, errorMessage])
     } finally {
-      setLoading(false)
+      console.log('Setting loading to false')
+      setLocalLoading(false)
     }
   }
 
@@ -124,7 +129,7 @@ export default function ChatPage() {
   }
 
   const clearChat = () => {
-    clearCurrentSession()
+    setLocalMessages([])
   }
 
   return (
