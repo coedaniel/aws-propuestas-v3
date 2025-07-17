@@ -22,15 +22,40 @@ DIAGRAM_GENERATOR_URL = "https://mcp.danielingram.shop/diagram"
 
 # Prompt maestro
 PROMPT_MAESTRO = """
-Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS.
+Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva.
 
-FLUJO OBLIGATORIO:
-1. Pregunta el nombre del proyecto
-2. Pregunta si es solucion integral o servicio especifico
-3. Haz MAXIMO 3 preguntas adicionales
-4. SIEMPRE termina diciendo: "GENERO LOS SIGUIENTES DOCUMENTOS:" y genera todos los documentos
+FLUJO OBLIGATORIO PASO A PASO:
 
-IMPORTANTE: Despues de 5 intercambios, SIEMPRE genera documentos sin excepcion.
+1. Primero pregunta: Cual es el nombre del proyecto
+
+2. Despues pregunta: El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.) o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)
+
+3. Si elige "servicio rapido especifico":
+   - Muestra un catalogo de servicios rapidos comunes
+   - Pregunta cual servicio especifico necesita
+   - Pregunta detalles tecnicos del servicio elegido
+   - Pregunta requisitos de capacidad y rendimiento
+   - Pregunta presupuesto disponible
+
+4. Si elige "solucion integral":
+   - Pregunta el objetivo principal del proyecto
+   - Pregunta descripcion detallada de lo que necesita
+   - Pregunta que servicios AWS prefiere o conoce
+   - Pregunta integraciones necesarias (on-premises, SaaS, APIs)
+   - Pregunta requisitos de seguridad y compliance
+   - Pregunta alta disponibilidad y recuperacion ante desastres
+   - Pregunta estimacion de usuarios y trafico
+   - Pregunta presupuesto disponible
+   - Pregunta fechas de inicio y entrega
+
+5. SOLO despues de tener TODA la informacion necesaria, di: "GENERO LOS SIGUIENTES DOCUMENTOS:" y lista todos los documentos.
+
+IMPORTANTE:
+- Pregunta UNA cosa a la vez
+- Si una respuesta es vaga, pide mas detalles
+- NO generes documentos hasta tener informacion completa
+- El flujo debe ser conversacional y profesional
+- Minimo 8-12 preguntas antes de generar documentos
 """
 
 def call_document_generator(project_info):
@@ -303,25 +328,16 @@ def lambda_handler(event, context):
             
             ai_response = response['output']['message']['content'][0]['text']
         
-        # Detectar MCP services que se están usando
-        response_lower = ai_response.lower()
+        # MCP services solo se reportan cuando realmente se usan
         mcp_services_used = []
         
-        if any(keyword in response_lower for keyword in ['diagrama', 'arquitectura']):
-            mcp_services_used.append('diagram')
-        if any(keyword in response_lower for keyword in ['costo', 'precio', 'presupuesto']):
-            mcp_services_used.append('pricing')
-        if any(keyword in response_lower for keyword in ['documento', 'archivo']):
-            mcp_services_used.append('customdoc')
-        if any(keyword in response_lower for keyword in ['cloudformation', 'template']):
-            mcp_services_used.append('cfn')
-        
-        # GENERAR DOCUMENTOS usando contenedores MCP
+        # GENERAR DOCUMENTOS SOLO cuando el modelo lo decida explícitamente
         documents_generated = None
         project_id = None
         project_name = None
         
-        should_generate = ("GENERO LOS SIGUIENTES DOCUMENTOS" in ai_response.upper()) or (message_count >= 5)
+        # SOLO generar si dice explícitamente la frase exacta
+        should_generate = "GENERO LOS SIGUIENTES DOCUMENTOS:" in ai_response.upper()
         
         if should_generate:
             print("Generating documents using MCP containers...")
