@@ -113,10 +113,10 @@ export default function ChatPage() {
         setMcpServices(data.mcpServicesUsed)
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error)
       setMcpNotification({
-        message: `❌ Error: ${error.message}`,
+        message: `❌ Error: ${error?.message || 'Error desconocido'}`,
         type: 'error'
       })
       

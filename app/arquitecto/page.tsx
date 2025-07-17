@@ -185,10 +185,10 @@ function ArquitectoContent() {
         })
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al finalizar el proyecto:', error)
       setMcpNotification({
-        message: `❌ Error al finalizar el proyecto: ${error.message}`,
+        message: `❌ Error al finalizar el proyecto: ${error?.message || 'Error desconocido'}`,
         type: 'error'
       })
     }
