@@ -208,23 +208,63 @@ export async function deleteProject(projectId: string): Promise<{ success: boole
 export async function checkHealth(): Promise<{ 
   status: string
   timestamp: string
-  api_status?: boolean
+  legacy_api?: boolean
+  mcp_servers?: { [key: string]: boolean }
 }> {
   const timestamp = new Date().toISOString()
-  let apiStatus = false
+  let legacyApiStatus = false
+  const mcpServers: { [key: string]: boolean } = {}
 
+  // Check legacy API
   try {
     const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',
+      timeout: 5000
     })
-    apiStatus = response.ok
+    legacyApiStatus = response.ok
   } catch (error) {
-    console.warn('API health check failed:', error)
+    console.warn('Legacy API health check failed:', error)
   }
 
+  // Check MCP servers
+  const mcpServices = [
+    { name: 'core', url: process.env.NEXT_PUBLIC_CORE_MCP_URL },
+    { name: 'pricing', url: process.env.NEXT_PUBLIC_PRICING_MCP_URL },
+    { name: 'awsdocs', url: process.env.NEXT_PUBLIC_AWSDOCS_MCP_URL },
+    { name: 'diagram', url: process.env.NEXT_PUBLIC_DIAGRAM_MCP_URL },
+    { name: 'cfn', url: process.env.NEXT_PUBLIC_CFN_MCP_URL },
+    { name: 'docgen', url: process.env.NEXT_PUBLIC_DOCGEN_MCP_URL }
+  ]
+
+  // Check each MCP service
+  await Promise.allSettled(
+    mcpServices.map(async (service) => {
+      if (!service.url) {
+        mcpServers[service.name] = false
+        return
+      }
+
+      try {
+        const response = await fetch(`${service.url}/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000) // 3 second timeout
+        })
+        mcpServers[service.name] = response.ok
+      } catch (error) {
+        console.warn(`MCP ${service.name} health check failed:`, error)
+        mcpServers[service.name] = false
+      }
+    })
+  )
+
+  // Determine overall status
+  const mcpHealthy = Object.values(mcpServers).some(status => status)
+  const overallStatus = legacyApiStatus || mcpHealthy ? 'healthy' : 'unhealthy'
+
   return {
-    status: apiStatus ? 'healthy' : 'unhealthy',
+    status: overallStatus,
     timestamp,
-    api_status: apiStatus
+    legacy_api: legacyApiStatus,
+    mcp_servers: mcpServers
   }
 }
