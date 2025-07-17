@@ -53,7 +53,7 @@ def invoke_bedrock_model(messages: List[Dict], model_id: str = "anthropic.claude
     try:
         # Convertir formato de mensajes para Bedrock
         bedrock_messages = []
-        for msg in messages:
+        for i, msg in enumerate(messages):
             content = msg.get('content', '')
             # Si content es string, convertir a formato array
             if isinstance(content, str):
@@ -61,10 +61,22 @@ def invoke_bedrock_model(messages: List[Dict], model_id: str = "anthropic.claude
             else:
                 bedrock_content = content
             
+            # Asegurar que el primer mensaje sea siempre "user"
+            role = msg.get('role', 'user')
+            if i == 0 and role != 'user':
+                role = 'user'
+            
             bedrock_messages.append({
-                "role": msg.get('role', 'user'),
+                "role": role,
                 "content": bedrock_content
             })
+        
+        # Si no hay mensajes, crear uno por defecto
+        if not bedrock_messages:
+            bedrock_messages = [{
+                "role": "user",
+                "content": [{"text": "Hola"}]
+            }]
         
         # Nova Pro usa invoke_model (API antigua)
         if "nova" in model_id.lower():
