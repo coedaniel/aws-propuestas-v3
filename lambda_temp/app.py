@@ -169,24 +169,55 @@ def lambda_handler(event, context):
         return create_response(200, {})
     
     try:
+        # Log the incoming event for debugging
+        print(f"Received event: {json.dumps(event)}")
+        
         # Parsear el cuerpo de la solicitud
         if 'body' in event and event['body']:
             if isinstance(event['body'], str):
-                body = json.loads(event['body'])
+                try:
+                    body = json.loads(event['body'])
+                except json.JSONDecodeError as e:
+                    print(f"JSON decode error: {str(e)}")
+                    return create_response(400, {
+                        'error': 'Invalid JSON format'
+                    })
             else:
                 body = event['body']
         else:
             body = {}
         
-        # Obtener el mensaje del usuario
-        user_message = body.get('message', '').strip()
+        # Obtener el mensaje del usuario - manejar tanto formato simple como formato de chat
+        user_message = ""
+        
+        # Formato simple: {"message": "texto"}
+        if 'message' in body:
+            user_message = body.get('message', '').strip()
+        
+        # Formato de chat: {"messages": [{"role": "user", "content": "texto"}]}
+        elif 'messages' in body and isinstance(body['messages'], list):
+            messages = body['messages']
+            # Obtener el último mensaje del usuario
+            for msg in reversed(messages):
+                if msg.get('role') == 'user' and msg.get('content'):
+                    user_message = msg['content'].strip()
+                    break
+        
+        # También manejar query parameter
+        if not user_message and 'query' in body:
+            user_message = body.get('query', '').strip()
+        
         conversation_history = body.get('conversation_history', [])
         project_data = body.get('project_data', {})
+        project_info = body.get('project_info', {})
         
+        # Log para debugging
+        print(f"Request body: {json.dumps(body)}")
+        print(f"User message: '{user_message}'")
+        
+        # Si no hay mensaje, proporcionar un mensaje de bienvenida
         if not user_message:
-            return create_response(400, {
-                'error': 'Mensaje requerido'
-            })
+            user_message = "Hola, necesito ayuda para crear un proyecto en AWS"
         
         # Prompt maestro para el arquitecto
         system_prompt = """
@@ -217,9 +248,16 @@ Responde de manera profesional y técnica, enfocándote en soluciones prácticas
         
         # Detectar si necesitamos generar artefactos específicos
         response_data = {
-            'message': ai_response,
+            'response': ai_response,  # Frontend expects 'response' not 'message'
+            'message': ai_response,   # Keep both for compatibility
             'timestamp': datetime.now().isoformat(),
-            'artifacts': {}
+            'mode': 'arquitecto',
+            'modelId': 'anthropic.claude-3-5-sonnet-20240620-v1:0',
+            'artifacts': {},
+            'mcpServicesUsed': [],
+            'mcpResults': {},
+            'transparency': None,
+            'promptUnderstanding': None
         }
         
         # Detectar necesidad de generar documentos
