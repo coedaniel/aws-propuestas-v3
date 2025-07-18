@@ -12,6 +12,7 @@ import argparse
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
@@ -34,6 +35,15 @@ app = FastAPI(
     root_path="/diagram",
     docs_url="/diagram/docs",
     redoc_url="/diagram/redoc"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://main.d2xsphsjdxlk24.amplifyapp.com", "https://d2xsphsjdxlk24.amplifyapp.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")

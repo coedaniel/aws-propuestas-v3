@@ -1,0 +1,46 @@
+{
+    "family": "aws-propuestas-v3-diagram-mcp-prod",
+    "taskRoleArn": "arn:aws:iam::035385358261:role/aws-propuestas-v3-mcp-servers-ECSTaskRole-RAqodTwTfac2",
+    "executionRoleArn": "arn:aws:iam::035385358261:role/aws-propuestas-v3-mcp-servers-ECSTaskExecutionRole-Tdc5LMtcURTJ",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512",
+    "containerDefinitions": [
+        {
+            "name": "diagram-mcp",
+            "image": "035385358261.dkr.ecr.us-east-1.amazonaws.com/aws-propuestas-v3-diagram-mcp:cors-enabled",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 8000,
+                    "hostPort": 8000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "FASTMCP_LOG_LEVEL",
+                    "value": "ERROR"
+                },
+                {
+                    "name": "PROJECT_NAME",
+                    "value": "aws-propuestas-v3"
+                },
+                {
+                    "name": "ENVIRONMENT",
+                    "value": "prod"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/aws-propuestas-v3-diagram-mcp-prod",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}

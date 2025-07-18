@@ -73,8 +73,31 @@ async def root():
         "cors_enabled": True
     }
 
-# CORS preflight requests are handled automatically by CORSMiddleware
-# No manual OPTIONS handler needed
+# Manual CORS preflight handler as fallback
+@app.options("/{path:path}")
+async def options_preflight(path: str, request: Request):
+    """Handle CORS preflight requests manually"""
+    origin = request.headers.get("origin")
+    
+    # Check if origin is allowed
+    allowed_origins = [
+        "https://main.d2xsphsjdxlk24.amplifyapp.com",
+        "https://d2xsphsjdxlk24.amplifyapp.com",
+        "http://localhost:3000",
+        "http://localhost:8080"
+    ]
+    
+    if origin in allowed_origins:
+        headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "86400"
+        }
+        return Response(status_code=200, headers=headers)
+    
+    return Response(status_code=403)
 
 @app.post("/call-tool")
 async def call_tool(request: MCPRequest) -> MCPResponse:

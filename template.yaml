@@ -1,17 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: AWS Propuestas V3 - Professional AWS Solutions Architect System
-
-Globals:
-  Function:
-    Timeout: 900
-    MemorySize: 1024
-    Runtime: python3.9
-    Environment:
-      Variables:
-        CORS_ORIGIN: "*"
-        POWERTOOLS_SERVICE_NAME: aws-propuestas
-        POWERTOOLS_LOG_LEVEL: INFO
+Description: 'AWS Propuestas v3 - Sistema Conversacional Profesional'
 
 Parameters:
   Environment:
@@ -20,248 +9,310 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.9
+    Environment:
+      Variables:
+        REGION: !Ref AWS::Region
+        ENVIRONMENT: !Ref Environment
+        CHAT_SESSIONS_TABLE: !Ref ChatSessionsTable
+        PROJECTS_TABLE: !Ref ProjectsTable
+        DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
 Resources:
-  # ============================================================================
-  # MAIN ARCHITECT FUNCTION - Implements the Master Prompt
-  # ============================================================================
-  
-  ArchitectFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "aws-propuestas-architect-${Environment}"
-      CodeUri: lambda/architect/
-      Handler: main.lambda_handler
-      Description: "AWS Solutions Architect - Master Prompt Implementation"
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          DOCUMENTS_BUCKET: !Ref DocumentsBucket
-          NOVA_AGENT_ID: "WUGHP2HGH9"
-          NOVA_AGENT_ALIAS_ID: "ZNZ3SYTP5L"
-          CLAUDE_AGENT_ID: "W3YRJXXIRE"
-          CLAUDE_AGENT_ALIAS_ID: "ULPAGJS0VW"
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - bedrock:InvokeAgent
-                - bedrock:InvokeModel
-                - bedrock:ListFoundationModels
-              Resource: "*"
-            - Effect: Allow
-              Action:
-                - s3:PutObject
-                - s3:GetObject
-                - s3:DeleteObject
-                - s3:ListBucket
-              Resource: 
-                - !Sub "${DocumentsBucket}/*"
-                - !GetAtt DocumentsBucket.Arn
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /architect
-            Method: post
-        OptionsEvent:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /architect
-            Method: options
-
-  # ============================================================================
-  # MCP SERVER FUNCTIONS - Real Implementation
-  # ============================================================================
-
-  # Document Generation MCP Server
-  DocumentGeneratorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "aws-propuestas-doc-generator-${Environment}"
-      CodeUri: lambda/mcp_servers/document_generator/
-      Handler: handler.lambda_handler
-      Description: "MCP Server - Professional Document Generation"
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          DOCUMENTS_BUCKET: !Ref DocumentsBucket
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:PutObject
-                - s3:GetObject
-              Resource: !Sub "${DocumentsBucket}/*"
-
-  # Diagram Generation MCP Server
-  DiagramGeneratorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "aws-propuestas-diagram-generator-${Environment}"
-      CodeUri: lambda/mcp_servers/diagram_generator/
-      Handler: handler.lambda_handler
-      Description: "MCP Server - AWS Architecture Diagrams"
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          DOCUMENTS_BUCKET: !Ref DocumentsBucket
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:PutObject
-                - s3:GetObject
-              Resource: !Sub "${DocumentsBucket}/*"
-
-  # CloudFormation Template Generator MCP Server
-  CloudFormationGeneratorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "aws-propuestas-cfn-generator-${Environment}"
-      CodeUri: lambda/mcp_servers/cloudformation_generator/
-      Handler: handler.lambda_handler
-      Description: "MCP Server - CloudFormation Templates"
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          DOCUMENTS_BUCKET: !Ref DocumentsBucket
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:PutObject
-                - s3:GetObject
-              Resource: !Sub "${DocumentsBucket}/*"
-
-  # Cost Analysis MCP Server
-  CostAnalysisFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "aws-propuestas-cost-analysis-${Environment}"
-      CodeUri: lambda/mcp_servers/cost_analysis/
-      Handler: handler.lambda_handler
-      Description: "MCP Server - AWS Cost Analysis"
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          DOCUMENTS_BUCKET: !Ref DocumentsBucket
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - pricing:GetProducts
-                - pricing:DescribeServices
-              Resource: "*"
-            - Effect: Allow
-              Action:
-                - s3:PutObject
-                - s3:GetObject
-              Resource: !Sub "${DocumentsBucket}/*"
-
-  # S3 Upload Manager MCP Server
-  S3UploadFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "aws-propuestas-s3-upload-${Environment}"
-      CodeUri: lambda/mcp_servers/s3_upload/
-      Handler: handler.lambda_handler
-      Description: "MCP Server - S3 Document Upload Manager"
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          DOCUMENTS_BUCKET: !Ref DocumentsBucket
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:PutObject
-                - s3:GetObject
-                - s3:ListBucket
-                - s3:DeleteObject
-              Resource: 
-                - !Sub "${DocumentsBucket}/*"
-                - !GetAtt DocumentsBucket.Arn
-
   # ============================================================================
   # API GATEWAY
   # ============================================================================
-  
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub "aws-propuestas-api-${Environment}"
+      Name: !Sub 'aws-propuestas-v3-api-${Environment}'
       StageName: !Ref Environment
-      Description: "AWS Propuestas V3 - Professional Solutions Architect API"
       Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
         MaxAge: "'600'"
-      GatewayResponses:
-        DEFAULT_4XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: "'*'"
-              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-        DEFAULT_5XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: "'*'"
-              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+      # Throttling configured at method level
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
 
   # ============================================================================
-  # S3 BUCKET FOR DOCUMENTS
+  # LAMBDA FUNCTIONS
+  # ============================================================================
+  
+  # Health Check Function
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'aws-propuestas-v3-health-${Environment}'
+      CodeUri: lambda/health/
+      Handler: app.lambda_handler
+      Description: Health check endpoint
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /health
+            Method: GET
+
+  # Chat Function
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'aws-propuestas-v3-chat-${Environment}'
+      CodeUri: lambda/chat/
+      Handler: app.lambda_handler
+      Description: Chat libre con modelos IA
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatSessionsTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: '*'
+      Events:
+        ChatApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /chat
+            Method: POST
+
+  # Arquitecto Function
+  ArquitectoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'aws-propuestas-v3-arquitecto-${Environment}'
+      CodeUri: lambda/arquitecto/
+      Handler: app.lambda_handler
+      Description: Modo arquitecto con generación de documentos - Updated
+      Timeout: 300
+      MemorySize: 2048
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProjectsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatSessionsTable
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentsBucket
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: '*'
+      Events:
+        ArquitectoApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /arquitecto
+            Method: POST
+
+  # Projects Function
+  ProjectsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'aws-propuestas-v3-projects-${Environment}'
+      CodeUri: lambda/projects/
+      Handler: app.lambda_handler
+      Description: Gestión de proyectos y dashboard
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProjectsTable
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentsBucket
+      Events:
+        ProjectsGetApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /projects
+            Method: GET
+        ProjectsPostApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /projects
+            Method: POST
+        ProjectsDeleteApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /projects/{projectId}
+            Method: DELETE
+
+  # Documents Function
+  DocumentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'aws-propuestas-v3-documents-${Environment}'
+      CodeUri: lambda/documents/
+      Handler: app.lambda_handler
+      Description: Generación y gestión de documentos
+      Timeout: 300
+      MemorySize: 2048
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentsBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProjectsTable
+      Events:
+        DocumentsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /documents
+            Method: POST
+
+  # ============================================================================
+  # DYNAMODB TABLES
+  # ============================================================================
+  
+  # Chat Sessions Table
+  ChatSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'aws-propuestas-v3-chat-sessions-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: sessionId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: aws-propuestas-v3
+
+  # Projects Table
+  ProjectsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'aws-propuestas-v3-projects-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: projectId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: aws-propuestas-v3
+
+  # ============================================================================
+  # S3 BUCKET
   # ============================================================================
   
   DocumentsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "aws-propuestas-documents-${Environment}-${AWS::AccountId}"
+      BucketName: !Sub 'aws-propuestas-v3-documents-${Environment}-${AWS::AccountId}'
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
-      CorsConfiguration:
-        CorsRules:
-          - AllowedHeaders: ['*']
-            AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
-            AllowedOrigins: ['*']
-            MaxAge: 3000
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
       LifecycleConfiguration:
         Rules:
-          - Id: DeleteOldDocuments
+          - Id: DeleteOldVersions
             Status: Enabled
-            ExpirationInDays: 30
-            NoncurrentVersionExpirationInDays: 7
+            NoncurrentVersionExpirationInDays: 30
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+          - Id: TransitionToGlacier
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+      # NotificationConfiguration removed to avoid circular dependency
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: aws-propuestas-v3
 
-  DocumentsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
+  # S3 Bucket Policy - Removed to avoid circular dependency
+  # Lambda functions will use their IAM roles to access S3
+
+  # ============================================================================
+  # CLOUDWATCH LOGS
+  # ============================================================================
+  
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
     Properties:
-      Bucket: !Ref DocumentsBucket
-      PolicyDocument:
-        Statement:
-          - Sid: PublicReadGetObject
-            Effect: Allow
-            Principal: '*'
-            Action: s3:GetObject
-            Resource: !Sub "${DocumentsBucket}/*"
+      LogGroupName: !Sub '/aws/apigateway/aws-propuestas-v3-${Environment}'
+      RetentionInDays: 14
 
 # ============================================================================
 # OUTPUTS
@@ -269,38 +320,45 @@ Resources:
 
 Outputs:
   ApiGatewayUrl:
-    Description: "URL del API Gateway"
-    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Description: 'API Gateway URL'
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
     Export:
-      Name: !Sub "${AWS::StackName}-ApiUrl"
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
 
-  ArchitectFunctionArn:
-    Description: "ARN de la función Lambda principal"
-    Value: !GetAtt ArchitectFunction.Arn
+  ChatSessionsTableName:
+    Description: 'Chat Sessions DynamoDB Table Name'
+    Value: !Ref ChatSessionsTable
     Export:
-      Name: !Sub "${AWS::StackName}-ArchitectFunctionArn"
+      Name: !Sub '${AWS::StackName}-ChatSessionsTable'
+
+  ProjectsTableName:
+    Description: 'Projects DynamoDB Table Name'
+    Value: !Ref ProjectsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ProjectsTable'
 
   DocumentsBucketName:
-    Description: "Nombre del bucket S3 para documentos"
+    Description: 'Documents S3 Bucket Name'
     Value: !Ref DocumentsBucket
     Export:
-      Name: !Sub "${AWS::StackName}-DocumentsBucket"
+      Name: !Sub '${AWS::StackName}-DocumentsBucket'
 
-  DocumentsBucketUrl:
-    Description: "URL del bucket S3 para documentos"
-    Value: !Sub "https://${DocumentsBucket}.s3.${AWS::Region}.amazonaws.com"
-    Export:
-      Name: !Sub "${AWS::StackName}-DocumentsBucketUrl"
+  HealthFunctionArn:
+    Description: 'Health Function ARN'
+    Value: !GetAtt HealthFunction.Arn
 
-  # Información de los agentes Bedrock
-  NovaProAgentInfo:
-    Description: "Nova Pro Agent Configuration"
-    Value: !Sub "ID: WUGHP2HGH9, Alias: ZNZ3SYTP5L, Model: amazon.nova-pro-v1:0"
-    Export:
-      Name: !Sub "${AWS::StackName}-NovaProAgent"
+  ChatFunctionArn:
+    Description: 'Chat Function ARN'
+    Value: !GetAtt ChatFunction.Arn
 
-  ClaudeAgentInfo:
-    Description: "Claude 3.5 Sonnet Agent Configuration"
-    Value: !Sub "ID: W3YRJXXIRE, Alias: ULPAGJS0VW, Model: anthropic.claude-3-5-sonnet-20240620-v1:0"
-    Export:
-      Name: !Sub "${AWS::StackName}-ClaudeAgent"
+  ArquitectoFunctionArn:
+    Description: 'Arquitecto Function ARN'
+    Value: !GetAtt ArquitectoFunction.Arn
+
+  ProjectsFunctionArn:
+    Description: 'Projects Function ARN'
+    Value: !GetAtt ProjectsFunction.Arn
+
+  DocumentsFunctionArn:
+    Description: 'Documents Function ARN'
+    Value: !GetAtt DocumentsFunction.Arn

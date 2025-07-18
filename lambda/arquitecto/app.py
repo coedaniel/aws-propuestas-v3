@@ -6,6 +6,9 @@ from datetime import datetime
 from typing import Dict, List, Any
 import logging
 
+# Import smart MCP handler
+from smart_mcp_handler import smart_mcp
+
 # Import working intelligent generator
 from generators.working_intelligent_generator import (
     extract_service_from_conversation,
@@ -110,8 +113,24 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
                 'modelId': model_id
             })
         
+        # 🎯 SMART MCP PROCESSING - Like Amazon Q CLI Developer
+        # Process AI response and activate MCPs only when needed
+        mcp_results = smart_mcp.process_with_smart_mcps(
+            ai_response, 
+            {"messages": messages, "step": len(messages)}, 
+            project_info
+        )
+        
+        # Use enhanced response from MCP processing
+        final_ai_response = mcp_results["enhanced_response"]
+        files_generated = mcp_results["files_generated"]
+        mcp_services_used = mcp_results["services_used"]
+        
+        logger.info(f"🔧 MCP Services used: {mcp_services_used}")
+        logger.info(f"📁 Files generated: {len(files_generated)}")
+        
         # Extract service parameters from conversation
-        service_params = extract_service_from_conversation(messages, ai_response)
+        service_params = extract_service_from_conversation(messages, final_ai_response)
         servicio = service_params['servicio']
         descripcion = service_params['descripcion']
         objetivo = service_params['objetivo']
@@ -119,29 +138,35 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         logger.info(f"🔍 EXTRACTED - Service: {servicio}, Description: {descripcion[:50]}...")
         
         # Check if project is complete - ONLY when AI explicitly indicates completion
-        # Do NOT auto-complete based on extracted info length
-        is_complete = check_if_complete(ai_response, project_info)
+        is_complete = check_if_complete(final_ai_response, project_info)
         
         # Check if we have enough information extracted
         has_enough_info = bool(servicio and descripcion and objetivo)
         
         logger.info(f"🎯 COMPLETION CHECK - Has info: {has_enough_info}, AI completion check: {is_complete}")
         
-        # Generate documents if project is complete
+        # Generate additional documents if project is complete and MCPs haven't generated everything
         document_generation_results = None
-        if is_complete:
-            # Generate documents using the working intelligent system
-            logger.info(f"✅ GENERATING DOCUMENTS for {servicio}")
+        if is_complete and not files_generated:
+            # Generate documents using the working intelligent system as fallback
+            logger.info(f"✅ GENERATING FALLBACK DOCUMENTS for {servicio}")
             
-            # Generate documents from AI response using working system
             document_generation_results = generate_documents_from_ai_response(
-                ai_response, 
+                final_ai_response, 
                 servicio, 
                 project_id, 
                 user_id
             )
+        elif files_generated:
+            # Use MCP generated files
+            document_generation_results = {
+                "success": True,
+                "files": files_generated,
+                "method": "smart_mcp"
+            }
             
-            # Create separate response for chat (not mixing with documents)
+        # Create response for chat
+        if is_complete:
             chat_response = f"""✅ **PROPUESTA COMPLETADA PARA {servicio.upper()}**
 
 He analizado tu proyecto: "{descripcion}"
@@ -176,8 +201,8 @@ Los documentos están disponibles en la sección de **Proyectos** para descarga.
             final_response = chat_response
             
         else:
-            # Continue conversation - use original AI response
-            final_response = ai_response
+            # Continue conversation - use enhanced AI response from MCP processing
+            final_response = final_ai_response
             project_info.update({
                 'service_focus': servicio,
                 'description': descripcion,
@@ -193,6 +218,13 @@ Los documentos están disponibles en la sección de **Proyectos** para descarga.
         response_data = {
             'response': final_response,
             'modelId': model_id,
+            'mode': 'arquitecto-mcp-containers',
+            'timestamp': datetime.now().isoformat(),
+            'mcpServicesUsed': mcp_services_used,
+            'documentsGenerated': files_generated if files_generated else None,
+            'projectId': project_id,
+            'projectName': project_info.get('name'),
+            'messageCount': len(messages) + 1
             'projectId': project_id,
             'projectInfo': project_info,
             'currentStep': current_step + 1,
