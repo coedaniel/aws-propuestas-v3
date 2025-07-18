@@ -224,8 +224,7 @@ Los documentos están disponibles en la sección de **Proyectos** para descarga.
             'documentsGenerated': files_generated if files_generated else None,
             'projectId': project_id,
             'projectName': project_info.get('name'),
-            'messageCount': len(messages) + 1
-            'projectId': project_id,
+            'messageCount': len(messages) + 1,
             'projectInfo': project_info,
             'currentStep': current_step + 1,
             'isComplete': is_complete,
