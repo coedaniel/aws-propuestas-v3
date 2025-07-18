@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MCPStatusDetailed } from '@/components/mcp-status'
+import { MCPIntegration } from '@/components/mcp/MCPIntegration'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
 export default function SystemStatusPage() {
@@ -34,13 +35,19 @@ export default function SystemStatusPage() {
           </Button>
         </div>
 
-        {/* System Status */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        {/* Enhanced MCP Integration */}
+        <div className="mb-8">
+          <MCPIntegration />
+        </div>
+
+        {/* Legacy System Status */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">Estado Detallado (Legacy)</h2>
           <MCPStatusDetailed />
         </div>
 
         {/* Additional Information */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h3 className="text-lg font-semibold mb-4">Servidores MCP</h3>
             <div className="space-y-3 text-sm">
