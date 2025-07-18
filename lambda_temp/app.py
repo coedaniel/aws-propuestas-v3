@@ -4,6 +4,7 @@ import os
 import urllib3
 from datetime import datetime
 import uuid
+from smart_mcp_handler import smart_mcp
 
 # Clientes AWS
 bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-east-1')
@@ -13,15 +14,6 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 # Variables de entorno
 DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET', 'aws-propuestas-v3-documents-prod-035385358261')
 PROJECTS_TABLE = os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod')
-
-# URLs de los contenedores MCP reales
-DOCUMENT_GENERATOR_URL = "https://mcp.danielingram.shop/customdoc"
-CLOUDFORMATION_GENERATOR_URL = "https://mcp.danielingram.shop/cfn"
-PRICING_ANALYZER_URL = "https://mcp.danielingram.shop/pricing"
-DIAGRAM_GENERATOR_URL = "https://mcp.danielingram.shop/diagram"
-
-# HTTP client
-http = urllib3.PoolManager()
 
 def create_response(status_code, body, headers=None):
     """Crear respuesta HTTP con headers CORS"""
@@ -40,67 +32,6 @@ def create_response(status_code, body, headers=None):
         'headers': default_headers,
         'body': json.dumps(body) if isinstance(body, dict) else body
     }
-
-def call_mcp_service(url, data):
-    """Llamar a un servicio MCP"""
-    try:
-        response = http.request(
-            'POST',
-            url,
-            body=json.dumps(data),
-            headers={'Content-Type': 'application/json'}
-        )
-        
-        if response.status == 200:
-            return json.loads(response.data.decode('utf-8'))
-        else:
-            return {"error": f"MCP service error: {response.status}"}
-    except Exception as e:
-        return {"error": f"Failed to call MCP service: {str(e)}"}
-
-def generate_document(project_data):
-    """Generar documento usando MCP"""
-    mcp_data = {
-        "project_name": project_data.get('name', 'Proyecto AWS'),
-        "description": project_data.get('description', ''),
-        "requirements": project_data.get('requirements', []),
-        "architecture": project_data.get('architecture', {}),
-        "services": project_data.get('services', [])
-    }
-    
-    return call_mcp_service(DOCUMENT_GENERATOR_URL, mcp_data)
-
-def generate_cloudformation(project_data):
-    """Generar CloudFormation usando MCP"""
-    mcp_data = {
-        "project_name": project_data.get('name', 'Proyecto AWS'),
-        "services": project_data.get('services', []),
-        "architecture": project_data.get('architecture', {}),
-        "requirements": project_data.get('requirements', [])
-    }
-    
-    return call_mcp_service(CLOUDFORMATION_GENERATOR_URL, mcp_data)
-
-def analyze_pricing(project_data):
-    """Analizar precios usando MCP"""
-    mcp_data = {
-        "services": project_data.get('services', []),
-        "region": project_data.get('region', 'us-east-1'),
-        "usage_patterns": project_data.get('usage_patterns', {})
-    }
-    
-    return call_mcp_service(PRICING_ANALYZER_URL, mcp_data)
-
-def generate_diagram(project_data):
-    """Generar diagrama usando MCP"""
-    mcp_data = {
-        "project_name": project_data.get('name', 'Proyecto AWS'),
-        "architecture": project_data.get('architecture', {}),
-        "services": project_data.get('services', []),
-        "connections": project_data.get('connections', [])
-    }
-    
-    return call_mcp_service(DIAGRAM_GENERATOR_URL, mcp_data)
 
 def call_bedrock(prompt, max_tokens=4000):
     """Llamar a Bedrock Claude"""
@@ -161,6 +92,46 @@ def save_project_to_dynamodb(project_data):
     except Exception as e:
         return f"Error guardando en DynamoDB: {str(e)}"
 
+def extract_project_data_from_conversation(user_message, conversation_history):
+    """Extraer datos del proyecto de la conversación"""
+    project_data = {}
+    
+    # Análisis básico del mensaje para extraer información del proyecto
+    message_lower = user_message.lower()
+    
+    # Detectar tipo de proyecto
+    if any(word in message_lower for word in ['web', 'aplicación web', 'website']):
+        project_data['type'] = 'web_application'
+        project_data['services'] = ['ec2', 's3', 'cloudfront', 'rds']
+    elif any(word in message_lower for word in ['api', 'microservicio', 'backend']):
+        project_data['type'] = 'api_backend'
+        project_data['services'] = ['lambda', 'api-gateway', 'dynamodb']
+    elif any(word in message_lower for word in ['datos', 'analytics', 'etl']):
+        project_data['type'] = 'data_processing'
+        project_data['services'] = ['s3', 'glue', 'redshift', 'lambda']
+    
+    # Detectar requisitos de presupuesto
+    if any(word in message_lower for word in ['precio', 'costo', 'presupuesto', 'barato', 'económico']):
+        project_data['budget_required'] = True
+    
+    # Detectar necesidad de documentación
+    if any(word in message_lower for word in ['documento', 'documentación', 'propuesta']):
+        project_data['documentation_required'] = True
+    
+    # Extraer nombre del proyecto si se menciona
+    if 'proyecto' in message_lower:
+        # Lógica simple para extraer nombre
+        words = user_message.split()
+        for i, word in enumerate(words):
+            if word.lower() in ['proyecto', 'aplicación', 'sistema'] and i + 1 < len(words):
+                project_data['name'] = words[i + 1].title()
+                break
+    
+    if not project_data.get('name'):
+        project_data['name'] = 'Proyecto AWS'
+    
+    return project_data
+
 def lambda_handler(event, context):
     """Handler principal de Lambda"""
     
@@ -219,83 +190,103 @@ def lambda_handler(event, context):
         if not user_message:
             user_message = "Hola, necesito ayuda para crear un proyecto en AWS"
         
+        # Extraer datos del proyecto de la conversación si no se proporcionaron
+        if not project_data and not project_info:
+            project_data = extract_project_data_from_conversation(user_message, conversation_history)
+        elif project_info:
+            project_data = project_info
+        
         # Prompt maestro para el arquitecto
         system_prompt = """
 Actúa como arquitecto de soluciones AWS experto. Tu objetivo es ayudar a dimensionar, documentar y entregar soluciones profesionales en AWS.
 
 CAPACIDADES DISPONIBLES:
-- Generar documentación técnica completa
-- Crear templates de CloudFormation
-- Analizar costos y precios
-- Generar diagramas de arquitectura
+- Generar documentación técnica completa y específica
+- Crear templates de CloudFormation personalizados
+- Analizar costos y precios detallados
+- Generar diagramas de arquitectura profesionales
 - Recomendar mejores prácticas de AWS
 
-FLUJO DE TRABAJO:
-1. Entender los requisitos del proyecto
-2. Proponer arquitectura AWS apropiada
-3. Generar documentación y artefactos necesarios
-4. Proporcionar estimaciones de costos
-5. Crear diagramas de la solución
+FLUJO DE TRABAJO INTELIGENTE:
+1. Entender los requisitos específicos del proyecto
+2. Proponer arquitectura AWS apropiada y detallada
+3. Activar servicios MCP solo cuando sea contextualmente necesario
+4. Generar artefactos específicos (no genéricos)
+5. Proporcionar estimaciones de costos precisas
 
-Responde de manera profesional y técnica, enfocándote en soluciones prácticas y escalables.
+IMPORTANTE: Genera respuestas específicas y contextuales, no genéricas. Usa los datos del proyecto para personalizar completamente la respuesta.
 """
         
-        # Construir el prompt completo
-        full_prompt = f"{system_prompt}\n\nUsuario: {user_message}"
+        # Construir el prompt completo con contexto del proyecto
+        project_context = ""
+        if project_data:
+            project_context = f"\nCONTEXTO DEL PROYECTO:\n"
+            project_context += f"- Nombre: {project_data.get('name', 'No especificado')}\n"
+            project_context += f"- Tipo: {project_data.get('type', 'No especificado')}\n"
+            project_context += f"- Servicios sugeridos: {', '.join(project_data.get('services', []))}\n"
+            if project_data.get('budget_required'):
+                project_context += "- Análisis de costos requerido\n"
+            if project_data.get('documentation_required'):
+                project_context += "- Documentación técnica requerida\n"
+        
+        full_prompt = f"{system_prompt}{project_context}\n\nUsuario: {user_message}"
         
         # Llamar a Bedrock para obtener la respuesta
         ai_response = call_bedrock(full_prompt)
         
-        # Detectar si necesitamos generar artefactos específicos
+        # SMART MCP ACTIVATION - Esta es la parte clave que faltaba
+        print(f"Activating Smart MCP Handler...")
+        try:
+            mcp_results = smart_mcp.process_smart_request(
+                user_message=user_message,
+                project_data=project_data,
+                conversation_history=conversation_history
+            )
+            
+            print(f"MCP Services activated: {mcp_results['services_activated']}")
+            print(f"Artifacts generated: {mcp_results['artifacts_generated']}")
+            
+        except Exception as e:
+            print(f"Error in Smart MCP Handler: {str(e)}")
+            # Fallback to basic response if MCP fails
+            mcp_results = {
+                'services_activated': [],
+                'mcp_results': {},
+                'artifacts_generated': []
+            }
+        
+        # Construir respuesta con resultados MCP
         response_data = {
             'response': ai_response,  # Frontend expects 'response' not 'message'
             'message': ai_response,   # Keep both for compatibility
             'timestamp': datetime.now().isoformat(),
             'mode': 'arquitecto',
             'modelId': 'anthropic.claude-3-5-sonnet-20240620-v1:0',
-            'artifacts': {},
-            'mcpServicesUsed': [],
-            'mcpResults': {},
-            'transparency': None,
-            'promptUnderstanding': None
+            'mcpServicesUsed': mcp_results['services_activated'],
+            'mcpResults': mcp_results['mcp_results'],
+            'artifacts': mcp_results['mcp_results'],  # Alias for compatibility
+            'artifactsGenerated': mcp_results['artifacts_generated'],
+            'transparency': {
+                'smart_mcp_activated': True,
+                'services_detected': mcp_results['services_activated'],
+                'project_data_extracted': project_data
+            },
+            'promptUnderstanding': {
+                'user_intent': 'arquitecto_consultation',
+                'project_type': project_data.get('type', 'general'),
+                'services_needed': project_data.get('services', [])
+            }
         }
         
-        # Detectar necesidad de generar documentos
-        if any(keyword in user_message.lower() for keyword in ['documento', 'documentación', 'propuesta', 'informe']):
-            if project_data:
-                doc_result = generate_document(project_data)
-                if 'error' not in doc_result:
-                    response_data['artifacts']['document'] = doc_result
-        
-        # Detectar necesidad de CloudFormation
-        if any(keyword in user_message.lower() for keyword in ['cloudformation', 'template', 'infraestructura', 'despliegue']):
-            if project_data:
-                cfn_result = generate_cloudformation(project_data)
-                if 'error' not in cfn_result:
-                    response_data['artifacts']['cloudformation'] = cfn_result
-        
-        # Detectar necesidad de análisis de precios
-        if any(keyword in user_message.lower() for keyword in ['precio', 'costo', 'presupuesto', 'estimación']):
-            if project_data:
-                pricing_result = analyze_pricing(project_data)
-                if 'error' not in pricing_result:
-                    response_data['artifacts']['pricing'] = pricing_result
-        
-        # Detectar necesidad de diagrama
-        if any(keyword in user_message.lower() for keyword in ['diagrama', 'arquitectura', 'esquema', 'diseño']):
-            if project_data:
-                diagram_result = generate_diagram(project_data)
-                if 'error' not in diagram_result:
-                    response_data['artifacts']['diagram'] = diagram_result
-        
-        # Guardar proyecto si hay datos
-        if project_data and project_data.get('name'):
+        # Guardar proyecto si hay datos significativos
+        if project_data and project_data.get('name') and project_data.get('name') != 'Proyecto AWS':
             project_id = save_project_to_dynamodb(project_data)
             response_data['project_id'] = project_id
         
         return create_response(200, response_data)
         
     except Exception as e:
+        print(f"Error in lambda_handler: {str(e)}")
         return create_response(500, {
             'error': f'Error interno del servidor: {str(e)}'
         })
