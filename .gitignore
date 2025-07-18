@@ -17,23 +17,25 @@ dist/
 .env.test.local
 .env.production.local
 
-# AWS
-.aws-sam/
-samconfig.toml
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Logs
-*.log
 logs/
+*.log
 
 # Runtime data
 pids/
@@ -46,7 +48,7 @@ coverage/
 *.lcov
 
 # nyc test coverage
-.nyc_output
+.nyc_output/
 
 # Dependency directories
 jspm_packages/
@@ -76,14 +78,28 @@ jspm_packages/
 .cache
 .parcel-cache
 
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
+# TypeScript cache
+*.tsbuildinfo
 
 # Temporary folders
 tmp/
 temp/
 
-# Python
+# AWS
+.aws/
+
+# Amplify
+amplify/
+.amplifyrc
+
+# Local development
+.env.local
+
+# Build artifacts
+*.zip
+*.tar.gz
+
+# Python (for any scripts)
 __pycache__/
 *.py[cod]
 *$py.class
@@ -95,5 +111,11 @@ ENV/
 env.bak/
 venv.bak/
 
-# Local development
-.local/
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test files
+test-results/
+coverage/

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ModelSelector from '@/components/ModelSelector'
 import { useChatStore } from '@/store/chatStore'
 import { Message, AVAILABLE_MODELS } from '@/lib/types'
@@ -15,22 +15,27 @@ import {
   User, 
   Loader2,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  Zap,
+  Lightbulb,
+  Cpu
 } from 'lucide-react'
 
 export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+  const [localMessages, setLocalMessages] = useState<Message[]>([])
+  const [localLoading, setLocalLoading] = useState(false)
   
   const {
-    messages,
-    isLoading,
     selectedModel,
-    addMessage,
-    setIsLoading,
-    setSelectedModel
+    setSelectedModel,
   } = useChatStore()
+
+  // Usar mensajes locales si hay problemas con el store
+  const messages = localMessages
+  const isLoading = localLoading
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
@@ -49,47 +54,70 @@ export default function ChatPage() {
       id: generateId(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date(),
-      modelId: selectedModel
+      timestamp: new Date().toISOString()
     }
 
-    addMessage(userMessage)
+    // Agregar mensaje del usuario inmediatamente
+    setLocalMessages(prev => [...prev, userMessage])
+    const currentMessages = [...localMessages, userMessage]
+    
     setInput('')
-    setIsLoading(true)
+    setLocalLoading(true)
 
     try {
-      const { sendChatMessage } = await import('@/lib/api')
-      const data = await sendChatMessage({
-        messages: [...messages, userMessage].map(m => ({
-          role: m.role,
-          content: m.content
-        })),
-        modelId: selectedModel,
-        mode: 'chat-libre'
+      console.log('Enviando request...', { messages: currentMessages.length, model: selectedModel })
+      
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+      
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: currentMessages.map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          modelId: selectedModel
+        }),
       })
+
+      console.log('Response status:', response.status)
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log('Response data:', data)
 
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-        modelId: selectedModel,
-        usage: data.usage
+        content: data.response || 'Lo siento, no pude generar una respuesta.',
+        timestamp: new Date().toISOString()
       }
 
-      addMessage(assistantMessage)
-    } catch (error) {
+      console.log('Adding assistant message:', assistantMessage)
+      setLocalMessages(prev => [...prev, assistantMessage])
+      console.log('Messages after adding:', localMessages.length + 1)
+      
+    } catch (error: any) {
       console.error('Error sending message:', error)
+      
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, inténtalo de nuevo.',
-        timestamp: new Date(),
-        modelId: selectedModel
+        content: `Error al procesar la solicitud: ${error?.message || 'Error desconocido'}`,
+        timestamp: new Date().toISOString()
       }
-      addMessage(errorMessage)
+      
+      console.log('Adding error message:', errorMessage)
+      setLocalMessages(prev => [...prev, errorMessage])
     } finally {
-      setIsLoading(false)
+      console.log('Setting loading to false')
+      setLocalLoading(false)
     }
   }
 
@@ -98,6 +126,10 @@ export default function ChatPage() {
       e.preventDefault()
       sendMessage()
     }
+  }
+
+  const clearChat = () => {
+    setLocalMessages([])
   }
 
   return (
@@ -135,13 +167,60 @@ export default function ChatPage() {
       </header>
 
       {/* Chat Container */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
+        {/* Model Comparison Card */}
+        {messages.length === 0 && (
+          <div className="px-4 pt-4">
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-blue-600" />
+                  Modelos Disponibles
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="h-5 w-5 text-blue-600" />
+                      <h3 className="font-semibold text-blue-900">Amazon Nova Pro v1</h3>
+                    </div>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Ideal para análisis multimodal y diagramas</li>
+                      <li>• Excelente para explicaciones técnicas</li>
+                      <li>• Optimizado para servicios AWS</li>
+                      <li>• Respuestas directas sobre AWS</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-5 w-5 text-purple-600" />
+                      <h3 className="font-semibold text-purple-900">Claude 3.5 Sonnet v2</h3>
+                    </div>
+                    <ul className="text-sm text-purple-700 space-y-1">
+                      <li>• Perfecto para análisis técnico profundo</li>
+                      <li>• Excelente para código y soluciones complejas</li>
+                      <li>• Razonamiento detallado y estructurado</li>
+                      <li>• Respuestas precisas y bien fundamentadas</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div className="mt-4 text-sm text-gray-600">
+                  <p>Selecciona el modelo que mejor se adapte a tu consulta. Puedes cambiar de modelo en cualquier momento.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <WelcomeMessage model={currentModel} />
           ) : (
-            messages.map((message) => (
+            messages.map((message: Message) => (
               <MessageBubble key={message.id} message={message} />
             ))
           )}
@@ -215,12 +294,14 @@ function MessageBubble({ message }: MessageBubbleProps) {
             </div>
             
             <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-              <span>{formatDate(message.timestamp)}</span>
-              {message.usage && (
-                <span>
-                  {message.usage.inputTokens}→{message.usage.outputTokens} tokens
-                </span>
-              )}
+              <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
+              <div className="flex items-center gap-2">
+                {message.usage && (
+                  <span>
+                    {message.usage.inputTokens}→{message.usage.outputTokens} tokens
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

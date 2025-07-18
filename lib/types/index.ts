@@ -13,6 +13,7 @@ export interface Message {
     outputTokens?: number
     totalTokens?: number
   }
+  mcpServicesUsed?: string[]
 }
 
 export interface ChatSession {
@@ -117,7 +118,7 @@ export interface AIModel {
 
 export const AVAILABLE_MODELS: AIModel[] = [
   {
-    id: 'nova',
+    id: 'amazon.nova-pro-v1:0',
     name: 'Nova Pro',
     description: 'Ideal para diagramas, análisis visual y contenido multimodal',
     icon: '🎨',
@@ -128,8 +129,8 @@ export const AVAILABLE_MODELS: AIModel[] = [
     costPer1kTokens: 0.008
   },
   {
-    id: 'claude',
-    name: 'Claude 3.5 Sonnet',
+    id: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
+    name: 'Claude 3.5 Sonnet v1',
     description: 'Ideal para análisis técnico profundo y documentación detallada',
     icon: '🧠',
     color: 'text-purple-600',
@@ -154,14 +155,6 @@ export interface ChatResponse {
     totalTokens?: number
   }
   sessionId?: string
-}
-
-export interface ArquitectoResponse extends ChatResponse {
-  projectInfo?: Partial<ProjectInfo>
-  currentStep?: number
-  isComplete?: boolean
-  documentsGenerated?: boolean
-  s3Folder?: string
 }
 
 export interface ProjectsResponse {
@@ -332,3 +325,4 @@ export type PaginatedResponse<T> = {
   limit: number
   totalPages: number
 }
+// Build trigger Wed Jul 16 00:55:45 UTC 2025

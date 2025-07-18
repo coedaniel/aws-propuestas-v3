@@ -173,12 +173,35 @@ def generate_dynamic_cloudformation(project_info, ai_analysis) -> str:
 # Configuración de Bedrock
 bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
 
-# Modelos soportados
+# Modelos soportados (FUNCIONANDO EN PRODUCCIÓN)
 SUPPORTED_MODELS = {
-    'claude-3-haiku': 'anthropic.claude-3-haiku-20240307-v1:0',
-    'claude-3-sonnet': 'anthropic.claude-3-sonnet-20240229-v1:0',
-    'nova-pro': 'amazon.nova-pro-v1:0'
+    'nova-pro': 'amazon.nova-pro-v1:0',           # ✅ invoke_model API
+    'claude-sonnet': 'anthropic.claude-3-5-sonnet-20240620-v1:0'  # ✅ converse API
 }
+
+# Formato de mensajes para Bedrock
+def format_messages_for_bedrock(messages):
+    """Convierte mensajes del frontend al formato requerido por Bedrock"""
+    bedrock_messages = []
+    for i, msg in enumerate(messages):
+        content = msg.get('content', '')
+        # Convertir string a array format
+        if isinstance(content, str):
+            bedrock_content = [{"text": content}]
+        else:
+            bedrock_content = content
+        
+        # Primer mensaje debe ser siempre 'user'
+        role = msg.get('role', 'user')
+        if i == 0 and role != 'user':
+            role = 'user'
+        
+        bedrock_messages.append({
+            "role": role,
+            "content": bedrock_content
+        })
+    
+    return bedrock_messages
 ```
 
 #### Análisis Dinámico

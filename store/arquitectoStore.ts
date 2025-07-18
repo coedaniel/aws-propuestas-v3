@@ -8,45 +8,81 @@ export const useArquitectoStore = create<ArquitectoStore>()(
       (set, get) => ({
         // State
         currentProject: null,
-        flow: null,
+        flow: {
+          currentStep: 0,
+          totalSteps: 5,
+          stepName: 'Inicio',
+          isComplete: false,
+          canProceed: true
+        },
         isGeneratingDocuments: false,
 
         // Actions
-        setCurrentProject: (project) => {
+        setCurrentProject: (project: ProjectInfo) => {
           set({ currentProject: project })
         },
 
-        setFlow: (flow) => {
-          set({ flow })
+        updateFlow: (flow: Partial<ArquitectoFlow>) => {
+          set((state) => ({
+            flow: { ...state.flow, ...flow }
+          }))
         },
 
-        updateProjectInfo: (info) => {
+        setProjectInfo: (info: Partial<ProjectInfo>) => {
           const { currentProject } = get()
           if (currentProject) {
             const updatedProject = {
               ...currentProject,
               ...info,
-              updatedAt: new Date()
+              updatedAt: new Date().toISOString()
             }
             set({ currentProject: updatedProject })
           }
         },
 
-        setIsGeneratingDocuments: (generating) => {
-          set({ isGeneratingDocuments: generating })
+        nextStep: () => {
+          set((state) => {
+            const newStep = Math.min(state.flow.currentStep + 1, state.flow.totalSteps - 1)
+            return {
+              flow: {
+                ...state.flow,
+                currentStep: newStep,
+                isComplete: newStep === state.flow.totalSteps - 1
+              }
+            }
+          })
         },
 
-        completeProject: () => {
-          const { currentProject } = get()
-          if (currentProject) {
-            const completedProject = {
-              ...currentProject,
-              status: 'COMPLETED' as const,
-              completedAt: new Date(),
-              updatedAt: new Date()
+        previousStep: () => {
+          set((state) => ({
+            flow: {
+              ...state.flow,
+              currentStep: Math.max(state.flow.currentStep - 1, 0)
             }
-            set({ currentProject: completedProject })
-          }
+          }))
+        },
+
+        resetFlow: () => {
+          set({
+            flow: {
+              currentStep: 0,
+              totalSteps: 5,
+              stepName: 'Inicio',
+              isComplete: false,
+              canProceed: true
+            },
+            currentProject: null
+          })
+        },
+
+        completeFlow: () => {
+          set((state) => ({
+            flow: { ...state.flow, isComplete: true }
+          }))
+        },
+
+        setGeneratingDocuments: (generating: boolean) => {
+          set({ isGeneratingDocuments: generating })
         }
       }),
       {
