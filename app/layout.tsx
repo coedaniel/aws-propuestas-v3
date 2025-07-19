@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { AppLayout } from '@/components/AppLayout'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -9,9 +10,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'AWS Propuestas v3 - Sistema Conversacional Profesional',
-  description: 'Sistema conversacional profesional para generar propuestas ejecutivas de soluciones AWS con IA',
-  keywords: ['AWS', 'Bedrock', 'IA', 'Propuestas', 'Arquitectura', 'Cloud'],
+  title: 'AWS Propuestas v3 - Plataforma de Arquitectura Inteligente',
+  description: 'Plataforma profesional para generar propuestas arquitectónicas AWS con IA y servicios MCP',
+  keywords: ['AWS', 'Bedrock', 'IA', 'Propuestas', 'Arquitectura', 'Cloud', 'MCP'],
   authors: [{ name: 'Daniel' }],
 }
 
@@ -26,11 +27,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="es" className="dark">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <AppLayout>
           {children}
-        </div>
+        </AppLayout>
       </body>
     </html>
   )

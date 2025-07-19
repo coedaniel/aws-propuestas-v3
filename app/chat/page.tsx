@@ -1,15 +1,16 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import ModelSelector from '@/components/ModelSelector'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { ModelSelector } from '@/components/ModelSelector'
+import { PromptUnderstanding } from '@/components/PromptUnderstanding'
 import { useChatStore } from '@/store/chatStore'
 import { Message, AVAILABLE_MODELS } from '@/lib/types'
 import { generateId, formatDate } from '@/lib/utils'
 import { 
-  ArrowLeft, 
   Send, 
   Bot, 
   User, 
@@ -18,25 +19,31 @@ import {
   Sparkles,
   Zap,
   Lightbulb,
-  Cpu
+  Cpu,
+  RotateCcw,
+  Download,
+  Copy,
+  Check,
+  Settings,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 
 export default function ChatPage() {
-  const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
   const [localMessages, setLocalMessages] = useState<Message[]>([])
   const [localLoading, setLocalLoading] = useState(false)
+  const [showPromptUnderstanding, setShowPromptUnderstanding] = useState(true)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   
   const {
     selectedModel,
     setSelectedModel,
   } = useChatStore()
 
-  // Usar mensajes locales si hay problemas con el store
   const messages = localMessages
   const isLoading = localLoading
-
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
   useEffect(() => {
@@ -57,7 +64,6 @@ export default function ChatPage() {
       timestamp: new Date().toISOString()
     }
 
-    // Agregar mensaje del usuario inmediatamente
     setLocalMessages(prev => [...prev, userMessage])
     const currentMessages = [...localMessages, userMessage]
     
@@ -65,8 +71,6 @@ export default function ChatPage() {
     setLocalLoading(true)
 
     try {
-      console.log('Enviando request...', { messages: currentMessages.length, model: selectedModel })
-      
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
       
       const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -83,29 +87,24 @@ export default function ChatPage() {
         }),
       })
 
-      console.log('Response status:', response.status)
-
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
-      console.log('Response data:', data)
 
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
         content: data.response || 'Lo siento, no pude generar una respuesta.',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        usage: data.usage,
+        mcpUsed: data.mcpUsed || []
       }
 
-      console.log('Adding assistant message:', assistantMessage)
       setLocalMessages(prev => [...prev, assistantMessage])
-      console.log('Messages after adding:', localMessages.length + 1)
       
     } catch (error: any) {
-      console.error('Error sending message:', error)
-      
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
@@ -113,10 +112,8 @@ export default function ChatPage() {
         timestamp: new Date().toISOString()
       }
       
-      console.log('Adding error message:', errorMessage)
       setLocalMessages(prev => [...prev, errorMessage])
     } finally {
-      console.log('Setting loading to false')
       setLocalLoading(false)
     }
   }
@@ -132,88 +129,100 @@ export default function ChatPage() {
     setLocalMessages([])
   }
 
+  const exportChat = () => {
+    const chatData = {
+      timestamp: new Date().toISOString(),
+      model: currentModel.name,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp
+      }))
+    }
+    
+    const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `chat-export-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const copyMessage = async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedMessageId(messageId)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy message:', err)
+    }
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+    <div className="flex h-screen">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border bg-card/50 backdrop-blur-sm p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <MessageCircle className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Chat Libre</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Conversación con {currentModel.name}
+                  </p>
+                </div>
+              </div>
+              
+              <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                Conectado
+              </Badge>
+            </div>
+            
+            <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/')}
+                onClick={() => setShowPromptUnderstanding(!showPromptUnderstanding)}
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver
+                {showPromptUnderstanding ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPromptUnderstanding ? 'Ocultar' : 'Mostrar'} Análisis
               </Button>
-              <div className="flex items-center space-x-3">
-                <MessageCircle className="w-6 h-6 text-blue-600" />
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Chat Libre</h1>
-                  <p className="text-sm text-gray-600">Conversa con IA sobre AWS</p>
-                </div>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportChat}
+                disabled={messages.length === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearChat}
+                disabled={messages.length === 0}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Limpiar
+              </Button>
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                disabled={isLoading}
+                compact={true}
+              />
             </div>
-            
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              disabled={isLoading}
-              compact={true}
-            />
           </div>
         </div>
-      </header>
-
-      {/* Chat Container */}
-      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
-        {/* Model Comparison Card */}
-        {messages.length === 0 && (
-          <div className="px-4 pt-4">
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Cpu className="h-5 w-5 text-blue-600" />
-                  Modelos Disponibles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Zap className="h-5 w-5 text-blue-600" />
-                      <h3 className="font-semibold text-blue-900">Amazon Nova Pro v1</h3>
-                    </div>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• Ideal para análisis multimodal y diagramas</li>
-                      <li>• Excelente para explicaciones técnicas</li>
-                      <li>• Optimizado para servicios AWS</li>
-                      <li>• Respuestas directas sobre AWS</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Lightbulb className="h-5 w-5 text-purple-600" />
-                      <h3 className="font-semibold text-purple-900">Claude 3.5 Sonnet v2</h3>
-                    </div>
-                    <ul className="text-sm text-purple-700 space-y-1">
-                      <li>• Perfecto para análisis técnico profundo</li>
-                      <li>• Excelente para código y soluciones complejas</li>
-                      <li>• Razonamiento detallado y estructurado</li>
-                      <li>• Respuestas precisas y bien fundamentadas</li>
-                    </ul>
-                  </div>
-                </div>
-                
-                <div className="mt-4 text-sm text-gray-600">
-                  <p>Selecciona el modelo que mejor se adapte a tu consulta. Puedes cambiar de modelo en cualquier momento.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -221,7 +230,12 @@ export default function ChatPage() {
             <WelcomeMessage model={currentModel} />
           ) : (
             messages.map((message: Message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble 
+                key={message.id} 
+                message={message} 
+                onCopy={copyMessage}
+                copiedMessageId={copiedMessageId}
+              />
             ))
           )}
           
@@ -230,16 +244,15 @@ export default function ChatPage() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t bg-white p-4">
+        <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
           <div className="flex space-x-4">
             <div className="flex-1">
-              <textarea
+              <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={`Pregunta algo sobre AWS usando ${currentModel.name}...`}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows={3}
+                className="min-h-[80px] resize-none focus-ring"
                 disabled={isLoading}
               />
             </div>
@@ -247,7 +260,7 @@ export default function ChatPage() {
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="lg"
-              className="px-6"
+              className="px-6 self-end"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -257,51 +270,79 @@ export default function ChatPage() {
             </Button>
           </div>
           
-          <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+          <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
             <span>Presiona Enter para enviar, Shift+Enter para nueva línea</span>
             <span>Modelo: {currentModel.name} • ${currentModel.costPer1kTokens}/1k tokens</span>
           </div>
         </div>
       </div>
+
+      {/* Prompt Understanding Sidebar */}
+      {showPromptUnderstanding && (
+        <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm">
+          <PromptUnderstanding messages={messages} />
+        </div>
+      )}
     </div>
   )
 }
 
 interface MessageBubbleProps {
   message: Message
+  onCopy: (content: string, messageId: string) => void
+  copiedMessageId: string | null
 }
 
-function MessageBubble({ message }: MessageBubbleProps) {
+function MessageBubble({ message, onCopy, copiedMessageId }: MessageBubbleProps) {
   const isUser = message.role === 'user'
+  const isCopied = copiedMessageId === message.id
   
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex space-x-3 max-w-3xl ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? 'bg-blue-600' : 'bg-gray-600'
+          isUser ? 'bg-primary' : 'bg-muted'
         }`}>
           {isUser ? (
-            <User className="w-4 h-4 text-white" />
+            <User className="w-4 h-4 text-primary-foreground" />
           ) : (
-            <Bot className="w-4 h-4 text-white" />
+            <Bot className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
         
-        <Card className={`${isUser ? 'bg-blue-50 border-blue-200' : 'bg-white'}`}>
+        <Card className={`${isUser ? 'message-user' : 'message-assistant'} group`}>
           <CardContent className="p-4">
-            <div className="prose prose-sm max-w-none">
+            <div className="prose prose-sm max-w-none dark:prose-invert">
               <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
             
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-              <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
-              <div className="flex items-center gap-2">
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center space-x-2">
+                <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
                 {message.usage && (
-                  <span>
+                  <Badge variant="outline" className="text-xs">
                     {message.usage.inputTokens}→{message.usage.outputTokens} tokens
-                  </span>
+                  </Badge>
+                )}
+                {message.mcpUsed && message.mcpUsed.length > 0 && (
+                  <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500">
+                    {message.mcpUsed.length} MCP
+                  </Badge>
                 )}
               </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onCopy(message.content, message.id)}
+              >
+                {isCopied ? (
+                  <Check className="w-3 h-3 text-green-500" />
+                ) : (
+                  <Copy className="w-3 h-3" />
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -314,16 +355,16 @@ function LoadingMessage({ model }: { model: any }) {
   return (
     <div className="flex justify-start">
       <div className="flex space-x-3 max-w-3xl">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-          <Bot className="w-4 h-4 text-white" />
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+          <Bot className="w-4 h-4 text-muted-foreground" />
         </div>
         
-        <Card className="bg-white">
+        <Card className="message-assistant">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-              <span className="text-sm text-gray-600">
-                {model.name} está pensando...
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">
+                {model.name} está procesando tu solicitud...
               </span>
             </div>
           </CardContent>
@@ -336,46 +377,55 @@ function LoadingMessage({ model }: { model: any }) {
 function WelcomeMessage({ model }: { model: any }) {
   return (
     <div className="text-center py-12">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
-        <Sparkles className="w-8 h-8 text-blue-600" />
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-6">
+        <Sparkles className="w-8 h-8 text-primary" />
       </div>
       
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+      <h2 className="text-2xl font-bold text-foreground mb-4">
         ¡Bienvenido al Chat Libre!
       </h2>
       
-      <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+      <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
         Conversa con <strong>{model.name}</strong> sobre cualquier tema relacionado con AWS. 
         Puedes hacer preguntas técnicas, solicitar arquitecturas, mejores prácticas y más.
       </p>
       
       <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto text-sm">
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">💡 Ejemplos de preguntas</h3>
-          <ul className="text-blue-700 space-y-1">
+        <Card className="p-4 bg-blue-500/5 border-blue-500/20">
+          <div className="flex items-center space-x-2 mb-2">
+            <Lightbulb className="w-4 h-4 text-blue-500" />
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100">Ejemplos de preguntas</h3>
+          </div>
+          <ul className="text-blue-700 dark:text-blue-300 space-y-1 text-left">
             <li>• ¿Cómo diseñar una arquitectura serverless?</li>
             <li>• Diferencias entre RDS y DynamoDB</li>
             <li>• Mejores prácticas de seguridad en AWS</li>
           </ul>
-        </div>
+        </Card>
         
-        <div className="p-4 bg-green-50 rounded-lg">
-          <h3 className="font-semibold text-green-900 mb-2">🚀 Capacidades</h3>
-          <ul className="text-green-700 space-y-1">
+        <Card className="p-4 bg-green-500/5 border-green-500/20">
+          <div className="flex items-center space-x-2 mb-2">
+            <Zap className="w-4 h-4 text-green-500" />
+            <h3 className="font-semibold text-green-900 dark:text-green-100">Capacidades</h3>
+          </div>
+          <ul className="text-green-700 dark:text-green-300 space-y-1 text-left">
             <li>• Análisis técnico profundo</li>
             <li>• Recomendaciones personalizadas</li>
             <li>• Explicaciones paso a paso</li>
           </ul>
-        </div>
+        </Card>
         
-        <div className="p-4 bg-purple-50 rounded-lg">
-          <h3 className="font-semibold text-purple-900 mb-2">⚡ Modelo actual</h3>
-          <ul className="text-purple-700 space-y-1">
+        <Card className="p-4 bg-purple-500/5 border-purple-500/20">
+          <div className="flex items-center space-x-2 mb-2">
+            <Cpu className="w-4 h-4 text-purple-500" />
+            <h3 className="font-semibold text-purple-900 dark:text-purple-100">Modelo actual</h3>
+          </div>
+          <ul className="text-purple-700 dark:text-purple-300 space-y-1 text-left">
             <li>• {model.name} ({model.provider})</li>
             <li>• ${model.costPer1kTokens}/1k tokens</li>
             <li>• Max {model.maxTokens.toLocaleString()} tokens</li>
           </ul>
-        </div>
+        </Card>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-# AWS Propuestas v3 - Sistema de Arquitectura Inteligente
+# AWS Propuestas v3 - Plataforma de Arquitectura Inteligente
 
 Sistema profesional de generación automática de propuestas técnicas AWS utilizando inteligencia artificial y servicios MCP (Model Context Protocol).
 
@@ -6,95 +6,156 @@ Sistema profesional de generación automática de propuestas técnicas AWS utili
 
 ✅ **PRODUCCIÓN** - Sistema completamente funcional  
 🌐 **URL**: https://main.d2xsphsjdxlk24.amplifyapp.com/  
-🤖 **Chat Arquitecto**: https://main.d2xsphsjdxlk24.amplifyapp.com/arquitecto/
-💬 **Chat Libre**: https://main.d2xsphsjdxlk24.amplifyapp.com/chat/ ✅ **REPARADO**
+🤖 **Arquitecto IA**: https://main.d2xsphsjdxlk24.amplifyapp.com/arquitecto/
+💬 **Chat Libre**: https://main.d2xsphsjdxlk24.amplifyapp.com/chat/
 
-## 🔧 **CORRECCIONES RECIENTES APLICADAS:**
+## 🆕 Nuevas Características v3.0
 
-### **Chat Libre (/chat) - FUNCIONAL**
-- ✅ **Problema resuelto**: Estado local en lugar de Zustand complejo
-- ✅ **Contexto mantenido**: Historial completo de conversación  
-- ✅ **Sin restricciones**: Respuestas naturales como consola Bedrock
-- ✅ **Modelos**: Nova Pro + Claude Sonnet operativos
-- ✅ **Endpoint**: `/chat` directo a Bedrock sin filtros restrictivos
+### **Frontend Profesional Completo**
+- ✅ **Diseño Dark Mode**: Interfaz profesional estilo AWS Transform
+- ✅ **4 Páginas Principales**: Chat, Arquitecto, Proyectos, Analítica
+- ✅ **Navegación Lateral**: Layout profesional con sidebar responsive
+- ✅ **Prompt Understanding**: Análisis en tiempo real de conversaciones
+- ✅ **Estado de Conexiones**: Monitoreo de todos los servicios
+- ✅ **Logs y Errores**: Sistema completo de diagnóstico
 
-### **Lecciones Aprendidas:**
-1. **Zustand Store**: Complejo para chat simple, usar estado local cuando sea apropiado
-2. **Debugging**: Console.logs esenciales para identificar problemas de renderizado
-3. **API Testing**: Siempre probar endpoints directamente antes de culpar al frontend
-4. **Build Process**: Verificar builds locales antes de deployments
-5. **Arquitectura**: Respetar diseños establecidos, no simplificar sin razón
+### **Páginas Implementadas**
 
-## 🏗️ Arquitectura
+#### 1. **Dashboard Principal** (`/`)
+- Resumen ejecutivo del sistema
+- Métricas en tiempo real
+- Accesos rápidos a todas las funciones
+- Estado de servicios y MCPs
+
+#### 2. **Chat Libre** (`/chat`)
+- Conversación libre con modelos Bedrock
+- Selector de modelos (Nova Pro, Claude 3.5 Sonnet, Claude 4)
+- Análisis de prompt en sidebar
+- Exportación de conversaciones
+- Historial y gestión de mensajes
+
+#### 3. **Arquitecto IA** (`/arquitecto`)
+- Generación guiada de propuestas arquitectónicas
+- Flujo paso a paso para proyectos
+- Integración automática con MCPs
+- Generación de documentos profesionales
+- Seguimiento de fases del proyecto
+
+#### 4. **Proyectos** (`/proyectos`)
+- Gestión completa de proyectos generados
+- Vista de archivos por proyecto
+- Descarga directa de documentos
+- Filtros y búsqueda avanzada
+- Integración con S3 para almacenamiento
+
+#### 5. **Analítica** (`/analitica`)
+- Dashboard de métricas y estadísticas
+- Gráficas de uso de MCPs
+- Análisis de costos por modelo
+- Top 5 soluciones más solicitadas
+- Métricas de rendimiento del sistema
+
+#### 6. **Conexiones** (`/conexiones`)
+- Monitoreo en tiempo real de servicios
+- Health checks automáticos
+- Estado de 6 servicios MCP
+- Diagnóstico de conectividad
+- Información de latencia y disponibilidad
+
+#### 7. **Errores** (`/errores`)
+- Sistema completo de logging
+- Categorización de errores
+- Filtros avanzados por tipo y estado
+- Exportación de logs a CSV
+- Stack traces detallados
+
+## 🏗️ Arquitectura Técnica
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Load Balancer  │    │   ECS Services  │
-│   (Amplify)     │───▶│   (ALB)          │───▶│   (MCP Servers) │
-│   Next.js       │    │   Target Groups  │    │   Official MCP  │
+│   (Amplify)     │───▶│   (ALB)          │───▶│   (6 MCP Servers)│
+│   Next.js 14    │    │   Target Groups  │    │   Official MCP  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │
                                 ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   AI Models     │    │   API Gateway    │    │   Storage       │
-│   Nova Pro      │◀───│   REST API       │───▶│   DynamoDB      │
-│   Claude Sonnet │    │   /arquitecto    │    │   S3 Bucket     │
+│   Nova Pro v1.0 │◀───│   REST API       │───▶│   DynamoDB      │
+│   Claude 3.5 v2 │    │   /chat          │    │   S3 Bucket     │
+│   Claude 4      │    │   /arquitecto    │    │   CloudWatch    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ### Componentes Principales
 
-- **Frontend**: Next.js en AWS Amplify (SSG)
-- **Backend**: ECS Services con MCP Servers oficiales
-- **AI**: Amazon Bedrock (Nova Pro + Claude 3.5 Sonnet)
-- **Storage**: DynamoDB + S3
-- **API**: API Gateway + Lambda (solo para chat arquitecto)
+- **Frontend**: Next.js 14 con App Router, Tailwind CSS, Zustand
+- **Backend**: 6 servicios MCP en ECS + API Gateway + Lambda
+- **AI**: Amazon Bedrock (Nova Pro, Claude 3.5 Sonnet v2, Claude 4)
+- **Storage**: DynamoDB + S3 + CloudWatch Logs
+- **Hosting**: AWS Amplify con despliegue automático
 
 ## 🤖 Modelos de IA Disponibles
 
 ### Amazon Nova Pro v1.0
 - **ID**: `amazon.nova-pro-v1:0`
-- **Uso**: Análisis técnico y documentación
-- **API**: `invoke_model` (formato específico)
-- **Estado**: ✅ Funcionando
-
-### Claude 3.5 Sonnet v1
-- **ID**: `anthropic.claude-3-5-sonnet-20240620-v1:0`
-- **Uso**: Análisis profundo y documentación detallada
+- **Uso**: Análisis multimodal y diagramas
 - **API**: `converse` (formato estándar)
 - **Estado**: ✅ Funcionando
 
-## 🛠️ Servicios MCP
+### Claude 3.5 Sonnet v2
+- **ID**: `anthropic.claude-3-5-sonnet-20241022-v2:0`
+- **Uso**: Análisis técnico profundo y documentación
+- **API**: `converse` (formato estándar)
+- **Estado**: ✅ Funcionando
+
+### Claude 4 (Cross-Region)
+- **ID**: `anthropic.claude-sonnet-4-20250514-v1:0`
+- **Uso**: Capacidades avanzadas de razonamiento
+- **API**: `converse` con inference profiles
+- **Estado**: ✅ Disponible
+
+## 🛠️ Servicios MCP Activos
 
 Los servicios MCP se invocan automáticamente cuando el modelo los necesita:
 
-- **Core MCP** (puerto 8000): Chat principal y coordinación
-- **Pricing MCP** (puerto 8001): Cálculos de costos AWS
-- **AWS Docs MCP** (puerto 8002): Documentación oficial AWS
-- **CloudFormation MCP** (puerto 8003): Generación de templates IaC
-- **Diagram MCP** (puerto 8004): Diagramas de arquitectura
-- **Document Generator MCP** (puerto 8005): Generación de documentos
+1. **Core MCP** (puerto 8000): Chat principal y coordinación
+2. **Pricing MCP** (puerto 8001): Cálculos de costos AWS
+3. **AWS Docs MCP** (puerto 8002): Documentación oficial AWS
+4. **CloudFormation MCP** (puerto 8003): Generación de templates IaC
+5. **Diagram MCP** (puerto 8004): Diagramas de arquitectura
+6. **Document Generator MCP** (puerto 8005): Generación de documentos
 
-## 📋 Funcionalidades
+## 📋 Funcionalidades Principales
 
 ### Chat del Arquitecto
 - Conversación inteligente con modelos de IA
 - Detección automática de servicios AWS necesarios
 - Generación de propuestas técnicas profesionales
 - Invocación inteligente de servicios MCP
+- Flujo guiado paso a paso
 
 ### Generación de Documentos
-- Propuestas técnicas en formato TXT
-- Planes de actividades en CSV
-- Estimaciones de costos en CSV
+- Propuestas técnicas en formato TXT/Word
+- Planes de actividades en CSV/Excel
+- Estimaciones de costos detalladas
 - Guías para AWS Calculator
 - Diagramas de arquitectura (SVG/PNG)
+- Scripts CloudFormation (YAML)
 
 ### Gestión de Proyectos
 - Almacenamiento en DynamoDB
 - Seguimiento de estado de proyectos
 - Historial de conversaciones
 - Archivos generados en S3
+- Descarga directa de documentos
+
+### Monitoreo y Diagnóstico
+- Health checks automáticos
+- Métricas de uso en tiempo real
+- Sistema de logging completo
+- Análisis de costos por modelo
+- Estadísticas de uso de MCPs
 
 ## 🚀 Desarrollo Local
 
@@ -133,12 +194,14 @@ npm run dev
 ### Variables de Entorno Requeridas
 ```
 NEXT_PUBLIC_API_URL=https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod
-NEXT_PUBLIC_MCP_CORE_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8000
-NEXT_PUBLIC_MCP_PRICING_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8001
-NEXT_PUBLIC_MCP_AWSDOCS_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8002
-NEXT_PUBLIC_MCP_CFN_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8003
-NEXT_PUBLIC_MCP_DIAGRAM_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8004
-NEXT_PUBLIC_MCP_CUSTOMDOC_URL=http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com:8005
+NEXT_PUBLIC_CORE_MCP_URL=https://mcp.danielingram.shop/core
+NEXT_PUBLIC_PRICING_MCP_URL=https://mcp.danielingram.shop/pricing
+NEXT_PUBLIC_AWSDOCS_MCP_URL=https://mcp.danielingram.shop/awsdocs
+NEXT_PUBLIC_CFN_MCP_URL=https://mcp.danielingram.shop/cfn
+NEXT_PUBLIC_DIAGRAM_MCP_URL=https://mcp.danielingram.shop/diagram
+NEXT_PUBLIC_DOCGEN_MCP_URL=https://mcp.danielingram.shop/docgen
+NEXT_PUBLIC_ENVIRONMENT=prod
+NEXT_PUBLIC_REGION=us-east-1
 ```
 
 ## 📚 Documentación Técnica
@@ -152,14 +215,35 @@ NEXT_PUBLIC_MCP_CUSTOMDOC_URL=http://aws-propuestas-v3-alb-prod-297472567.us-eas
 ## 🔍 Monitoreo y Estado
 
 ### Health Checks
-- **Frontend**: https://main.d2xsphsjdxlk24.amplifyapp.com/system-status
+- **Frontend**: https://main.d2xsphsjdxlk24.amplifyapp.com/conexiones
 - **API**: https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod/health
-- **MCP Services**: Verificación automática en system-status
+- **MCP Services**: Verificación automática en página de conexiones
 
-### Logs
+### Logs y Métricas
 - **Amplify**: Console de AWS Amplify
 - **Lambda**: CloudWatch Logs `/aws/lambda/aws-propuestas-v3-arquitecto-prod`
-- **ECS**: CloudWatch Logs grupos por servicio
+- **ECS**: CloudWatch Logs grupos por servicio MCP
+- **Frontend**: Página `/errores` para logs del sistema
+
+## 🎯 Casos de Uso
+
+### Para Arquitectos de Soluciones
+- Generación rápida de propuestas técnicas
+- Documentación automática de arquitecturas
+- Cálculo de costos y estimaciones
+- Diagramas profesionales automáticos
+
+### Para Consultores
+- Propuestas ejecutivas personalizadas
+- Planes de actividades detallados
+- Scripts de implementación (CloudFormation)
+- Documentación lista para cliente
+
+### Para Equipos de Desarrollo
+- Arquitecturas serverless y microservicios
+- Mejores prácticas de AWS integradas
+- Validación automática de diseños
+- Integración con herramientas existentes
 
 ## 🤝 Contribución
 
@@ -178,10 +262,11 @@ Este proyecto está bajo la Licencia MIT. Ver [LICENSE](LICENSE) para más detal
 Para soporte técnico o preguntas:
 - **Issues**: GitHub Issues
 - **Documentación**: Ver archivos MD en el repositorio
-- **Estado del Sistema**: https://main.d2xsphsjdxlk24.amplifyapp.com/system-status
+- **Estado del Sistema**: https://main.d2xsphsjdxlk24.amplifyapp.com/conexiones
+- **Logs del Sistema**: https://main.d2xsphsjdxlk24.amplifyapp.com/errores
 
 ---
 
-**Última actualización**: 2025-07-17  
+**Última actualización**: 2025-01-19  
 **Versión**: 3.0.0  
-**Estado**: ✅ Producción Estable
+**Estado**: ✅ Producción Estable con Frontend Profesional Completo

@@ -50,11 +50,12 @@ export interface TokenUsage {
 
 // Tipos para mensajes
 export interface Message {
-  id?: string
+  id: string
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp?: string
   mcpServicesUsed?: string[]
+  mcpUsed?: string[]
   usage?: TokenUsage
   mcpInfo?: {
     mcpServicesUsed: string[]
