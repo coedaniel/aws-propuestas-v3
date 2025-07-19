@@ -38,6 +38,28 @@ export const AVAILABLE_MODELS: Model[] = [
     capabilities: ['chat', 'arquitecto', 'documentacion'],
     icon: '🧠',
     costPer1kTokens: 0.015
+  },
+  {
+    id: 'anthropic.claude-3-haiku-20240307-v1:0',
+    name: 'Claude 3 Haiku',
+    provider: 'Anthropic',
+    description: 'Modelo rápido y eficiente para tareas simples',
+    maxTokens: 4096,
+    contextWindow: 200000,
+    capabilities: ['chat', 'arquitecto'],
+    icon: '⚡',
+    costPer1kTokens: 0.0025
+  },
+  {
+    id: 'anthropic.claude-3-opus-20240229-v1:0',
+    name: 'Claude 3 Opus',
+    provider: 'Anthropic',
+    description: 'Modelo más potente para tareas complejas y creativas',
+    maxTokens: 4096,
+    contextWindow: 200000,
+    capabilities: ['chat', 'arquitecto', 'documentacion'],
+    icon: '🎯',
+    costPer1kTokens: 0.075
   }
 ]
 
@@ -50,11 +72,12 @@ export interface TokenUsage {
 
 // Tipos para mensajes
 export interface Message {
-  id?: string
+  id: string
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp?: string
   mcpServicesUsed?: string[]
+  mcpUsed?: string[]
   usage?: TokenUsage
   mcpInfo?: {
     mcpServicesUsed: string[]

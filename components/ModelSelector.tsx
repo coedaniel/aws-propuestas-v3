@@ -12,7 +12,7 @@ interface ModelSelectorProps {
   className?: string
 }
 
-export default function ModelSelector({ 
+export function ModelSelector({ 
   selectedModel, 
   onModelChange, 
   disabled = false, 

@@ -52,9 +52,35 @@ export default function ProjectsPage() {
   const loadProjects = async () => {
     try {
       setIsLoading(true)
-      const response = await getProjects()
-      console.log('Projects loaded:', response)
-      setProjects(response.projects || [])
+      // En producción, aquí cargarías los proyectos desde la API
+      // const response = await getProjects()
+      // setProjects(response || [])
+      setProjects([
+        {
+          projectId: '1',
+          projectName: 'Migracion Cloud Empresa ABC',
+          projectType: 'solucion-integral',
+          status: 'completed',
+          createdAt: '2025-01-15T10:30:00Z',
+          updatedAt: '2025-01-15T11:45:00Z',
+          estimatedCost: 15000,
+          description: 'Migración completa de infraestructura on-premises a AWS con alta disponibilidad',
+          documentsGenerated: ['propuesta.docx', 'actividades.csv', 'template.yaml', 'diagrama.png'],
+          s3Folder: 'migracion-cloud-empresa-abc'
+        },
+        {
+          projectId: '2',
+          projectName: 'Setup RDS MySQL',
+          projectType: 'servicio-rapido',
+          status: 'completed',
+          createdAt: '2025-01-14T14:20:00Z',
+          updatedAt: '2025-01-14T14:35:00Z',
+          estimatedCost: 500,
+          description: 'Configuración de base de datos RDS MySQL con Multi-AZ',
+          documentsGenerated: ['propuesta.docx', 'template.yaml', 'diagrama.png'],
+          s3Folder: 'setup-rds-mysql'
+        }
+      ])
     } catch (error) {
       console.error('Error loading projects:', error)
       setProjects([])
