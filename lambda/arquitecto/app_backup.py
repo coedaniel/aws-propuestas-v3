@@ -81,11 +81,6 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         current_step = body.get('currentStep', 0)
         project_info = body.get('projectInfo', {})
         
-        logger.info(f"🏗️ ARQUITECTO V3 - Processing chat")
-        logger.info(f"Model ID: {model_id}")
-        logger.info(f"Messages count: {len(messages)}")
-        logger.info(f"Project info: {project_info}")
-        
         if not messages:
             return create_response(400, {'error': 'Messages are required'})
         
@@ -98,36 +93,23 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         logger.info(f"🏗️ ARQUITECTO USING MODEL: {model_id}")
         logger.info(f"Prompt body keys: {list(prompt_body.keys())}")
         
-        try:
-            # Call Bedrock
-            logger.info("Calling Bedrock...")
-            response = bedrock_runtime.invoke_model(
-                modelId=model_id,
-                body=json.dumps(prompt_body),
-                contentType='application/json'
-            )
-            logger.info("Bedrock response received")
-            
-            # Parse response
-            response_body = json.loads(response['body'].read())
-            logger.info(f"Response body keys: {list(response_body.keys())}")
-            
-            ai_response, usage = extract_response(model_id, response_body)
-            
-            if not ai_response:
-                logger.error(f"Empty response from model {model_id}")
-                return create_response(500, {
-                    'error': 'Empty response from AI model',
-                    'modelId': model_id
-                })
-            
-            logger.info(f"AI response received, length: {len(ai_response)}")
-            
-        except Exception as bedrock_error:
-            logger.error(f"Bedrock error: {str(bedrock_error)}")
+        # Call Bedrock
+        response = bedrock_runtime.invoke_model(
+            modelId=model_id,
+            body=json.dumps(prompt_body),
+            contentType='application/json'
+        )
+        
+        # Parse response
+        response_body = json.loads(response['body'].read())
+        logger.info(f"Response body keys: {list(response_body.keys())}")
+        
+        ai_response, usage = extract_response(model_id, response_body)
+        
+        if not ai_response:
+            logger.error(f"Empty response from model {model_id}")
             return create_response(500, {
-                'error': 'Error calling Bedrock',
-                'details': str(bedrock_error),
+                'error': 'Empty response from AI model',
                 'modelId': model_id
             })
         
@@ -195,12 +177,6 @@ He analizado tu proyecto: "{descripcion}"
 
 📄 **Propuesta Ejecutiva** - Documento profesional centrado en {servicio}
 🔧 **Documento Técnico** - Arquitectura específica de {servicio}  
-            # Create completion message for document generation
-            completion_message = f"""✅ **¡Proyecto {servicio} Completado!**
-
-He generado todos los documentos necesarios para tu proyecto de {servicio}:
-
-📄 **Documento de Arquitectura** - Diseño completo de {servicio}
 📊 **Plan de Actividades** - Implementación específica de {servicio}
 💰 **Estimación de Costos** - Costos reales de {servicio}
 🏗️ **CloudFormation Template** - Infraestructura para {servicio}
@@ -221,8 +197,8 @@ Los documentos están disponibles en la sección de **Proyectos** para descarga.
                 'status': 'COMPLETED'
             })
             
-            # Use completion message instead of AI response with documents mixed in
-            final_response = completion_message
+            # Use chat response instead of AI response with documents mixed in
+            final_response = chat_response
             
         else:
             # Continue conversation - use enhanced AI response from MCP processing
@@ -439,60 +415,23 @@ def extract_response(model_id: str, response_body: Dict) -> tuple:
     ai_response = ""
     usage = {}
     
-    logger.info(f"Extracting response for model: {model_id}")
-    logger.info(f"Response body structure: {list(response_body.keys())}")
+    if model_id.startswith('anthropic.claude'):
+        ai_response = response_body.get('content', [{}])[0].get('text', '')
+        usage = {
+            'inputTokens': response_body.get('usage', {}).get('input_tokens'),
+            'outputTokens': response_body.get('usage', {}).get('output_tokens')
+        }
+    elif model_id.startswith('amazon.nova'):
+        ai_response = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
+        usage = {
+            'inputTokens': response_body.get('usage', {}).get('inputTokens'),
+            'outputTokens': response_body.get('usage', {}).get('outputTokens'),
+            'totalTokens': response_body.get('usage', {}).get('totalTokens')
+        }
+    else:
+        ai_response = response_body.get('content', '')
     
-    try:
-        if model_id.startswith('anthropic.claude'):
-            # Claude response structure
-            if 'content' in response_body and response_body['content']:
-                ai_response = response_body['content'][0].get('text', '')
-            elif 'completion' in response_body:
-                ai_response = response_body.get('completion', '')
-            
-            usage = {
-                'inputTokens': response_body.get('usage', {}).get('input_tokens', 0),
-                'outputTokens': response_body.get('usage', {}).get('output_tokens', 0)
-            }
-            
-        elif model_id.startswith('amazon.nova'):
-            # Nova response structure
-            if 'output' in response_body:
-                output = response_body['output']
-                if 'message' in output and 'content' in output['message']:
-                    ai_response = output['message']['content'][0].get('text', '')
-            
-            usage = {
-                'inputTokens': response_body.get('usage', {}).get('inputTokens', 0),
-                'outputTokens': response_body.get('usage', {}).get('outputTokens', 0),
-                'totalTokens': response_body.get('usage', {}).get('totalTokens', 0)
-            }
-            
-        elif model_id.startswith('meta.llama'):
-            # Llama response structure
-            if 'generation' in response_body:
-                ai_response = response_body.get('generation', '')
-            elif 'outputs' in response_body:
-                ai_response = response_body['outputs'][0].get('text', '')
-            
-            usage = {
-                'inputTokens': response_body.get('prompt_token_count', 0),
-                'outputTokens': response_body.get('generation_token_count', 0)
-            }
-            
-        else:
-            # Generic fallback
-            ai_response = response_body.get('content', response_body.get('text', ''))
-        
-        logger.info(f"Extracted response length: {len(ai_response)}")
-        logger.info(f"Usage: {usage}")
-        
-        return ai_response, usage
-        
-    except Exception as e:
-        logger.error(f"Error extracting response: {str(e)}")
-        logger.error(f"Response body: {response_body}")
-        return "", {}
+    return ai_response, usage
 
 def extract_project_info_from_conversation(messages: List[Dict], ai_response: str, existing_info: Dict) -> Dict:
     """Extract project information from conversation messages"""
