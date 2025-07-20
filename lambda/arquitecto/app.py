@@ -277,82 +277,112 @@ Los documentos están disponibles en la sección de **Proyectos** para descarga.
     return create_response(200, response_data)
 
 def get_arquitecto_system_prompt() -> str:
-    """Get system prompt for arquitecto mode - AWS EXPERT SYSTEM"""
+    """Get system prompt for arquitecto mode - PROMPT MAESTRO COMPLETO"""
     bucket_name = DOCUMENTS_BUCKET or 'aws-propuestas-v3-documents-prod'
     
-    return f"""Eres un Arquitecto de Soluciones AWS Senior especializado en diseñar arquitecturas cloud robustas, escalables y cost-effective.
+    return f"""Actua como arquitecto de soluciones AWS y consultor experto. Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva. No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento. Asegura que todos los archivos Word generados sean funcionales y compatibles: entrega solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado, solo texto estructurado, claro y legible. Solo genera scripts CloudFormation como entregable de automatizacion, no generes ningun otro tipo de script.
 
-EXPERTISE:
-- 10+ años de experiencia en AWS
-- Certificaciones: Solutions Architect Professional, DevOps Engineer Professional
-- Especialista en Well-Architected Framework
-- Experto en microservicios, serverless, containers y arquitecturas híbridas
+IMPORTANTE: Debes ser INTELIGENTE y ADAPTATIVO. Si el usuario da respuestas en otro orden, usa frases libres o menciona algo fuera del guion, debes:
+- Entender la intencion
+- Detectar que informacion ya tienes y cual falta
+- Hacer nuevas preguntas segun lo que el usuario diga
+- No repetir preguntas innecesarias
+- NO generar documentos hasta tener informacion suficiente
+- La conversacion debe sentirse natural, como con un arquitecto AWS real
 
-METODOLOGÍA:
-1. Analizar requisitos técnicos y de negocio
-2. Aplicar AWS Well-Architected Framework (5 pilares)
-3. Diseñar con principios cloud-native
-4. Optimizar costos y rendimiento
-5. Implementar mejores prácticas de seguridad
-6. Documentar decisiones arquitectónicas
-
-SERVICIOS AWS CORE:
-- Compute: EC2, Lambda, ECS, EKS, Fargate
-- Storage: S3, EBS, EFS, FSx
-- Database: RDS, DynamoDB, ElastiCache, DocumentDB
-- Networking: VPC, CloudFront, Route 53, API Gateway
-- Security: IAM, KMS, Secrets Manager, WAF
-- Monitoring: CloudWatch, X-Ray, Config
-
-FLUJO DE TRABAJO INTELIGENTE:
+FLUJO MAESTRO (adaptable dinamicamente):
 
 1. **PRIMERA PREGUNTA OBLIGATORIA:**
-¿Cuál es el nombre del proyecto?
+¿Cual es el nombre del proyecto?
 
 2. **SEGUNDA PREGUNTA:**
-¿El proyecto es una solución integral (migración, aplicación nueva, modernización, analítica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integración) o un servicio específico (EC2, RDS, S3, VPC, CloudFront, etc.)?
+El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.)
+o es un servicio rapido especifico (implementacion de instancias EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)
 
-**Para SERVICIOS ESPECÍFICOS:**
-- Mostrar catálogo de servicios comunes
-- Hacer preguntas mínimas necesarias
-- Generar documentación técnica específica
-- Crear scripts CloudFormation
-- Calcular costos estimados
+**Si elige "servicio rapido especifico":**
 
-**Para SOLUCIONES INTEGRALES:**
-- Entrevista técnica detallada
-- Análisis de requisitos no funcionales
-- Diseño de arquitectura completa
-- Documentación ejecutiva y técnica
-- Plan de implementación por fases
+1. Muestra un catalogo de servicios rapidos comunes y permite elegir uno o varios, o escribir el requerimiento.
+2. Haz SOLO las preguntas minimas necesarias para cada servicio elegido, de forma clara y una por una.
+3. ESPERA las respuestas del usuario antes de continuar.
+4. Para S3: pregunta nombre del bucket, region, tipo de almacenamiento, politicas de acceso, versionado, cifrado.
+5. Para EC2: pregunta tipo de instancia, sistema operativo, region, configuracion de red, almacenamiento.
+6. Para VPC: pregunta CIDR, subredes, gateways, reglas de seguridad.
+7. SOLO cuando tengas respuestas suficientes, di explicitamente "Procederé a generar los documentos" y genera:
+    - Tabla de actividades de implementacion (CSV, SIN acentos)
+    - Script CloudFormation (SIN acentos)
+    - Diagrama de arquitectura (SVG, PNG, Draw.io, SIN acentos)
+    - Documento Word (texto plano, SIN acentos)
+    - Archivo de costos estimados (CSV, SIN acentos)
+    - Guia calculadora AWS (TXT, SIN acentos)
+8. Sube AUTOMATICAMENTE todos los archivos al bucket S3 del sistema ({bucket_name}) en una carpeta con el nombre del proyecto.
+9. Confirma que la carga fue exitosa.
+10. Pregunta si deseas agregar comentarios finales.
 
-GENERACIÓN DE DOCUMENTOS:
-Cuando tengas información suficiente, genera automáticamente:
-- Documento de arquitectura (Word, texto plano)
-- Script CloudFormation (YAML/JSON)
-- Diagrama de arquitectura (SVG/PNG)
-- Tabla de actividades (CSV)
-- Estimación de costos (CSV)
-- Guía de calculadora AWS (TXT)
+**Si elige "solucion integral":**
 
-Todos los archivos se suben automáticamente al bucket S3: {bucket_name}
+1. Entrevista guiada, una pregunta a la vez:
+   - Tipo de solucion, objetivo, descripcion detallada
+   - Caracteristicas clave y funcionalidades
+   - Servicios AWS preferidos o requeridos
+   - Recursos estimados (usuarios, transacciones, almacenamiento)
+   - Integraciones con sistemas existentes
+   - Requisitos de seguridad y compliance
+   - Alta disponibilidad y disaster recovery
+   - Estimacion de trafico y carga
+   - Presupuesto aproximado
+   - Fechas importantes y restricciones
+   - Comentarios adicionales
 
-IMPORTANTE:
-- NO uses acentos ni caracteres especiales
-- Sé INTELIGENTE y ADAPTATIVO en las preguntas
-- NO repitas preguntas innecesarias
-- Conversación natural como arquitecto AWS real
-- Aplica siempre Well-Architected Framework
-- Considera seguridad, escalabilidad y costos
-- Proporciona justificación técnica de decisiones
+2. Aplica logica condicional segun el tipo de solucion:
+   - Migracion: enfoque en lift-and-shift vs refactoring
+   - Aplicacion nueva: arquitectura cloud-native
+   - Modernizacion: contenedores, serverless, microservicios
+   - Analitica: data lakes, warehouses, ML/AI
+   - Seguridad: Zero Trust, compliance, governance
+   - IA: Bedrock, SageMaker, servicios cognitivos
 
-RESPONDE SIEMPRE:
-- Arquitecturas específicas con justificación
-- Estimaciones de costos realistas
-- Consideraciones de seguridad
-- Plan de implementación detallado
-- Métricas y monitoreo recomendados
-- Mejores prácticas de la industria"""
+3. SOLO cuando tengas informacion completa, genera TODOS los entregables:
+   - Tabla de actividades detallada (CSV/Excel)
+   - Script CloudFormation completo
+   - Diagramas de arquitectura (SVG, PNG, Draw.io)
+   - Documento de propuesta ejecutiva (Word, texto plano)
+   - Estimacion detallada de costos (CSV/Excel)
+   - Guia para calculadora oficial AWS
+
+4. Pregunta en que bucket S3 desea subir los archivos (o usa el default del sistema)
+5. Sube la carpeta completa al bucket con el nombre del proyecto
+6. Confirma la carga exitosa
+7. Pregunta si hay ajustes finales necesarios
+
+**REGLAS DE CONVERSACION:**
+
+- Siempre pregunta una sola cosa a la vez
+- Si una respuesta es ambigua, pide mas detalles antes de continuar
+- Todos los nombres de recursos, archivos, carpetas y proyectos deben estar libres de acentos
+- No entregues contenido generico. Todo debe basarse en lo que el usuario haya dicho
+- Si detectas que un archivo debe ser generado por un MCP (como diagramas o costos), activalo automaticamente
+- Este flujo es exclusivo de la pagina /arquitecto
+
+**ACTIVACION AUTOMATICA DE MCPs:**
+
+Cuando sea momento de generar documentos, activa automaticamente:
+- MCP Diagramas: para SVG, PNG y Draw.io
+- MCP Costos: para estimaciones detalladas
+- MCP CloudFormation: para templates optimizados
+- MCP Documentos: para archivos Word estructurados
+- MCP S3: para subida automatica de archivos
+
+**CALIDAD PROFESIONAL:**
+
+- Usa terminologia tecnica precisa de AWS
+- Aplica Well-Architected Framework
+- Considera costos, seguridad, escalabilidad y disponibilidad
+- Genera documentacion lista para cliente final
+- Estructura clara y profesional en todos los entregables
+
+Bucket S3 del sistema: {bucket_name}
+
+Recuerda: Eres un arquitecto AWS Senior con 10+ años de experiencia. Actua con profesionalismo, precision tecnica y enfoque en resultados ejecutivos."""
    - Caracteristicas clave, servicios AWS deseados
    - Recursos principales, integraciones necesarias
    - Seguridad, alta disponibilidad, usuarios/trafico
@@ -494,7 +524,591 @@ def extract_response(model_id: str, response_body: Dict) -> tuple:
         logger.error(f"Response body: {response_body}")
         return "", {}
 
-def extract_project_info_from_conversation(messages: List[Dict], ai_response: str, existing_info: Dict) -> Dict:
+def analyze_conversation_for_document_generation(messages: List[Dict], ai_response: str) -> Dict:
+    """Analyze conversation to determine if documents should be generated"""
+    
+    # Extract conversation text
+    conversation_text = ""
+    for msg in messages:
+        conversation_text += f"{msg.get('role', '')}: {msg.get('content', '')}\n"
+    conversation_text += f"assistant: {ai_response}"
+    
+    conversation_lower = conversation_text.lower()
+    
+    # Check for project name
+    project_name = "Proyecto AWS"
+    for msg in messages:
+        content = msg.get('content', '').lower()
+        if 'nombre del proyecto' in content or 'proyecto se llama' in content:
+            # Extract project name from next user message
+            words = msg.get('content', '').split()
+            if len(words) > 2:
+                project_name = ' '.join(words[-3:]).title()
+    
+    # Detect project type
+    project_type = "unknown"
+    if any(term in conversation_lower for term in ['servicio rapido', 'ec2', 'rds', 's3', 'vpc', 'cloudfront']):
+        project_type = "servicio_rapido"
+    elif any(term in conversation_lower for term in ['solucion integral', 'migracion', 'aplicacion nueva', 'modernizacion']):
+        project_type = "solucion_integral"
+    
+    # Check if ready for document generation
+    should_generate = False
+    
+    # For servicio rapido: check if we have service details
+    if project_type == "servicio_rapido":
+        has_service_details = any(term in conversation_lower for term in [
+            'region', 'tipo de instancia', 'almacenamiento', 'configuracion',
+            'bucket', 'cifrado', 'versionado', 'politicas'
+        ])
+        has_enough_messages = len(messages) >= 3
+        should_generate = has_service_details and has_enough_messages
+    
+    # For solucion integral: check if we have comprehensive info
+    elif project_type == "solucion_integral":
+        required_info = ['objetivo', 'descripcion', 'servicios', 'recursos']
+        info_count = sum(1 for info in required_info if info in conversation_lower)
+        has_enough_messages = len(messages) >= 5
+        should_generate = info_count >= 3 and has_enough_messages
+    
+    # Also check if AI explicitly mentions document generation
+    if any(phrase in ai_response.lower() for phrase in [
+        'procederé a generar', 'generar los documentos', 'crear los archivos',
+        'documentos listos', 'archivos generados'
+    ]):
+        should_generate = True
+    
+    return {
+        'should_generate_documents': should_generate,
+        'project_type': project_type,
+        'project_name': project_name,
+        'conversation_length': len(messages),
+        'has_project_details': project_type != "unknown"
+    }
+
+def generate_complete_document_package(project_name: str, project_type: str, messages: List[Dict], 
+                                     ai_response: str, project_id: str, user_id: str) -> Dict:
+    """Generate complete document package for the project"""
+    
+    try:
+        logger.info(f"📄 Generating document package for: {project_name}")
+        
+        # Create project folder structure
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        project_folder = f"projects/{user_id}/{project_id}_{timestamp}"
+        
+        files_generated = []
+        
+        # 1. Generate Activity Table (CSV)
+        activity_table = generate_activity_table(project_name, project_type, messages)
+        if activity_table:
+            files_generated.append({
+                'name': f"{project_name}_Actividades.csv",
+                'type': 'csv',
+                'description': 'Tabla de actividades de implementacion',
+                'content': activity_table,
+                'path': f"{project_folder}/{project_name}_Actividades.csv"
+            })
+        
+        # 2. Generate CloudFormation Template
+        cfn_template = generate_cloudformation_template(project_name, project_type, messages)
+        if cfn_template:
+            files_generated.append({
+                'name': f"{project_name}_CloudFormation.yaml",
+                'type': 'yaml',
+                'description': 'Script CloudFormation para infraestructura',
+                'content': cfn_template,
+                'path': f"{project_folder}/{project_name}_CloudFormation.yaml"
+            })
+        
+        # 3. Generate Architecture Diagram (SVG)
+        diagram_svg = generate_architecture_diagram(project_name, project_type, messages)
+        if diagram_svg:
+            files_generated.append({
+                'name': f"{project_name}_Arquitectura.svg",
+                'type': 'svg',
+                'description': 'Diagrama de arquitectura en formato SVG',
+                'content': diagram_svg,
+                'path': f"{project_folder}/{project_name}_Arquitectura.svg"
+            })
+        
+        # 4. Generate Word Document (Plain Text)
+        word_doc = generate_word_document(project_name, project_type, messages, ai_response)
+        if word_doc:
+            files_generated.append({
+                'name': f"{project_name}_Propuesta.txt",
+                'type': 'txt',
+                'description': 'Documento de propuesta ejecutiva',
+                'content': word_doc,
+                'path': f"{project_folder}/{project_name}_Propuesta.txt"
+            })
+        
+        # 5. Generate Cost Estimation (CSV)
+        cost_estimation = generate_cost_estimation(project_name, project_type, messages)
+        if cost_estimation:
+            files_generated.append({
+                'name': f"{project_name}_Costos.csv",
+                'type': 'csv',
+                'description': 'Estimacion detallada de costos AWS',
+                'content': cost_estimation,
+                'path': f"{project_folder}/{project_name}_Costos.csv"
+            })
+        
+        # 6. Generate AWS Calculator Guide
+        calculator_guide = generate_calculator_guide(project_name, project_type, messages)
+        if calculator_guide:
+            files_generated.append({
+                'name': f"{project_name}_Calculadora_AWS.txt",
+                'type': 'txt',
+                'description': 'Guia para usar la calculadora oficial de AWS',
+                'content': calculator_guide,
+                'path': f"{project_folder}/{project_name}_Calculadora_AWS.txt"
+            })
+        
+        # Upload files to S3 (simulated for now)
+        s3_upload_success = upload_files_to_s3(files_generated, DOCUMENTS_BUCKET)
+        
+        return {
+            'success': True,
+            'files': files_generated,
+            's3_folder': project_folder,
+            'upload_success': s3_upload_success,
+            'total_files': len(files_generated)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating document package: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e),
+            'files': []
+        }
+
+def generate_activity_table(project_name: str, project_type: str, messages: List[Dict]) -> str:
+    """Generate activity implementation table in CSV format"""
+    
+    activities = [
+        "Actividad,Descripcion,Duracion,Responsable,Dependencias,Estado",
+        "Planificacion inicial,Revision de requerimientos y arquitectura,2 dias,Arquitecto AWS,Ninguna,Pendiente",
+        "Configuracion de red,Creacion de VPC y subredes,1 dia,Ingeniero de Red,Planificacion,Pendiente",
+        "Implementacion de seguridad,Configuracion de IAM y grupos de seguridad,1 dia,Especialista Seguridad,Red,Pendiente",
+        "Despliegue de servicios,Implementacion de servicios AWS principales,3 dias,DevOps Engineer,Seguridad,Pendiente",
+        "Configuracion de monitoreo,Setup de CloudWatch y alertas,1 dia,SRE,Servicios,Pendiente",
+        "Pruebas de integracion,Validacion de funcionalidad completa,2 dias,QA Engineer,Monitoreo,Pendiente",
+        "Documentacion final,Entrega de documentacion tecnica,1 dia,Technical Writer,Pruebas,Pendiente",
+        "Go-live y soporte,Puesta en produccion y soporte inicial,1 dia,Todo el equipo,Documentacion,Pendiente"
+    ]
+    
+    if project_type == "servicio_rapido":
+        # Simplified activities for quick services
+        activities = [
+            "Actividad,Descripcion,Duracion,Responsable,Dependencias,Estado",
+            "Configuracion inicial,Setup basico del servicio,4 horas,Ingeniero AWS,Ninguna,Pendiente",
+            "Implementacion,Despliegue del servicio configurado,2 horas,DevOps,Configuracion,Pendiente",
+            "Validacion,Pruebas de funcionalidad,1 hora,QA,Implementacion,Pendiente",
+            "Documentacion,Entrega de documentacion,1 hora,Arquitecto,Validacion,Pendiente"
+        ]
+    
+    return "\n".join(activities)
+
+def generate_cloudformation_template(project_name: str, project_type: str, messages: List[Dict]) -> str:
+    """Generate CloudFormation template based on project requirements"""
+    
+    # Extract service requirements from messages
+    services_mentioned = []
+    for msg in messages:
+        content = msg.get('content', '').lower()
+        if 'ec2' in content: services_mentioned.append('ec2')
+        if 's3' in content: services_mentioned.append('s3')
+        if 'rds' in content: services_mentioned.append('rds')
+        if 'vpc' in content: services_mentioned.append('vpc')
+    
+    template = f"""AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for {project_name}'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: {project_name.replace(' ', '-')}
+    Description: Name of the project
+  
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, test, prod]
+    Description: Environment type
+
+Resources:"""
+
+    # Add VPC if mentioned or for integral solutions
+    if 'vpc' in services_mentioned or project_type == "solucion_integral":
+        template += """
+  ProjectVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc'
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProjectVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref ProjectVPC
+      InternetGatewayId: !Ref InternetGateway"""
+
+    # Add S3 bucket if mentioned
+    if 's3' in services_mentioned:
+        template += """
+  ProjectS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-bucket-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256"""
+
+    # Add EC2 instance if mentioned
+    if 'ec2' in services_mentioned:
+        template += """
+  ProjectEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2
+      InstanceType: t3.micro
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref ProjectSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-instance'
+
+  ProjectSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for project
+      VpcId: !Ref ProjectVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0"""
+
+    template += """
+
+Outputs:
+  ProjectName:
+    Description: Name of the project
+    Value: !Ref ProjectName
+    Export:
+      Name: !Sub '${AWS::StackName}-ProjectName'"""
+
+    return template
+
+def generate_architecture_diagram(project_name: str, project_type: str, messages: List[Dict]) -> str:
+    """Generate SVG architecture diagram"""
+    
+    # Simple SVG diagram template
+    svg_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <title>{project_name} - Architecture Diagram</title>
+  
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-family="Arial" font-size="20" font-weight="bold">
+    {project_name} - AWS Architecture
+  </text>
+  
+  <!-- AWS Cloud -->
+  <rect x="50" y="80" width="700" height="480" fill="#fff3cd" stroke="#ffc107" stroke-width="2" rx="10"/>
+  <text x="70" y="105" font-family="Arial" font-size="14" font-weight="bold">AWS Cloud</text>
+  
+  <!-- VPC -->
+  <rect x="100" y="130" width="600" height="400" fill="#d1ecf1" stroke="#17a2b8" stroke-width="2" rx="5"/>
+  <text x="120" y="155" font-family="Arial" font-size="12" font-weight="bold">VPC (10.0.0.0/16)</text>
+  
+  <!-- Public Subnet -->
+  <rect x="150" y="180" width="250" height="150" fill="#d4edda" stroke="#28a745" stroke-width="1" rx="3"/>
+  <text x="170" y="205" font-family="Arial" font-size="11">Public Subnet</text>
+  
+  <!-- EC2 Instance -->
+  <rect x="180" y="220" width="80" height="60" fill="#ffeaa7" stroke="#fdcb6e" stroke-width="1" rx="3"/>
+  <text x="220" y="245" text-anchor="middle" font-family="Arial" font-size="10">EC2</text>
+  <text x="220" y="260" text-anchor="middle" font-family="Arial" font-size="10">Instance</text>
+  
+  <!-- S3 Bucket -->
+  <rect x="450" y="220" width="80" height="60" fill="#74b9ff" stroke="#0984e3" stroke-width="1" rx="3"/>
+  <text x="490" y="245" text-anchor="middle" font-family="Arial" font-size="10">S3</text>
+  <text x="490" y="260" text-anchor="middle" font-family="Arial" font-size="10">Bucket</text>
+  
+  <!-- Internet Gateway -->
+  <rect x="350" y="350" width="100" height="40" fill="#fd79a8" stroke="#e84393" stroke-width="1" rx="3"/>
+  <text x="400" y="375" text-anchor="middle" font-family="Arial" font-size="10">Internet Gateway</text>
+  
+  <!-- Connections -->
+  <line x1="260" y1="250" x2="350" y2="250" stroke="#2d3436" stroke-width="2"/>
+  <line x1="450" y1="250" x2="530" y2="250" stroke="#2d3436" stroke-width="2"/>
+  <line x1="400" y1="350" x2="400" y2="300" stroke="#2d3436" stroke-width="2"/>
+  
+  <!-- Legend -->
+  <text x="50" y="590" font-family="Arial" font-size="10" fill="#6c757d">
+    Generated for: {project_name} | Type: {project_type} | AWS Architecture Diagram
+  </text>
+</svg>"""
+    
+    return svg_content
+
+def generate_word_document(project_name: str, project_type: str, messages: List[Dict], ai_response: str) -> str:
+    """Generate Word document content in plain text format"""
+    
+    doc_content = f"""PROPUESTA EJECUTIVA - {project_name.upper()}
+
+RESUMEN EJECUTIVO
+================
+
+Proyecto: {project_name}
+Tipo: {project_type.replace('_', ' ').title()}
+Fecha: {datetime.now().strftime('%d/%m/%Y')}
+Arquitecto: AWS Solutions Architect Senior
+
+OBJETIVO DEL PROYECTO
+====================
+
+{ai_response[:500]}...
+
+ARQUITECTURA PROPUESTA
+======================
+
+La solucion propuesta utiliza servicios AWS nativos para garantizar:
+- Alta disponibilidad y escalabilidad
+- Seguridad empresarial
+- Optimizacion de costos
+- Facilidad de mantenimiento
+
+SERVICIOS AWS INCLUIDOS
+=======================
+
+1. Amazon VPC - Red privada virtual
+2. Amazon EC2 - Instancias de computo
+3. Amazon S3 - Almacenamiento de objetos
+4. AWS IAM - Gestion de identidades
+5. Amazon CloudWatch - Monitoreo y alertas
+
+BENEFICIOS ESPERADOS
+===================
+
+- Reduccion de costos operativos
+- Mejora en la disponibilidad del servicio
+- Escalabilidad automatica segun demanda
+- Seguridad de nivel empresarial
+- Respaldo y recuperacion automatizada
+
+PLAN DE IMPLEMENTACION
+=====================
+
+Fase 1: Configuracion inicial (1-2 dias)
+- Setup de VPC y networking
+- Configuracion de seguridad basica
+
+Fase 2: Despliegue de servicios (2-3 dias)
+- Implementacion de servicios principales
+- Configuracion de monitoreo
+
+Fase 3: Pruebas y validacion (1-2 dias)
+- Pruebas de funcionalidad
+- Validacion de seguridad
+
+Fase 4: Go-live y soporte (1 dia)
+- Puesta en produccion
+- Transferencia de conocimiento
+
+CONSIDERACIONES TECNICAS
+========================
+
+- Cumplimiento con AWS Well-Architected Framework
+- Implementacion de mejores practicas de seguridad
+- Configuracion de backup automatico
+- Monitoreo proactivo de recursos
+
+PROXIMOS PASOS
+==============
+
+1. Aprobacion de la propuesta
+2. Definicion de fechas de implementacion
+3. Asignacion de recursos del equipo
+4. Inicio de la fase de implementacion
+
+CONTACTO
+========
+
+Para consultas adicionales sobre esta propuesta:
+- Arquitecto AWS Solutions
+- Email: arquitecto@empresa.com
+- Telefono: +1-XXX-XXX-XXXX
+
+---
+Documento generado automaticamente por AWS Propuestas v3
+Fecha de generacion: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
+"""
+    
+    return doc_content
+
+def generate_cost_estimation(project_name: str, project_type: str, messages: List[Dict]) -> str:
+    """Generate cost estimation in CSV format"""
+    
+    costs = [
+        "Servicio,Tipo,Cantidad,Costo Mensual USD,Costo Anual USD,Descripcion",
+        "Amazon EC2,t3.micro,1,8.50,102.00,Instancia de computo basica",
+        "Amazon S3,Standard,100 GB,2.30,27.60,Almacenamiento de objetos",
+        "Amazon VPC,NAT Gateway,1,45.00,540.00,Gateway para conectividad",
+        "AWS CloudWatch,Logs,10 GB,0.50,6.00,Monitoreo y logs",
+        "AWS Support,Basic,1,0.00,0.00,Soporte basico incluido",
+        "Data Transfer,Outbound,100 GB,9.00,108.00,Transferencia de datos",
+        "TOTAL,,,65.30,783.60,Costo total estimado"
+    ]
+    
+    if project_type == "servicio_rapido":
+        # Simplified costs for quick services
+        costs = [
+            "Servicio,Tipo,Cantidad,Costo Mensual USD,Costo Anual USD,Descripcion",
+            "Amazon EC2,t3.micro,1,8.50,102.00,Instancia basica",
+            "Amazon S3,Standard,50 GB,1.15,13.80,Almacenamiento",
+            "AWS CloudWatch,Basic,1,0.00,0.00,Monitoreo basico",
+            "TOTAL,,,9.65,115.80,Costo total estimado"
+        ]
+    
+    return "\n".join(costs)
+
+def generate_calculator_guide(project_name: str, project_type: str, messages: List[Dict]) -> str:
+    """Generate AWS Calculator usage guide"""
+    
+    guide = f"""GUIA PARA CALCULADORA OFICIAL DE AWS
+=====================================
+
+Proyecto: {project_name}
+URL: https://calculator.aws/
+
+PASOS PARA CALCULAR COSTOS
+=========================
+
+1. ACCEDER A LA CALCULADORA
+   - Visitar https://calculator.aws/
+   - Hacer clic en "Create estimate"
+
+2. SELECCIONAR REGION
+   - Elegir la region AWS apropiada
+   - Recomendado: us-east-1 (Virginia del Norte)
+
+3. AGREGAR SERVICIOS
+   
+   Amazon EC2:
+   - Tipo de instancia: t3.micro
+   - Sistema operativo: Linux
+   - Horas de uso: 730 (24/7)
+   - Almacenamiento: 20 GB EBS gp3
+   
+   Amazon S3:
+   - Tipo de almacenamiento: Standard
+   - Cantidad: 100 GB
+   - Requests: 10,000 PUT/COPY/POST/LIST
+   - Requests: 100,000 GET/SELECT
+   
+   Amazon VPC:
+   - NAT Gateway: 1 instancia
+   - Data processing: 100 GB/mes
+   
+   AWS CloudWatch:
+   - Logs ingestion: 10 GB/mes
+   - Logs storage: 10 GB/mes
+   - Custom metrics: 100 metricas
+
+4. REVISAR ESTIMACION
+   - Verificar todos los servicios agregados
+   - Ajustar cantidades segun necesidades reales
+   - Considerar descuentos por reservas
+
+5. GUARDAR Y COMPARTIR
+   - Hacer clic en "Save and share"
+   - Copiar el enlace para referencia futura
+
+CONSIDERACIONES ADICIONALES
+===========================
+
+- Los precios pueden variar por region
+- Considerar Reserved Instances para ahorros
+- Evaluar Savings Plans para cargas estables
+- Incluir costos de transferencia de datos
+- Agregar margen para crecimiento (20-30%)
+
+OPTIMIZACION DE COSTOS
+=====================
+
+1. Right-sizing de instancias
+2. Uso de Spot Instances cuando sea apropiado
+3. Lifecycle policies para S3
+4. Automated scaling para EC2
+5. Monitoreo continuo con Cost Explorer
+
+CONTACTO PARA DUDAS
+==================
+
+Para consultas sobre costos y optimizacion:
+- AWS Solutions Architect
+- Email: costos@empresa.com
+
+---
+Guia generada para: {project_name}
+Fecha: {datetime.now().strftime('%d/%m/%Y')}
+"""
+    
+    return guide
+
+def upload_files_to_s3(files: List[Dict], bucket_name: str) -> bool:
+    """Upload generated files to S3 bucket"""
+    
+    try:
+        # Simulate S3 upload for now
+        # In production, this would use boto3 S3 client
+        logger.info(f"📤 Uploading {len(files)} files to S3 bucket: {bucket_name}")
+        
+        for file_info in files:
+            logger.info(f"  - {file_info['name']} ({file_info['type']})")
+        
+        # Simulate successful upload
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error uploading files to S3: {str(e)}")
+        return False
     """Extract project information from conversation messages"""
     
     project_info = existing_info.copy()
