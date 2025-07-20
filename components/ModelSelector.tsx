@@ -24,20 +24,20 @@ export function ModelSelector({
   if (compact) {
     return (
       <div className={cn("flex items-center space-x-3", className)}>
-        <span className="text-sm font-medium text-gray-700">Modelo:</span>
+        <span className="text-sm font-medium text-gray-300">Modelo:</span>
         <select
           value={selectedModel}
           onChange={(e) => onModelChange(e.target.value)}
           disabled={disabled}
-          className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-sm border border-gray-600 rounded-md px-3 py-1.5 bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {AVAILABLE_MODELS.map((model) => (
-            <option key={model.id} value={model.id}>
+            <option key={model.id} value={model.id} className="bg-gray-800 text-white">
               {model.icon || '🤖'} {model.name}
             </option>
           ))}
         </select>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-400">
           ${currentModel.costPer1kTokens || 0}/1k tokens
         </div>
       </div>
@@ -47,9 +47,9 @@ export function ModelSelector({
   return (
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Seleccionar Modelo IA</h3>
-        <div className="text-sm text-gray-500">
-          Actual: <span className="font-medium">{currentModel.name}</span>
+        <h3 className="text-lg font-semibold text-white">Seleccionar Modelo IA</h3>
+        <div className="text-sm text-gray-400">
+          Actual: <span className="font-medium text-white">{currentModel.name}</span>
         </div>
       </div>
       
@@ -65,12 +65,12 @@ export function ModelSelector({
         ))}
       </div>
       
-      <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-        <p className="font-medium mb-1">💡 Recomendaciones:</p>
+      <div className="text-xs text-gray-400 bg-gray-800 p-3 rounded-lg border border-gray-700">
+        <p className="font-medium mb-1 text-white">💡 Recomendaciones para AWS:</p>
         <ul className="space-y-1">
-          <li>• <strong>Nova Pro</strong>: Ideal para conversaciones complejas y análisis detallado</li>
-          <li>• <strong>Claude Haiku</strong>: Perfecto para respuestas rápidas y técnicas</li>
-          <li>• <strong>Claude 3.5 Sonnet</strong>: El más avanzado con razonamiento superior</li>
+          <li>• <strong className="text-white">Nova Pro</strong>: Ideal para arquitecturas AWS complejas</li>
+          <li>• <strong className="text-white">Meta Llama 3.2</strong>: Excelente para análisis de infraestructura</li>
+          <li>• <strong className="text-white">Claude 3.5 Sonnet v2</strong>: El más avanzado para proyectos enterprise</li>
         </ul>
       </div>
     </div>
@@ -91,8 +91,8 @@ function ModelCard({ model, isSelected, onSelect, disabled }: ModelCardProps) {
       className={cn(
         "relative p-4 border rounded-lg cursor-pointer transition-all duration-200",
         isSelected 
-          ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" 
-          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50",
+          ? "border-blue-500 bg-blue-900/20 ring-2 ring-blue-400/50" 
+          : "border-gray-700 bg-gray-800 hover:border-gray-600 hover:bg-gray-750",
         disabled && "opacity-50 cursor-not-allowed"
       )}
     >
@@ -100,12 +100,12 @@ function ModelCard({ model, isSelected, onSelect, disabled }: ModelCardProps) {
         <div className="flex items-center space-x-3">
           <div className="text-2xl">{model.icon || '🤖'}</div>
           <div>
-            <h4 className="font-semibold">{model.name}</h4>
-            <p className="text-sm text-gray-600 mt-1">{model.description}</p>
-            <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-              <span>Proveedor: {model.provider}</span>
-              <span>Max tokens: {model.maxTokens.toLocaleString()}</span>
-              <span className="font-medium">${model.costPer1kTokens || 0}/1k tokens</span>
+            <h4 className="font-semibold text-white">{model.name}</h4>
+            <p className="text-sm text-gray-300 mt-1">{model.description}</p>
+            <div className="flex items-center space-x-4 mt-2 text-xs text-gray-400">
+              <span>Proveedor: <span className="text-gray-300">{model.provider}</span></span>
+              <span>Max tokens: <span className="text-gray-300">{model.maxTokens.toLocaleString()}</span></span>
+              <span className="font-medium text-green-400">${model.costPer1kTokens || 0}/1k tokens</span>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ function ModelCard({ model, isSelected, onSelect, disabled }: ModelCardProps) {
         {model.capabilities.map((capability: string) => (
           <span
             key={capability}
-            className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"
+            className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-full border border-gray-600"
           >
             {capability}
           </span>

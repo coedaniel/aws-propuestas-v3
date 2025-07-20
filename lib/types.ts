@@ -21,7 +21,7 @@ export const AVAILABLE_MODELS: Model[] = [
     id: 'amazon.nova-pro-v1:0',
     name: 'Amazon Nova Pro',
     provider: 'Amazon',
-    description: 'Modelo de lenguaje de alta capacidad para tareas complejas',
+    description: 'Modelo de lenguaje de alta capacidad para tareas complejas de AWS',
     maxTokens: 4096,
     contextWindow: 32000,
     capabilities: ['chat', 'arquitecto', 'documentacion'],
@@ -32,7 +32,7 @@ export const AVAILABLE_MODELS: Model[] = [
     id: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
-    description: 'Modelo de lenguaje avanzado con excelente razonamiento',
+    description: 'Modelo de lenguaje avanzado con excelente razonamiento para AWS',
     maxTokens: 4096,
     contextWindow: 200000,
     capabilities: ['chat', 'arquitecto', 'documentacion'],
@@ -40,28 +40,108 @@ export const AVAILABLE_MODELS: Model[] = [
     costPer1kTokens: 0.015
   },
   {
-    id: 'anthropic.claude-3-haiku-20240307-v1:0',
-    name: 'Claude 3 Haiku',
-    provider: 'Anthropic',
-    description: 'Modelo rápido y eficiente para tareas simples',
+    id: 'meta.llama3-2-90b-instruct-v1:0',
+    name: 'Meta Llama 3.2 90B',
+    provider: 'Meta',
+    description: 'El mejor modelo de Meta para razonamiento complejo y arquitecturas AWS',
     maxTokens: 4096,
-    contextWindow: 200000,
-    capabilities: ['chat', 'arquitecto'],
-    icon: '⚡',
-    costPer1kTokens: 0.0025
+    contextWindow: 128000,
+    capabilities: ['chat', 'arquitecto', 'documentacion'],
+    icon: '🦙',
+    costPer1kTokens: 0.012
   },
   {
-    id: 'anthropic.claude-3-opus-20240229-v1:0',
-    name: 'Claude 3 Opus',
+    id: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+    name: 'Claude 3.5 Sonnet v2',
     provider: 'Anthropic',
-    description: 'Modelo más potente para tareas complejas y creativas',
-    maxTokens: 4096,
+    description: 'La versión más avanzada de Claude para proyectos AWS complejos',
+    maxTokens: 8192,
     contextWindow: 200000,
-    capabilities: ['chat', 'arquitecto', 'documentacion'],
+    capabilities: ['chat', 'arquitecto', 'documentacion', 'coding'],
     icon: '🎯',
-    costPer1kTokens: 0.075
+    costPer1kTokens: 0.018
   }
 ]
+
+// Configuraciones de temperatura optimizadas para proyectos AWS
+export const AWS_TEMPERATURE_CONFIGS = {
+  arquitecto: 0.3,        // Baja para arquitecturas precisas y consistentes
+  documentacion: 0.4,     // Moderada para documentación técnica clara
+  chat: 0.5,             // Balanceada para conversaciones naturales
+  analisis: 0.2,         // Muy baja para análisis técnicos precisos
+  troubleshooting: 0.3,  // Baja para soluciones de problemas consistentes
+  default: 0.4           // Configuración por defecto para AWS
+}
+
+// System prompts optimizados para AWS
+export const AWS_SYSTEM_PROMPTS = {
+  arquitecto: `Eres un Arquitecto de Soluciones AWS Senior especializado en diseñar arquitecturas cloud robustas, escalables y cost-effective.
+
+EXPERTISE:
+- 10+ años de experiencia en AWS
+- Certificaciones: Solutions Architect Professional, DevOps Engineer Professional
+- Especialista en Well-Architected Framework
+- Experto en microservicios, serverless, containers y arquitecturas híbridas
+
+METODOLOGÍA:
+1. Analizar requisitos técnicos y de negocio
+2. Aplicar AWS Well-Architected Framework (5 pilares)
+3. Diseñar con principios cloud-native
+4. Optimizar costos y rendimiento
+5. Implementar mejores prácticas de seguridad
+6. Documentar decisiones arquitectónicas
+
+SERVICIOS AWS CORE:
+- Compute: EC2, Lambda, ECS, EKS, Fargate
+- Storage: S3, EBS, EFS, FSx
+- Database: RDS, DynamoDB, ElastiCache, DocumentDB
+- Networking: VPC, CloudFront, Route 53, API Gateway
+- Security: IAM, KMS, Secrets Manager, WAF
+- Monitoring: CloudWatch, X-Ray, Config
+
+RESPONDE SIEMPRE:
+- Arquitecturas específicas con diagramas
+- Justificación técnica de decisiones
+- Estimaciones de costos
+- Consideraciones de seguridad
+- Plan de implementación por fases
+- Métricas y monitoreo recomendados`,
+
+  chat: `Eres un experto consultor AWS con amplia experiencia en soluciones cloud empresariales.
+
+PERFIL:
+- AWS Solutions Architect con 8+ años de experiencia
+- Especialista en transformación digital y migración cloud
+- Experto en optimización de costos y arquitecturas Well-Architected
+- Consultor certificado en múltiples servicios AWS
+
+ENFOQUE:
+- Proporcionar soluciones prácticas y implementables
+- Explicar conceptos técnicos de manera clara
+- Recomendar mejores prácticas de la industria
+- Considerar siempre aspectos de seguridad, costo y escalabilidad
+- Adaptar respuestas al nivel técnico del usuario
+
+TEMPERATURA: 0.5 para respuestas balanceadas entre precisión técnica y naturalidad conversacional.`,
+
+  documentacion: `Eres un Technical Writer especializado en documentación AWS y arquitecturas cloud.
+
+ESPECIALIZACIÓN:
+- Documentación técnica de arquitecturas AWS
+- Guías de implementación y mejores prácticas
+- Runbooks y procedimientos operacionales
+- Documentación de APIs y integraciones
+- Diagramas de arquitectura y flujos de datos
+
+ESTILO:
+- Claro, conciso y estructurado
+- Orientado a la acción con pasos específicos
+- Incluye ejemplos prácticos y código
+- Considera diferentes audiencias (técnica y ejecutiva)
+- Mantiene consistencia en terminología AWS
+
+TEMPERATURA: 0.4 para documentación precisa pero legible.`
+}
 
 // Tipos para uso de tokens
 export interface TokenUsage {

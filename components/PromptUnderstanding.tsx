@@ -31,41 +31,43 @@ export function PromptUnderstanding({ messages }: PromptUnderstandingProps) {
   )
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border">
-        <h3 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-          <Brain className="w-5 h-5 text-primary" />
+    <div className="h-full flex flex-col bg-gray-900 text-white min-w-0">
+      <div className="p-4 border-b border-gray-700 flex-shrink-0">
+        <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
+          <Brain className="w-5 h-5 text-blue-400" />
           <span>Análisis de Conversación</span>
         </h3>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-gray-400 mt-1">
           Entendimiento del prompt y uso de recursos
         </p>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4 min-h-0">
         <div className="space-y-4">
           {/* Summary Stats */}
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center space-x-2">
-                <Target className="w-4 h-4" />
+              <CardTitle className="text-sm flex items-center space-x-2 text-white">
+                <Target className="w-4 h-4 text-green-400" />
                 <span>Resumen de Sesión</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Mensajes totales</span>
-                <Badge variant="secondary">{messages.length}</Badge>
+                <span className="text-gray-400">Mensajes totales</span>
+                <Badge variant="secondary" className="bg-gray-700 text-white border-gray-600">
+                  {messages.length}
+                </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">MCPs ejecutados</span>
-                <Badge variant="secondary" className="bg-purple-500/10 text-purple-500">
+                <span className="text-gray-400">MCPs ejecutados</span>
+                <Badge variant="secondary" className="bg-purple-900/50 text-purple-300 border-purple-700">
                   {totalMcpUsage}
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Tokens procesados</span>
-                <Badge variant="secondary" className="bg-blue-500/10 text-blue-500">
+                <span className="text-gray-400">Tokens procesados</span>
+                <Badge variant="secondary" className="bg-blue-900/50 text-blue-300 border-blue-700">
                   {totalTokens.toLocaleString()}
                 </Badge>
               </div>
@@ -74,15 +76,15 @@ export function PromptUnderstanding({ messages }: PromptUnderstandingProps) {
 
           {/* Message Analysis */}
           {messages.length > 0 && (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center space-x-2">
-                  <FileText className="w-4 h-4" />
+                <CardTitle className="text-sm flex items-center space-x-2 text-white">
+                  <FileText className="w-4 h-4 text-yellow-400" />
                   <span>Análisis por Mensaje</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3 max-h-80 overflow-y-auto">
                   {messages.slice(-5).map((message, index) => (
                     <MessageAnalysis key={message.id} message={message} index={index} />
                   ))}
@@ -93,10 +95,10 @@ export function PromptUnderstanding({ messages }: PromptUnderstandingProps) {
 
           {/* MCP Usage Details */}
           {totalMcpUsage > 0 && (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center space-x-2">
-                  <Zap className="w-4 h-4" />
+                <CardTitle className="text-sm flex items-center space-x-2 text-white">
+                  <Zap className="w-4 h-4 text-purple-400" />
                   <span>Uso de MCPs</span>
                 </CardTitle>
               </CardHeader>
@@ -104,17 +106,17 @@ export function PromptUnderstanding({ messages }: PromptUnderstandingProps) {
                 <div className="space-y-2">
                   {assistantMessages
                     .filter(msg => msg.mcpUsed && msg.mcpUsed.length > 0)
+                    .slice(-3)
                     .map((message, index) => (
-                      <div key={message.id} className="p-2 bg-muted/30 rounded-lg">
-                        <div className="text-xs text-muted-foreground mb-1">
-                          Mensaje #{messages.indexOf(message) + 1}
-                        </div>
+                      <div key={message.id} className="flex items-center space-x-2 text-sm">
+                        <Bot className="w-3 h-3 text-purple-400" />
+                        <span className="text-gray-400">Mensaje {index + 1}:</span>
                         <div className="flex flex-wrap gap-1">
                           {message.mcpUsed?.map((mcp, mcpIndex) => (
                             <Badge 
                               key={mcpIndex} 
                               variant="outline" 
-                              className="text-xs bg-purple-500/10 text-purple-500"
+                              className="text-xs bg-purple-900/30 text-purple-300 border-purple-700"
                             >
                               {mcp}
                             </Badge>
@@ -127,59 +129,27 @@ export function PromptUnderstanding({ messages }: PromptUnderstandingProps) {
             </Card>
           )}
 
-          {/* System Status */}
-          <Card>
+          {/* Performance Metrics */}
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center space-x-2">
-                <Network className="w-4 h-4" />
-                <span>Estado del Sistema</span>
+              <CardTitle className="text-sm flex items-center space-x-2 text-white">
+                <Cpu className="w-4 h-4 text-orange-400" />
+                <span>Métricas de Rendimiento</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-3 h-3 text-green-500" />
-                  <span className="text-muted-foreground">Bedrock Runtime</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                  Online
+                <span className="text-gray-400">Promedio tokens/mensaje</span>
+                <Badge variant="secondary" className="bg-gray-700 text-white border-gray-600">
+                  {messages.length > 0 ? Math.round(totalTokens / messages.length) : 0}
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-3 h-3 text-green-500" />
-                  <span className="text-muted-foreground">MCPs Disponibles</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                  6/6
+                <span className="text-gray-400">Eficiencia MCP</span>
+                <Badge variant="secondary" className="bg-green-900/50 text-green-300 border-green-700">
+                  {messages.length > 0 ? Math.round((totalMcpUsage / messages.length) * 100) : 0}%
                 </Badge>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-3 h-3 text-blue-500" />
-                  <span className="text-muted-foreground">Latencia promedio</span>
-                </div>
-                <Badge variant="secondary" className="bg-blue-500/10 text-blue-500">
-                  ~2.1s
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tips */}
-          <Card className="bg-blue-500/5 border-blue-500/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center space-x-2 text-blue-900 dark:text-blue-100">
-                <Cpu className="w-4 h-4" />
-                <span>Consejos de Optimización</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                <li>• Sé específico en tus preguntas para mejores resultados</li>
-                <li>• Los MCPs se activan automáticamente según el contexto</li>
-                <li>• Usa el historial para mantener contexto en la conversación</li>
-              </ul>
             </CardContent>
           </Card>
         </div>
@@ -195,46 +165,60 @@ interface MessageAnalysisProps {
 
 function MessageAnalysis({ message, index }: MessageAnalysisProps) {
   const isUser = message.role === 'user'
-  
+  const hasTokens = message.usage && (message.usage.inputTokens || message.usage.outputTokens)
+  const hasMcp = message.mcpUsed && message.mcpUsed.length > 0
+
   return (
-    <div className="p-3 bg-muted/20 rounded-lg border border-border/50">
-      <div className="flex items-center space-x-2 mb-2">
+    <div className="flex items-start space-x-3 p-3 bg-gray-750 rounded-lg border border-gray-600">
+      <div className="flex-shrink-0">
         {isUser ? (
-          <User className="w-3 h-3 text-blue-500" />
+          <User className="w-4 h-4 text-blue-400" />
         ) : (
-          <Bot className="w-3 h-3 text-purple-500" />
+          <Bot className="w-4 h-4 text-green-400" />
         )}
-        <span className="text-xs font-medium">
-          {isUser ? 'Usuario' : 'Asistente'} #{index + 1}
-        </span>
-        {message.timestamp && (
-          <span className="text-xs text-muted-foreground">
-            {new Date(message.timestamp).toLocaleTimeString()}
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center space-x-2 mb-1">
+          <span className="text-xs font-medium text-white">
+            {isUser ? 'Usuario' : 'Asistente'}
           </span>
-        )}
-      </div>
-      
-      <div className="text-xs text-muted-foreground mb-2 line-clamp-2">
-        {message.content.substring(0, 100)}
-        {message.content.length > 100 && '...'}
-      </div>
-      
-      <div className="flex flex-wrap gap-1">
-        {message.usage && (
-          <Badge variant="outline" className="text-xs">
-            {(message.usage?.inputTokens || 0) + (message.usage?.outputTokens || 0)} tokens
+          <Badge variant="outline" className="text-xs bg-gray-700 text-gray-300 border-gray-600">
+            #{index + 1}
           </Badge>
-        )}
-        {message.mcpUsed && message.mcpUsed.length > 0 && (
-          <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500">
-            {message.mcpUsed.length} MCP
-          </Badge>
-        )}
-        {!isUser && !message.mcpUsed?.length && (
-          <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500">
-            Modelo base
-          </Badge>
-        )}
+        </div>
+        
+        <div className="text-xs text-gray-400 truncate mb-2">
+          {message.content.substring(0, 100)}...
+        </div>
+        
+        <div className="flex items-center space-x-3 text-xs">
+          {hasTokens && (
+            <div className="flex items-center space-x-1">
+              <Clock className="w-3 h-3 text-blue-400" />
+              <span className="text-gray-400">
+                {((message.usage?.inputTokens || 0) + (message.usage?.outputTokens || 0)).toLocaleString()} tokens
+              </span>
+            </div>
+          )}
+          
+          {hasMcp && (
+            <div className="flex items-center space-x-1">
+              <Network className="w-3 h-3 text-purple-400" />
+              <span className="text-gray-400">
+                {message.mcpUsed?.length} MCPs
+              </span>
+            </div>
+          )}
+          
+          <div className="flex items-center space-x-1">
+            {hasMcp || hasTokens ? (
+              <CheckCircle className="w-3 h-3 text-green-400" />
+            ) : (
+              <AlertCircle className="w-3 h-3 text-yellow-400" />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
