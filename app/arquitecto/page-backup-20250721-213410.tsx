@@ -1,7 +1,5 @@
 'use client'
 
-import './responsive.css'
-
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -327,20 +325,20 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen">
+    <div className="flex h-screen">
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="border-b border-border bg-card/50 backdrop-blur-sm p-4">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-purple-500/10 rounded-lg">
                   <Building className="w-6 h-6 text-purple-500" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-foreground">Arquitecto AWS</h1>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center space-x-2">
                     {getPhaseIcon(projectState.phase)}
                     <p className="text-sm text-muted-foreground">
                       {getPhaseText(projectState.phase)} • {currentModel.name}
@@ -355,10 +353,10 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
               </Badge>
             </div>
             
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
-                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                size="sm"
                 onClick={() => setShowMcpPanel(!showMcpPanel)}
               >
                 <Wrench className="w-4 h-4 mr-2" />
@@ -366,7 +364,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
               </Button>
               <Button
                 variant="outline"
-                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                size="sm"
                 onClick={() => setShowPromptUnderstanding(!showPromptUnderstanding)}
               >
                 {showPromptUnderstanding ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -374,7 +372,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
               </Button>
               <Button
                 variant="outline"
-                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                size="sm"
                 onClick={exportChat}
                 disabled={messages.length === 0}
               >
@@ -383,7 +381,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
               </Button>
               <Button
                 variant="outline"
-                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                size="sm"
                 onClick={clearChat}
                 disabled={messages.length === 0}
               >
@@ -401,8 +399,8 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
           
           {/* Project Status Bar */}
           {projectState.name && (
-            <div className="mt-2 sm:mt-4 p-2 sm:p-3 bg-muted/30 rounded-lg">
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Folder className="w-4 h-4 text-primary" />
                   <div>
@@ -412,7 +410,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center space-x-2">
                   <Badge variant="outline" className="bg-blue-500/10 text-blue-500">
                     Fase {projectState.phase === 'inicio' ? '1' : projectState.phase === 'tipo' ? '2' : projectState.phase === 'recopilacion' ? '3' : projectState.phase === 'generacion' ? '4' : '5'}/5
                   </Badge>
@@ -423,7 +421,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((message: Message) => (
             <MessageBubble 
               key={message.id} 
@@ -438,8 +436,8 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-border bg-card/50 backdrop-blur-sm p-2 sm:p-4">
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+        <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
+          <div className="flex space-x-4">
             <div className="flex-1">
               <Textarea
                 value={input}
@@ -454,7 +452,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="lg"
-              className="px-4 sm:px-6 w-full sm:w-auto sm:self-end"
+              className="px-6 self-end"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -473,14 +471,14 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
 
       {/* MCP Activities Panel */}
       {showMcpPanel && (
-        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 backdrop-blur-sm">
+        <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm">
           <McpPanel activities={mcpActivities} />
         </div>
       )}
 
       {/* Prompt Understanding Sidebar */}
       {showPromptUnderstanding && !showMcpPanel && (
-        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 backdrop-blur-sm">
+        <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm">
           <PromptUnderstanding messages={messages} />
         </div>
       )}
@@ -535,7 +533,7 @@ function MessageBubble({ message, onCopy, copiedMessageId }: MessageBubbleProps)
             </div>
             
             <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center space-x-2">
                 <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
                 {message.usage && (
                   <Badge variant="outline" className="text-xs">
@@ -551,7 +549,7 @@ function MessageBubble({ message, onCopy, copiedMessageId }: MessageBubbleProps)
               
               <Button
                 variant="ghost"
-                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                size="sm"
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => onCopy(message.content, message.id)}
               >
@@ -579,7 +577,7 @@ function LoadingMessage({ model }: { model: any }) {
         
         <Card className="message-assistant">
           <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center space-x-2">
               <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
               <span className="text-sm text-muted-foreground">
                 El Arquitecto AWS esta analizando tu solicitud...
@@ -605,7 +603,7 @@ function McpPanel({ activities }: McpPanelProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-border">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center space-x-2">
           <Wrench className="w-5 h-5 text-purple-500" />
           <h3 className="font-semibold text-foreground">Actividad MCP</h3>
         </div>
@@ -631,7 +629,7 @@ function McpPanel({ activities }: McpPanelProps) {
       
       <div className="p-4 border-t border-border">
         <div className="text-xs text-muted-foreground">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center justify-between">
             <span>MCPs Disponibles: 6</span>
             <span>Activos: {activities.filter(a => a.status === 'running').length}</span>
           </div>
@@ -673,7 +671,7 @@ function McpActivityItem({ activity }: McpActivityItemProps) {
       <div className="flex items-start space-x-2">
         {getStatusIcon()}
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center space-x-2">
             <span className="text-xs font-mono text-purple-600 dark:text-purple-400">
               🛠️ Using tool: {activity.tool}
             </span>

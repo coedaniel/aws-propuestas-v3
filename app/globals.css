@@ -198,6 +198,60 @@
   }
 }
 
+/* Responsive improvements for Arquitecto page */
+@media (max-width: 768px) {
+  .flex-responsive {
+    flex-direction: column !important;
+  }
+  
+  .gap-responsive {
+    gap: 0.5rem !important;
+  }
+  
+  .p-responsive {
+    padding: 0.75rem !important;
+  }
+  
+  .text-responsive {
+    font-size: 0.875rem !important;
+  }
+  
+  .max-w-responsive {
+    max-width: 100% !important;
+  }
+  
+  .w-responsive {
+    width: 100% !important;
+  }
+  
+  .hidden-mobile {
+    display: none !important;
+  }
+  
+  .show-mobile {
+    display: block !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .space-x-responsive > * + * {
+    margin-left: 0.25rem !important;
+  }
+  
+  .space-y-responsive > * + * {
+    margin-top: 0.5rem !important;
+  }
+  
+  .min-h-responsive {
+    min-height: 60px !important;
+  }
+  
+  .px-responsive {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {
