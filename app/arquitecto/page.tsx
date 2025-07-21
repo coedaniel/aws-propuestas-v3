@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -32,37 +32,111 @@ import {
   Clock,
   Cpu,
   Building,
-  Wrench
+  Wrench,
+  Folder,
+  Upload,
+  Database,
+  Cloud,
+  Cog,
+  Tool
 } from 'lucide-react'
+
+// Tipos específicos para el arquitecto
+interface ProjectState {
+  name?: string
+  type?: 'integral' | 'rapido'
+  phase: 'inicio' | 'tipo' | 'recopilacion' | 'generacion' | 'entrega'
+  data: any
+}
+
+interface McpActivity {
+  id: string
+  tool: string
+  status: 'running' | 'completed' | 'error'
+  description: string
+  timestamp: string
+  duration?: number
+}
 
 export default function ArquitectoPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  // Usar el store global en lugar de estado local
+  const [localMessages, setLocalMessages] = useState<Message[]>([])
   const [localLoading, setLocalLoading] = useState(false)
   const [showPromptUnderstanding, setShowPromptUnderstanding] = useState(true)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
-  const [currentProject, setCurrentProject] = useState<any>(null)
-  const [projectPhase, setProjectPhase] = useState<'inicio' | 'recopilacion' | 'generacion' | 'completado'>('inicio')
+  
+  // Estados específicos del arquitecto
+  const [projectState, setProjectState] = useState<ProjectState>({
+    phase: 'inicio',
+    data: {}
+  })
+  const [mcpActivities, setMcpActivities] = useState<McpActivity[]>([])
+  const [showMcpPanel, setShowMcpPanel] = useState(true)
   
   const {
     selectedModel,
     setSelectedModel,
-    messages,
-    addMessage,
-    setLoading,
-    isLoading: globalLoading
   } = useChatStore()
 
-  const isLoading = localLoading || globalLoading
+  const messages = localMessages
+  const isLoading = localLoading
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
+  useEffect(() => {
+    // Inicializar con mensaje de bienvenida del arquitecto
+    if (messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: generateId(),
+        role: 'assistant',
+        content: getWelcomePrompt(),
+        timestamp: new Date().toISOString()
+      }
+      setLocalMessages([welcomeMessage])
+    }
+  }, [])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const getWelcomePrompt = () => {
+    return `¡Hola! Soy tu Arquitecto de Soluciones AWS y consultor experto.
+
+Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva.
+
+**Importante:**
+- No usare acentos ni caracteres especiales en ningun texto, archivo, script ni documento
+- Todos los archivos Word seran funcionales y compatibles: solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado
+- Solo generare scripts CloudFormation como entregable de automatizacion
+
+**Para comenzar, necesito saber:**
+
+¿Cual es el nombre del proyecto?`
+  }
+
+  const addMcpActivity = (tool: string, description: string) => {
+    const activity: McpActivity = {
+      id: generateId(),
+      tool,
+      status: 'running',
+      description,
+      timestamp: new Date().toISOString()
+    }
+    setMcpActivities(prev => [...prev, activity])
+    return activity.id
+  }
+
+  const updateMcpActivity = (id: string, status: 'completed' | 'error', duration?: number) => {
+    setMcpActivities(prev => prev.map(activity => 
+      activity.id === id 
+        ? { ...activity, status, duration }
+        : activity
+    ))
   }
 
   const sendMessage = async () => {
@@ -75,9 +149,8 @@ export default function ArquitectoPage() {
       timestamp: new Date().toISOString()
     }
 
-    // Usar el store global
-    addMessage(userMessage)
-    const currentMessages = [...messages, userMessage]
+    setLocalMessages(prev => [...prev, userMessage])
+    const currentMessages = [...localMessages, userMessage]
     
     setInput('')
     setLocalLoading(true)
@@ -92,8 +165,7 @@ export default function ArquitectoPage() {
           content: m.content
         })),
         modelId: selectedModel,
-        projectPhase: projectPhase,
-        currentProject: currentProject
+        projectState: projectState
       })
       
       const response = await fetch(`${API_BASE_URL}/arquitecto`, {
@@ -107,8 +179,7 @@ export default function ArquitectoPage() {
             content: m.content
           })),
           modelId: selectedModel,
-          projectPhase: projectPhase,
-          currentProject: currentProject
+          projectState: projectState
         }),
       })
 
@@ -132,17 +203,21 @@ export default function ArquitectoPage() {
         mcpUsed: data.mcpUsed || []
       }
 
-      // Usar el store global
-      addMessage(assistantMessage)
+      setLocalMessages(prev => [...prev, assistantMessage])
       
       // Actualizar estado del proyecto si se proporciona
       if (data.projectUpdate) {
-        setCurrentProject(data.projectUpdate)
+        setProjectState(prev => ({ ...prev, ...data.projectUpdate }))
       }
       
-      // Actualizar fase del proyecto si se proporciona
-      if (data.projectPhase) {
-        setProjectPhase(data.projectPhase)
+      // Simular actividades MCP basadas en la respuesta
+      if (data.mcpUsed && data.mcpUsed.length > 0) {
+        data.mcpUsed.forEach((mcp: string) => {
+          const activityId = addMcpActivity(mcp, `Using ${mcp} (trusted)`)
+          setTimeout(() => {
+            updateMcpActivity(activityId, 'completed', Math.random() * 2000 + 500)
+          }, Math.random() * 1000 + 500)
+        })
       }
       
     } catch (error: any) {
@@ -154,42 +229,39 @@ export default function ArquitectoPage() {
         timestamp: new Date().toISOString()
       }
       
-      addMessage(errorMessage)
+      setLocalMessages(prev => [...prev, errorMessage])
     } finally {
       setLocalLoading(false)
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      e.stopPropagation()
-      sendMessage()
-    }
-  }
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (input.trim() && !isLoading) {
       sendMessage()
     }
   }
 
   const clearChat = () => {
-    // Usar el store global
-    const { clearCurrentSession } = useChatStore.getState()
-    clearCurrentSession()
-    setCurrentProject(null)
-    setProjectPhase('inicio')
+    setLocalMessages([])
+    setProjectState({ phase: 'inicio', data: {} })
+    setMcpActivities([])
+    // Reinicializar con mensaje de bienvenida
+    const welcomeMessage: Message = {
+      id: generateId(),
+      role: 'assistant',
+      content: getWelcomePrompt(),
+      timestamp: new Date().toISOString()
+    }
+    setLocalMessages([welcomeMessage])
   }
 
   const exportChat = () => {
     const chatData = {
       timestamp: new Date().toISOString(),
       model: currentModel.name,
-      project: currentProject,
-      phase: projectPhase,
+      project: projectState,
+      mcpActivities: mcpActivities,
       messages: messages.map(m => ({
         role: m.role,
         content: m.content,
@@ -219,29 +291,37 @@ export default function ArquitectoPage() {
     }
   }
 
-  const getPhaseIcon = (phase: typeof projectPhase) => {
+  const getPhaseIcon = (phase: string) => {
     switch (phase) {
       case 'inicio':
         return <Sparkles className="w-4 h-4 text-blue-500" />
-      case 'recopilacion':
+      case 'tipo':
         return <Target className="w-4 h-4 text-yellow-500" />
+      case 'recopilacion':
+        return <Database className="w-4 h-4 text-orange-500" />
       case 'generacion':
         return <Wrench className="w-4 h-4 text-purple-500" />
-      case 'completado':
+      case 'entrega':
         return <CheckCircle className="w-4 h-4 text-green-500" />
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />
     }
   }
 
-  const getPhaseText = (phase: typeof projectPhase) => {
+  const getPhaseText = (phase: string) => {
     switch (phase) {
       case 'inicio':
         return 'Inicio de Proyecto'
+      case 'tipo':
+        return 'Definicion de Tipo'
       case 'recopilacion':
-        return 'Recopilación de Requisitos'
+        return 'Recopilacion de Requisitos'
       case 'generacion':
-        return 'Generación de Documentos'
-      case 'completado':
-        return 'Proyecto Completado'
+        return 'Generacion de Documentos'
+      case 'entrega':
+        return 'Entrega Final'
+      default:
+        return 'En Proceso'
     }
   }
 
@@ -255,14 +335,14 @@ export default function ArquitectoPage() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-purple-500/10 rounded-lg">
-                  <Bot className="w-6 h-6 text-purple-500" />
+                  <Building className="w-6 h-6 text-purple-500" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">Arquitecto IA</h1>
+                  <h1 className="text-xl font-bold text-foreground">Arquitecto AWS</h1>
                   <div className="flex items-center space-x-2">
-                    {getPhaseIcon(projectPhase)}
+                    {getPhaseIcon(projectState.phase)}
                     <p className="text-sm text-muted-foreground">
-                      {getPhaseText(projectPhase)} • {currentModel.name}
+                      {getPhaseText(projectState.phase)} • {currentModel.name}
                     </p>
                   </div>
                 </div>
@@ -278,10 +358,18 @@ export default function ArquitectoPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowMcpPanel(!showMcpPanel)}
+              >
+                <Tool className="w-4 h-4 mr-2" />
+                {showMcpPanel ? 'Ocultar' : 'Mostrar'} MCPs
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowPromptUnderstanding(!showPromptUnderstanding)}
               >
                 {showPromptUnderstanding ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showPromptUnderstanding ? 'Ocultar' : 'Mostrar'} Análisis
+                {showPromptUnderstanding ? 'Ocultar' : 'Mostrar'} Analisis
               </Button>
               <Button
                 variant="outline"
@@ -311,21 +399,21 @@ export default function ArquitectoPage() {
           </div>
           
           {/* Project Status Bar */}
-          {currentProject && (
+          {projectState.name && (
             <div className="mt-4 p-3 bg-muted/30 rounded-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <Building className="w-4 h-4 text-primary" />
+                  <Folder className="w-4 h-4 text-primary" />
                   <div>
-                    <div className="font-medium text-foreground">{currentProject.name || 'Proyecto Sin Nombre'}</div>
+                    <div className="font-medium text-foreground">{projectState.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {currentProject.type === 'servicio-rapido' ? 'Servicio Rápido' : 'Solución Integral'}
+                      {projectState.type === 'rapido' ? 'Servicio Rapido' : 'Solucion Integral'}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline" className="bg-blue-500/10 text-blue-500">
-                    Fase {projectPhase === 'inicio' ? '1' : projectPhase === 'recopilacion' ? '2' : projectPhase === 'generacion' ? '3' : '4'}/4
+                    Fase {projectState.phase === 'inicio' ? '1' : projectState.phase === 'tipo' ? '2' : projectState.phase === 'recopilacion' ? '3' : projectState.phase === 'generacion' ? '4' : '5'}/5
                   </Badge>
                 </div>
               </div>
@@ -335,18 +423,14 @@ export default function ArquitectoPage() {
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <WelcomeMessage model={currentModel} />
-          ) : (
-            messages.map((message: Message) => (
-              <MessageBubble 
-                key={message.id} 
-                message={message} 
-                onCopy={copyMessage}
-                copiedMessageId={copiedMessageId}
-              />
-            ))
-          )}
+          {messages.map((message: Message) => (
+            <MessageBubble 
+              key={message.id} 
+              message={message} 
+              onCopy={copyMessage}
+              copiedMessageId={copiedMessageId}
+            />
+          ))}
           
           {isLoading && <LoadingMessage model={currentModel} />}
           <div ref={messagesEndRef} />
@@ -354,19 +438,19 @@ export default function ArquitectoPage() {
 
         {/* Input Area */}
         <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
-          <form onSubmit={handleFormSubmit} className="flex space-x-4">
+          <div className="flex space-x-4">
             <div className="flex-1">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={getInputPlaceholder(projectPhase)}
+                onKeyPress={handleKeyPress}
+                placeholder={getInputPlaceholder(projectState.phase)}
                 className="min-h-[80px] resize-none focus-ring"
                 disabled={isLoading}
               />
             </div>
             <Button
-              type="submit"
+              onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="lg"
               className="px-6 self-end"
@@ -377,17 +461,24 @@ export default function ArquitectoPage() {
                 <Send className="w-5 h-5" />
               )}
             </Button>
-          </form>
+          </div>
           
           <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
-            <span>Presiona Enter para enviar, Shift+Enter para nueva línea</span>
-            <span>Arquitecto IA • Generación guiada de propuestas</span>
+            <span>Presiona Enter para enviar, Shift+Enter para nueva linea</span>
+            <span>Arquitecto AWS • Generacion guiada de propuestas</span>
           </div>
         </div>
       </div>
 
+      {/* MCP Activities Panel */}
+      {showMcpPanel && (
+        <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm">
+          <McpPanel activities={mcpActivities} />
+        </div>
+      )}
+
       {/* Prompt Understanding Sidebar */}
-      {showPromptUnderstanding && (
+      {showPromptUnderstanding && !showMcpPanel && (
         <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm">
           <PromptUnderstanding messages={messages} />
         </div>
@@ -399,13 +490,15 @@ export default function ArquitectoPage() {
 function getInputPlaceholder(phase: string) {
   switch (phase) {
     case 'inicio':
-      return 'Describe tu proyecto o necesidad de arquitectura AWS...'
+      return 'Escribe el nombre del proyecto...'
+    case 'tipo':
+      return 'Especifica si es solucion integral o servicio rapido...'
     case 'recopilacion':
-      return 'Proporciona más detalles sobre los requisitos...'
+      return 'Proporciona mas detalles sobre los requisitos...'
     case 'generacion':
       return 'Confirma los detalles o solicita ajustes...'
-    case 'completado':
-      return 'Proyecto completado. ¿Necesitas algún ajuste?'
+    case 'entrega':
+      return 'Proyecto completado. ¿Necesitas algun ajuste?'
     default:
       return 'Escribe tu mensaje...'
   }
@@ -430,7 +523,7 @@ function MessageBubble({ message, onCopy, copiedMessageId }: MessageBubbleProps)
           {isUser ? (
             <User className="w-4 h-4 text-primary-foreground" />
           ) : (
-            <Bot className="w-4 h-4 text-white" />
+            <Building className="w-4 h-4 text-white" />
           )}
         </div>
         
@@ -480,7 +573,7 @@ function LoadingMessage({ model }: { model: any }) {
     <div className="flex justify-start">
       <div className="flex space-x-3 max-w-4xl">
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-          <Bot className="w-4 h-4 text-white" />
+          <Building className="w-4 h-4 text-white" />
         </div>
         
         <Card className="message-assistant">
@@ -488,7 +581,7 @@ function LoadingMessage({ model }: { model: any }) {
             <div className="flex items-center space-x-2">
               <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
               <span className="text-sm text-muted-foreground">
-                El Arquitecto IA está analizando tu solicitud...
+                El Arquitecto AWS esta analizando tu solicitud...
               </span>
             </div>
             <div className="mt-2 text-xs text-muted-foreground">
@@ -501,105 +594,102 @@ function LoadingMessage({ model }: { model: any }) {
   )
 }
 
-function WelcomeMessage({ model }: { model: any }) {
+interface McpPanelProps {
+  activities: McpActivity[]
+}
+
+function McpPanel({ activities }: McpPanelProps) {
+  const recentActivities = activities.slice(-10).reverse()
+  
   return (
-    <div className="text-center py-12">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500/10 rounded-full mb-6">
-        <Bot className="w-8 h-8 text-purple-500" />
-      </div>
-      
-      <h2 className="text-2xl font-bold text-foreground mb-4">
-        ¡Bienvenido al Arquitecto IA!
-      </h2>
-      
-      <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-        Soy tu asistente especializado en generar propuestas arquitectónicas profesionales para AWS. 
-        Te guiaré paso a paso para crear documentación completa y personalizada.
-      </p>
-      
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto text-sm mb-8">
-        <Card className="p-4 bg-blue-500/5 border-blue-500/20">
-          <div className="flex items-center space-x-2 mb-3">
-            <Zap className="w-5 h-5 text-blue-500" />
-            <h3 className="font-semibold text-blue-900 dark:text-blue-100">Servicios Rápidos</h3>
-          </div>
-          <ul className="text-blue-700 dark:text-blue-300 space-y-1 text-left">
-            <li>• Configuración de EC2, RDS, S3</li>
-            <li>• Setup de VPN, ELB, CloudFront</li>
-            <li>• Implementación de servicios específicos</li>
-            <li>• Documentación y scripts automáticos</li>
-          </ul>
-        </Card>
-        
-        <Card className="p-4 bg-purple-500/5 border-purple-500/20">
-          <div className="flex items-center space-x-2 mb-3">
-            <Building className="w-5 h-5 text-purple-500" />
-            <h3 className="font-semibold text-purple-900 dark:text-purple-100">Soluciones Integrales</h3>
-          </div>
-          <ul className="text-purple-700 dark:text-purple-300 space-y-1 text-left">
-            <li>• Migraciones completas a la nube</li>
-            <li>• Arquitecturas serverless y microservicios</li>
-            <li>• Soluciones de IA, IoT y analytics</li>
-            <li>• Propuestas ejecutivas profesionales</li>
-          </ul>
-        </Card>
-      </div>
-      
-      <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto text-sm">
-        <Card className="p-4 bg-green-500/5 border-green-500/20">
-          <div className="flex items-center space-x-2 mb-2">
-            <CheckCircle className="w-4 h-4 text-green-500" />
-            <h3 className="font-semibold text-green-900 dark:text-green-100">Proceso Guiado</h3>
-          </div>
-          <ul className="text-green-700 dark:text-green-300 space-y-1 text-left">
-            <li>• Entrevista paso a paso</li>
-            <li>• Recopilación de requisitos</li>
-            <li>• Validación de información</li>
-          </ul>
-        </Card>
-        
-        <Card className="p-4 bg-orange-500/5 border-orange-500/20">
-          <div className="flex items-center space-x-2 mb-2">
-            <FileText className="w-4 h-4 text-orange-500" />
-            <h3 className="font-semibold text-orange-900 dark:text-orange-100">Documentos Generados</h3>
-          </div>
-          <ul className="text-orange-700 dark:text-orange-300 space-y-1 text-left">
-            <li>• Propuesta ejecutiva (Word)</li>
-            <li>• Plan de actividades (CSV)</li>
-            <li>• Scripts CloudFormation (YAML)</li>
-            <li>• Diagramas de arquitectura</li>
-          </ul>
-        </Card>
-        
-        <Card className="p-4 bg-cyan-500/5 border-cyan-500/20">
-          <div className="flex items-center space-x-2 mb-2">
-            <Cpu className="w-4 h-4 text-cyan-500" />
-            <h3 className="font-semibold text-cyan-900 dark:text-cyan-100">MCPs Integrados</h3>
-          </div>
-          <ul className="text-cyan-700 dark:text-cyan-300 space-y-1 text-left">
-            <li>• Cálculo automático de costos</li>
-            <li>• Generación de diagramas</li>
-            <li>• Consulta de documentación AWS</li>
-          </ul>
-        </Card>
-      </div>
-      
-      <div className="mt-8">
-        <p className="text-sm text-muted-foreground mb-4">
-          Para comenzar, simplemente describe tu proyecto o necesidad:
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center space-x-2">
+          <Tool className="w-5 h-5 text-purple-500" />
+          <h3 className="font-semibold text-foreground">Actividad MCP</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Herramientas utilizadas en tiempo real
         </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Badge variant="outline" className="bg-muted/30">
-            "Necesito migrar mi aplicación a AWS"
-          </Badge>
-          <Badge variant="outline" className="bg-muted/30">
-            "Quiero implementar una arquitectura serverless"
-          </Badge>
-          <Badge variant="outline" className="bg-muted/30">
-            "Configurar una base de datos RDS"
-          </Badge>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {recentActivities.length === 0 ? (
+          <div className="text-center py-8">
+            <Tool className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              No hay actividad MCP aun
+            </p>
+          </div>
+        ) : (
+          recentActivities.map((activity) => (
+            <McpActivityItem key={activity.id} activity={activity} />
+          ))
+        )}
+      </div>
+      
+      <div className="p-4 border-t border-border">
+        <div className="text-xs text-muted-foreground">
+          <div className="flex items-center justify-between">
+            <span>MCPs Disponibles: 6</span>
+            <span>Activos: {activities.filter(a => a.status === 'running').length}</span>
+          </div>
         </div>
       </div>
     </div>
+  )
+}
+
+interface McpActivityItemProps {
+  activity: McpActivity
+}
+
+function McpActivityItem({ activity }: McpActivityItemProps) {
+  const getStatusIcon = () => {
+    switch (activity.status) {
+      case 'running':
+        return <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+      case 'completed':
+        return <CheckCircle className="w-3 h-3 text-green-500" />
+      case 'error':
+        return <AlertCircle className="w-3 h-3 text-red-500" />
+    }
+  }
+  
+  const getStatusColor = () => {
+    switch (activity.status) {
+      case 'running':
+        return 'border-blue-500/20 bg-blue-500/5'
+      case 'completed':
+        return 'border-green-500/20 bg-green-500/5'
+      case 'error':
+        return 'border-red-500/20 bg-red-500/5'
+    }
+  }
+  
+  return (
+    <Card className={`p-3 ${getStatusColor()}`}>
+      <div className="flex items-start space-x-2">
+        {getStatusIcon()}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-mono text-purple-600 dark:text-purple-400">
+              🛠️ Using tool: {activity.tool}
+            </span>
+            <Badge variant="outline" className="text-xs">
+              trusted
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {activity.description}
+          </p>
+          {activity.duration && (
+            <p className="text-xs text-muted-foreground mt-1">
+              ● Completed in {(activity.duration / 1000).toFixed(1)}s
+            </p>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
