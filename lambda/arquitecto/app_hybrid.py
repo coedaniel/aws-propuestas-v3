@@ -1,6 +1,6 @@
 """
-AWS Propuestas v3 - Arquitecto Lambda UPDATED
-Con modelos correctos: Nova Pro y Claude 3.5 Sonnet v1
+AWS Propuestas v3 - Arquitecto Lambda HYBRID
+Funcionalidad completa con MCP desactivado temporalmente
 """
 
 import json
@@ -109,13 +109,13 @@ def create_success_response(data):
     return create_response(200, data)
 
 def prepare_conversation(messages: List[Dict], project_state: Dict) -> List[Dict]:
-    """Prepare conversation for Bedrock with correct format"""
+    """Prepare conversation for Bedrock"""
     conversation = []
     
-    # Add system message with correct format
+    # Add system message
     conversation.append({
         "role": "user",
-        "content": [{"text": ARQUITECTO_MASTER_PROMPT}]
+        "content": ARQUITECTO_MASTER_PROMPT
     })
     
     # Add project state context if available
@@ -123,21 +123,20 @@ def prepare_conversation(messages: List[Dict], project_state: Dict) -> List[Dict
         context = f"CONTEXTO DEL PROYECTO: {json.dumps(project_state['data'], indent=2)}"
         conversation.append({
             "role": "user", 
-            "content": [{"text": context}]
+            "content": context
         })
     
-    # Add conversation history with correct format
+    # Add conversation history
     for msg in messages:
-        content = msg.get("content", "")
         conversation.append({
             "role": msg.get("role", "user"),
-            "content": [{"text": content}]
+            "content": msg.get("content", "")
         })
     
     return conversation
 
 def call_bedrock_model(model_id: str, conversation: List[Dict]) -> Dict:
-    """Call Bedrock model with correct format"""
+    """Call Bedrock model"""
     try:
         response = bedrock_runtime.converse(
             modelId=model_id,
@@ -158,7 +157,7 @@ def call_bedrock_model(model_id: str, conversation: List[Dict]) -> Dict:
         return {'error': f'Error calling Bedrock: {str(e)}'}
 
 def lambda_handler(event, context):
-    """Main Lambda handler with correct models"""
+    """Main Lambda handler with CORS support and MCP disabled"""
     
     try:
         logger.info(f"Event received: {json.dumps(event)}")
@@ -175,15 +174,14 @@ def lambda_handler(event, context):
             body = event.get('body', {})
         
         messages = body.get('messages', [])
-        # Default to Claude 3.5 Sonnet v1 (ON_DEMAND)
-        model_id = body.get('modelId', 'anthropic.claude-3-5-sonnet-20240620-v1:0')
+        model_id = body.get('modelId', 'anthropic.claude-3-5-sonnet-20241022-v2:0')
         project_state = body.get('projectState', {'phase': 'inicio', 'data': {}})
         
         if not messages:
             logger.error("No messages provided")
             return create_error_response(400, 'No messages provided')
         
-        logger.info(f"Processing {len(messages)} messages for project in phase: {project_state.get('phase')} with model: {model_id}")
+        logger.info(f"Processing {len(messages)} messages for project in phase: {project_state.get('phase')}")
         
         # Prepare conversation for Bedrock
         conversation = prepare_conversation(messages, project_state)
@@ -202,7 +200,6 @@ def lambda_handler(event, context):
             'projectState': project_state,
             'mcpActivated': False,
             'mcpStatus': 'disabled_temporarily',
-            'modelUsed': model_id,
             'timestamp': datetime.now().isoformat()
         }
         

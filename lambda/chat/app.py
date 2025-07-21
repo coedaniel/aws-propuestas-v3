@@ -1,15 +1,14 @@
 """
-AWS Propuestas v3 - Arquitecto Lambda UPDATED
-Con modelos correctos: Nova Pro y Claude 3.5 Sonnet v1
+AWS Propuestas v3 - Chat Lambda Simple
+Interacción directa con modelos Bedrock
 """
 
 import json
 import boto3
 import os
-import uuid
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 # Configure logging
 logger = logging.getLogger()
@@ -17,54 +16,6 @@ logger.setLevel(logging.INFO)
 
 # Initialize AWS clients
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('REGION', 'us-east-1'))
-dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('REGION', 'us-east-1'))
-s3 = boto3.client('s3', region_name=os.environ.get('REGION', 'us-east-1'))
-
-# Get table and bucket names from environment
-PROJECTS_TABLE = os.environ.get('PROJECTS_TABLE')
-DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET')
-
-projects_table = dynamodb.Table(PROJECTS_TABLE) if PROJECTS_TABLE else None
-
-# Arquitecto Master Prompt
-ARQUITECTO_MASTER_PROMPT = """Actua como arquitecto de soluciones AWS y consultor experto.
-
-IMPORTANTE: Tu objetivo es dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva.
-
-REGLAS FUNDAMENTALES:
-- No uses acentos ni caracteres especiales en ningun texto, archivo, script ni documento
-- Todos los archivos Word seran funcionales y compatibles: solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado
-- Solo genera scripts CloudFormation como entregable de automatizacion
-
-PROCESO GUIADO INTELIGENTE:
-
-1. INICIO: Pregunta "Cual es el nombre del proyecto?"
-
-2. TIPO: Pregunta si el proyecto es:
-   - Solucion integral (migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.)
-   - Servicio rapido especifico (EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)
-
-3. REQUERIMIENTOS: Segun el tipo, haz preguntas especificas para entender:
-   - Alcance y objetivos
-   - Usuarios y volumenes
-   - Integraciones necesarias
-   - Requisitos de seguridad y compliance
-   - Presupuesto aproximado
-   - Timeline
-
-4. ARQUITECTURA: Diseña la solucion completa con:
-   - Diagrama de arquitectura (descripcion detallada)
-   - Servicios AWS recomendados
-   - Configuraciones especificas
-   - Mejores practicas de seguridad
-
-5. DOCUMENTACION: Genera automaticamente:
-   - Propuesta ejecutiva (Word)
-   - Documento tecnico detallado (Word)
-   - Script CloudFormation funcional
-   - Estimacion de costos
-
-IMPORTANTE: Siempre pregunta una cosa a la vez y espera la respuesta antes de continuar."""
 
 def get_cors_headers():
     """Get standard CORS headers for all responses"""
@@ -108,23 +59,9 @@ def create_success_response(data):
     """Create a success response with CORS headers"""
     return create_response(200, data)
 
-def prepare_conversation(messages: List[Dict], project_state: Dict) -> List[Dict]:
+def prepare_conversation(messages: List[Dict]) -> List[Dict]:
     """Prepare conversation for Bedrock with correct format"""
     conversation = []
-    
-    # Add system message with correct format
-    conversation.append({
-        "role": "user",
-        "content": [{"text": ARQUITECTO_MASTER_PROMPT}]
-    })
-    
-    # Add project state context if available
-    if project_state.get('data'):
-        context = f"CONTEXTO DEL PROYECTO: {json.dumps(project_state['data'], indent=2)}"
-        conversation.append({
-            "role": "user", 
-            "content": [{"text": context}]
-        })
     
     # Add conversation history with correct format
     for msg in messages:
@@ -150,7 +87,9 @@ def call_bedrock_model(model_id: str, conversation: List[Dict]) -> Dict:
         )
         
         return {
-            'content': response['output']['message']['content'][0]['text']
+            'response': response['output']['message']['content'][0]['text'],
+            'usage': response.get('usage', {}),
+            'modelUsed': model_id
         }
         
     except Exception as e:
@@ -158,7 +97,7 @@ def call_bedrock_model(model_id: str, conversation: List[Dict]) -> Dict:
         return {'error': f'Error calling Bedrock: {str(e)}'}
 
 def lambda_handler(event, context):
-    """Main Lambda handler with correct models"""
+    """Main Lambda handler for simple chat"""
     
     try:
         logger.info(f"Event received: {json.dumps(event)}")
@@ -175,18 +114,16 @@ def lambda_handler(event, context):
             body = event.get('body', {})
         
         messages = body.get('messages', [])
-        # Default to Claude 3.5 Sonnet v1 (ON_DEMAND)
-        model_id = body.get('modelId', 'anthropic.claude-3-5-sonnet-20240620-v1:0')
-        project_state = body.get('projectState', {'phase': 'inicio', 'data': {}})
+        model_id = body.get('modelId', 'amazon.nova-pro-v1:0')
         
         if not messages:
             logger.error("No messages provided")
             return create_error_response(400, 'No messages provided')
         
-        logger.info(f"Processing {len(messages)} messages for project in phase: {project_state.get('phase')} with model: {model_id}")
+        logger.info(f"Processing {len(messages)} messages with model: {model_id}")
         
         # Prepare conversation for Bedrock
-        conversation = prepare_conversation(messages, project_state)
+        conversation = prepare_conversation(messages)
         
         # Call Bedrock model
         bedrock_response = call_bedrock_model(model_id, conversation)
@@ -194,15 +131,11 @@ def lambda_handler(event, context):
         if 'error' in bedrock_response:
             return create_error_response(500, bedrock_response['error'])
         
-        response_content = bedrock_response['content']
-        
-        # Response data (MCP disabled for now)
+        # Response data
         response_data = {
-            'content': response_content,
-            'projectState': project_state,
-            'mcpActivated': False,
-            'mcpStatus': 'disabled_temporarily',
-            'modelUsed': model_id,
+            'response': bedrock_response['response'],
+            'usage': bedrock_response.get('usage', {}),
+            'modelUsed': bedrock_response.get('modelUsed', model_id),
             'timestamp': datetime.now().isoformat()
         }
         
