@@ -366,8 +366,7 @@ export default function ArquitectoPage() {
               />
             </div>
             <Button
-              type="button"
-              onClick={sendMessage}
+              type="submit"
               disabled={!input.trim() || isLoading}
               size="lg"
               className="px-6 self-end"

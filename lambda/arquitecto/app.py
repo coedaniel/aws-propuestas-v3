@@ -103,6 +103,9 @@ def process_arquitecto_chat(body: Dict, context) -> Dict:
         
         if 'anthropic' in model_id:
             ai_response = response_body['content'][0]['text']
+        elif 'nova' in model_id:
+            # Amazon Nova response format
+            ai_response = response_body['output']['message']['content'][0]['text']
         else:
             ai_response = response_body.get('generation', response_body.get('outputText', ''))
         
@@ -291,6 +294,36 @@ def prepare_prompt(model_id: str, system_prompt: str, messages: List[Dict],
             "temperature": 0.3,
             "system": system_prompt,
             "messages": formatted_messages
+        }
+    elif 'nova' in model_id:
+        # Amazon Nova format
+        formatted_messages = []
+        
+        # Add system message first
+        formatted_messages.append({
+            "role": "user",
+            "content": [{"text": system_prompt}]
+        })
+        formatted_messages.append({
+            "role": "assistant", 
+            "content": [{"text": "Entendido. Soy tu Arquitecto IA especializado en AWS. ¿En qué puedo ayudarte hoy?"}]
+        })
+        
+        # Add conversation messages
+        for msg in messages:
+            content_text = msg.get('content', '')
+            formatted_messages.append({
+                "role": msg.get('role', 'user'),
+                "content": [{"text": content_text}]
+            })
+        
+        return {
+            "messages": formatted_messages,
+            "inferenceConfig": {
+                "maxTokens": 4000,
+                "temperature": 0.3,
+                "topP": 0.9
+            }
         }
     else:
         # For other models like Titan
