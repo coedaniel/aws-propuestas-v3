@@ -85,6 +85,17 @@ export default function ArquitectoPage() {
     try {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
       
+      console.log('🚀 Enviando mensaje a:', `${API_BASE_URL}/arquitecto`)
+      console.log('📤 Payload:', {
+        messages: currentMessages.map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        modelId: selectedModel,
+        projectPhase: projectPhase,
+        currentProject: currentProject
+      })
+      
       const response = await fetch(`${API_BASE_URL}/arquitecto`, {
         method: 'POST',
         headers: {
@@ -101,11 +112,16 @@ export default function ArquitectoPage() {
         }),
       })
 
+      console.log('📊 Response status:', response.status)
+
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Response error:', errorText)
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
+      console.log('✅ Response data:', data)
 
       const assistantMessage: Message = {
         id: generateId(),
@@ -130,6 +146,7 @@ export default function ArquitectoPage() {
       }
       
     } catch (error: any) {
+      console.error('❌ Error completo:', error)
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
@@ -143,9 +160,18 @@ export default function ArquitectoPage() {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
+      e.stopPropagation()
+      sendMessage()
+    }
+  }
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (input.trim() && !isLoading) {
       sendMessage()
     }
   }
@@ -328,18 +354,19 @@ export default function ArquitectoPage() {
 
         {/* Input Area */}
         <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
-          <div className="flex space-x-4">
+          <form onSubmit={handleFormSubmit} className="flex space-x-4">
             <div className="flex-1">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 placeholder={getInputPlaceholder(projectPhase)}
                 className="min-h-[80px] resize-none focus-ring"
                 disabled={isLoading}
               />
             </div>
             <Button
+              type="button"
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="lg"
@@ -351,7 +378,7 @@ export default function ArquitectoPage() {
                 <Send className="w-5 h-5" />
               )}
             </Button>
-          </div>
+          </form>
           
           <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
             <span>Presiona Enter para enviar, Shift+Enter para nueva línea</span>
