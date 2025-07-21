@@ -23,8 +23,8 @@ DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET')
 
 projects_table = dynamodb.Table(PROJECTS_TABLE) if PROJECTS_TABLE else None
 
-# REAL MCP ENDPOINTS - Using your ECS services
-MCP_BASE_URL = "http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com"
+# REAL MCP ENDPOINTS - Using HTTPS with custom domain
+MCP_BASE_URL = "https://mcp.danielingram.shop"
 MCP_ENDPOINTS = {
     'core': f"{MCP_BASE_URL}/core",
     'pricing': f"{MCP_BASE_URL}/pricing", 

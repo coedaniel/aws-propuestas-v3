@@ -5,8 +5,8 @@ from typing import Dict, List, Any, Optional
 
 logger = logging.getLogger()
 
-# MCP URLs from environment variables - FIXED TO USE REAL ECS ENDPOINTS
-MCP_BASE_URL = "http://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com"
+# MCP URLs - USING HTTPS WITH CUSTOM DOMAIN
+MCP_BASE_URL = "https://mcp.danielingram.shop"
 CORE_MCP_URL = f"{MCP_BASE_URL}/core"
 DIAGRAM_MCP_URL = f"{MCP_BASE_URL}/diagram"
 CFN_MCP_URL = f"{MCP_BASE_URL}/cfn"
