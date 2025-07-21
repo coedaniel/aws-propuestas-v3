@@ -37,8 +37,7 @@ import {
   Upload,
   Database,
   Cloud,
-  Cog,
-  Tool
+  Cog
 } from 'lucide-react'
 
 // Tipos específicos para el arquitecto
@@ -360,7 +359,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
                 size="sm"
                 onClick={() => setShowMcpPanel(!showMcpPanel)}
               >
-                <Tool className="w-4 h-4 mr-2" />
+                <Wrench className="w-4 h-4 mr-2" />
                 {showMcpPanel ? 'Ocultar' : 'Mostrar'} MCPs
               </Button>
               <Button
@@ -605,7 +604,7 @@ function McpPanel({ activities }: McpPanelProps) {
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="flex items-center space-x-2">
-          <Tool className="w-5 h-5 text-purple-500" />
+          <Wrench className="w-5 h-5 text-purple-500" />
           <h3 className="font-semibold text-foreground">Actividad MCP</h3>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
@@ -616,7 +615,7 @@ function McpPanel({ activities }: McpPanelProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {recentActivities.length === 0 ? (
           <div className="text-center py-8">
-            <Tool className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <Wrench className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
               No hay actividad MCP aun
             </p>
