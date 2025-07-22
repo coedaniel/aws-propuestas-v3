@@ -25,15 +25,15 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 DOCUMENTS_BUCKET = os.environ.get('DOCUMENTS_BUCKET', 'aws-propuestas-v3-documents-prod-035385358261')
 PROJECTS_TABLE = os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod')
 
-# URLs de los servicios MCP ECS
-MCP_BASE_URL = "https://aws-propuestas-v3-alb-prod-297472567.us-east-1.elb.amazonaws.com"
+# URLs de los servicios MCP ECS - CORREGIDAS
+MCP_BASE_URL = "https://mcp.danielingram.shop"
 MCP_SERVICES = {
-    'core': f"{MCP_BASE_URL}:8000",
-    'pricing': f"{MCP_BASE_URL}:8001", 
-    'awsdocs': f"{MCP_BASE_URL}:8002",
-    'cfn': f"{MCP_BASE_URL}:8003",
-    'diagram': f"{MCP_BASE_URL}:8004",
-    'customdoc': f"{MCP_BASE_URL}:8005"
+    'core': f"{MCP_BASE_URL}",
+    'pricing': f"{MCP_BASE_URL}/pricing", 
+    'awsdocs': f"{MCP_BASE_URL}/awsdocs",
+    'cfn': f"{MCP_BASE_URL}/cfn",
+    'diagram': f"{MCP_BASE_URL}/diagram",
+    'customdoc': f"{MCP_BASE_URL}/docgen"
 }
 
 # Prompt maestro completo - MANTENER IGUAL
