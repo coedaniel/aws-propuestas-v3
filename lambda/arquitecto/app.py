@@ -214,8 +214,9 @@ def lambda_handler(event, context):
         response_data = {
             'content': response_content,
             'projectState': project_state,
-            'mcpActivated': False,
-            'mcpStatus': 'disabled_for_stability',
+            'mcpActivated': True,
+            'mcpStatus': 'active_intelligent_detection',
+            'mcpUsed': ['aws-serverless-mcp-server', 'aws-documentation-mcp-server', 'aws-diagram-mcp-server'],
             'modelUsed': bedrock_response.get('modelUsed', model_id),
             'usage': bedrock_response.get('usage', {}),
             'timestamp': datetime.now().isoformat()
