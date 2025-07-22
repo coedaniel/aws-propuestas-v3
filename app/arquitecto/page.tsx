@@ -198,7 +198,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: data.response || 'Lo siento, no pude generar una respuesta.',
+        content: data.content || data.response || 'Lo siento, no pude generar una respuesta.',
         timestamp: new Date().toISOString(),
         usage: data.usage,
         mcpUsed: data.mcpUsed || []
