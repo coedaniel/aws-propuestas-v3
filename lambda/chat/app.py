@@ -60,16 +60,29 @@ def create_success_response(data):
     return create_response(200, data)
 
 def prepare_conversation(messages: List[Dict]) -> List[Dict]:
-    """Prepare conversation for Bedrock with correct format"""
+    """Prepare conversation for Bedrock - AWS Expert Only"""
     conversation = []
     
-    # Add conversation history with correct format
-    for msg in messages:
-        content = msg.get("content", "")
+    # Add AWS-only instruction at the beginning
+    if messages:
+        # Modify the first user message to include AWS-only instruction
+        first_message = messages[0]
+        aws_prefix = "INSTRUCCIÓN: Eres un consultor experto SOLO en AWS. Si preguntan sobre Azure, GCP, deportes, noticias o temas no-AWS, responde: 'Soy especialista en AWS únicamente. ¿En qué servicio de AWS puedo ayudarte?' \n\nPREGUNTA DEL USUARIO: "
+        
+        modified_content = aws_prefix + first_message.get("content", "")
+        
         conversation.append({
-            "role": msg.get("role", "user"),
-            "content": [{"text": content}]
+            "role": "user",
+            "content": [{"text": modified_content}]
         })
+        
+        # Add remaining messages normally
+        for msg in messages[1:]:
+            content = msg.get("content", "")
+            conversation.append({
+                "role": msg.get("role", "user"),
+                "content": [{"text": content}]
+            })
     
     return conversation
 
