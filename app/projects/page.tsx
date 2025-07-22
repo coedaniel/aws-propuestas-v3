@@ -20,30 +20,65 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
-  FolderOpen
+  FolderOpen,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
-import { getProjects, deleteProject } from '@/lib/api'
+
+interface ProjectDocument {
+  fileName: string
+  contentType: string
+  s3Key: string
+  downloadUrl?: string
+  error?: string
+}
 
 interface Project {
   projectId: string
   projectName: string
   projectType: string
-  status: 'completed' | 'in_progress' | 'draft'
+  status: 'completed' | 'in_progress' | 'draft' | 'error'
   createdAt: string
   updatedAt: string
   estimatedCost?: number
   description?: string
-  documentsGenerated?: string[]
+  documentsGenerated?: any[]
   s3Folder?: string
+  s3Bucket?: string
+  totalDocuments?: number
+  documentUrls?: ProjectDocument[]
+}
+
+interface ProjectStatistics {
+  totalProjects: number
+  completedProjects: number
+  inProgressProjects: number
+  totalDocuments: number
+}
+
+interface ProjectsResponse {
+  projects: Project[]
+  statistics: ProjectStatistics
+  total: number
+  timestamp: string
 }
 
 export default function ProjectsPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
+  const [statistics, setStatistics] = useState<ProjectStatistics>({
+    totalProjects: 0,
+    completedProjects: 0,
+    inProgressProjects: 0,
+    totalDocuments: 0
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showPreview, setShowPreview] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadProjects()
@@ -52,340 +87,473 @@ export default function ProjectsPage() {
   const loadProjects = async () => {
     try {
       setIsLoading(true)
-      // En producción, aquí cargarías los proyectos desde la API
-      // const response = await getProjects()
-      // setProjects(response || [])
-      setProjects([
-        {
-          projectId: '1',
-          projectName: 'Migracion Cloud Empresa ABC',
-          projectType: 'solucion-integral',
-          status: 'completed',
-          createdAt: '2025-01-15T10:30:00Z',
-          updatedAt: '2025-01-15T11:45:00Z',
-          estimatedCost: 15000,
-          description: 'Migración completa de infraestructura on-premises a AWS con alta disponibilidad',
-          documentsGenerated: ['propuesta.docx', 'actividades.csv', 'template.yaml', 'diagrama.png'],
-          s3Folder: 'migracion-cloud-empresa-abc'
+      setError(null)
+      
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+      
+      console.log('🔍 Loading projects from API...')
+      const response = await fetch(`${API_BASE_URL}/projects`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          projectId: '2',
-          projectName: 'Setup RDS MySQL',
-          projectType: 'servicio-rapido',
-          status: 'completed',
-          createdAt: '2025-01-14T14:20:00Z',
-          updatedAt: '2025-01-14T14:35:00Z',
-          estimatedCost: 500,
-          description: 'Configuración de base de datos RDS MySQL con Multi-AZ',
-          documentsGenerated: ['propuesta.docx', 'template.yaml', 'diagrama.png'],
-          s3Folder: 'setup-rds-mysql'
-        }
-      ])
-    } catch (error) {
-      console.error('Error loading projects:', error)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data: ProjectsResponse = await response.json()
+      console.log('✅ Projects loaded:', data)
+      
+      setProjects(data.projects || [])
+      setStatistics(data.statistics || {
+        totalProjects: 0,
+        completedProjects: 0,
+        inProgressProjects: 0,
+        totalDocuments: 0
+      })
+      
+    } catch (error: any) {
+      console.error('❌ Error loading projects:', error)
+      setError(error.message || 'Error al cargar proyectos')
       setProjects([])
     } finally {
       setIsLoading(false)
     }
   }
 
-  const filteredProjects = projects.filter(project =>
-    project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.projectType.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const loadProjectDetails = async (projectId: string) => {
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+      
+      console.log(`🔍 Loading project details for: ${projectId}`)
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const project: Project = await response.json()
+      console.log('✅ Project details loaded:', project)
+      
+      setSelectedProject(project)
+      setShowPreview(true)
+      
+    } catch (error: any) {
+      console.error('❌ Error loading project details:', error)
+      alert(`Error al cargar detalles del proyecto: ${error.message}`)
+    }
+  }
+
+  const downloadDocument = async (documentUrl: string, fileName: string) => {
+    try {
+      console.log(`📥 Downloading document: ${fileName}`)
+      
+      const response = await fetch(documentUrl)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      console.log(`✅ Document downloaded: ${fileName}`)
+      
+    } catch (error: any) {
+      console.error('❌ Error downloading document:', error)
+      alert(`Error al descargar documento: ${error.message}`)
+    }
+  }
+
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.projectType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (project.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesType = typeFilter === 'all' || project.projectType.toLowerCase().includes(typeFilter.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || project.status === statusFilter
+    
+    return matchesSearch && matchesType && matchesStatus
+  })
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800'
-      case 'in_progress': return 'bg-blue-100 text-blue-800'
-      case 'draft': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+      case 'draft': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      case 'error': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle className="h-4 w-4" />
-      case 'in_progress': return <Clock className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
+      case 'completed': return 'Completado'
+      case 'in_progress': return 'En Progreso'
+      case 'draft': return 'Borrador'
+      case 'error': return 'Error'
+      default: return status
     }
   }
 
-  const handlePreview = (project: Project) => {
-    setSelectedProject(project)
-    setShowPreview(true)
+  const getTypeText = (type: string) => {
+    if (type.toLowerCase().includes('integral')) return 'Solución Integral'
+    if (type.toLowerCase().includes('rapido') || type.toLowerCase().includes('ec2') || type.toLowerCase().includes('rds')) return 'Servicio Rápido'
+    return type
   }
 
-  const handleDownload = (project: Project) => {
-    // Abrir S3 bucket folder
-    const s3Url = `https://aws-propuestas-v3-documents-prod-035385358261.s3.amazonaws.com/${project.s3Folder}/`
-    window.open(s3Url, '_blank')
-  }
-
-  const handleDelete = async (projectId: string) => {
-    if (confirm('¿Estás seguro de eliminar este proyecto?')) {
-      try {
-        await deleteProject(projectId)
-        setProjects(prev => prev.filter(p => p.projectId !== projectId))
-      } catch (error) {
-        console.error('Error deleting project:', error)
-      }
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Fecha no disponible'
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return 'Fecha inválida'
     }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Cargando proyectos...</p>
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Cargando proyectos...</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Proyectos AWS</h1>
-              <p className="text-gray-600">Gestiona tus propuestas y documentos generados</p>
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Proyectos</h1>
+          <p className="text-muted-foreground">Gestiona y descarga todos tus proyectos generados</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadProjects}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+          <Button onClick={() => router.push('/arquitecto')}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Proyecto
+          </Button>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <p className="text-red-700 dark:text-red-300">{error}</p>
             </div>
-            <Button onClick={() => router.push('/arquitecto')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Proyecto
-            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Proyectos</p>
+                <p className="text-2xl font-bold">{statistics.totalProjects}</p>
+              </div>
+              <FolderOpen className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Completados</p>
+                <p className="text-2xl font-bold">{statistics.completedProjects}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">En Progreso</p>
+                <p className="text-2xl font-bold">{statistics.inProgressProjects}</p>
+              </div>
+              <Clock className="w-8 h-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Archivos Generados</p>
+                <p className="text-2xl font-bold">{statistics.totalDocuments}</p>
+              </div>
+              <FileText className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filtros y Búsqueda</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Buscar proyectos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-3 py-2 border border-input bg-background rounded-md"
+            >
+              <option value="all">Todos los tipos</option>
+              <option value="integral">Solución Integral</option>
+              <option value="rapido">Servicio Rápido</option>
+            </select>
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-input bg-background rounded-md"
+            >
+              <option value="all">Todos los estados</option>
+              <option value="completed">Completado</option>
+              <option value="in_progress">En Progreso</option>
+              <option value="draft">Borrador</option>
+              <option value="error">Error</option>
+            </select>
           </div>
-        </div>
-      </header>
+        </CardContent>
+      </Card>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-6">
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Buscar proyectos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
+      {/* Projects List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Proyectos</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {filteredProjects.length} de {projects.length} proyectos
+          </p>
+        </CardHeader>
+        <CardContent>
+          {filteredProjects.length === 0 ? (
+            <div className="text-center py-8">
+              <FolderOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {projects.length === 0 ? 'No hay proyectos disponibles' : 'No se encontraron proyectos con los filtros aplicados'}
+              </p>
+              {projects.length === 0 && (
+                <Button 
+                  className="mt-4" 
+                  onClick={() => router.push('/arquitecto')}
+                >
+                  Crear Primer Proyecto
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-4 font-medium">Proyecto</th>
+                    <th className="text-left p-4 font-medium">Tipo</th>
+                    <th className="text-left p-4 font-medium">Estado</th>
+                    <th className="text-left p-4 font-medium">Archivos</th>
+                    <th className="text-left p-4 font-medium">Fecha</th>
+                    <th className="text-left p-4 font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProjects.map((project) => (
+                    <tr key={project.projectId} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <div>
+                          <h3 className="font-medium">{project.projectName}</h3>
+                          {project.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {project.description}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline">
+                          {getTypeText(project.projectType)}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <Badge className={getStatusColor(project.status)}>
+                          {getStatusText(project.status)}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          <span>{project.totalDocuments || 0}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm">
+                          <div>{formatDate(project.createdAt)}</div>
+                          {project.updatedAt && project.updatedAt !== project.createdAt && (
+                            <div className="text-muted-foreground">
+                              Actualizado: {formatDate(project.updatedAt)}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => loadProjectDetails(project.projectId)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {project.s3Folder && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => loadProjectDetails(project.projectId)}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+      {/* Project Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedProject?.projectName}</DialogTitle>
+          </DialogHeader>
+          
+          {selectedProject && (
+            <div className="space-y-6">
+              {/* Project Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Total Proyectos</p>
-                  <p className="text-2xl font-bold">{projects.length}</p>
-                </div>
-                <FolderOpen className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Completados</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {projects.filter(p => p.status === 'completed').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">En Progreso</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {projects.filter(p => p.status === 'in_progress').length}
-                  </p>
-                </div>
-                <Clock className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <Card key={project.projectId} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-1">{project.projectName}</CardTitle>
-                    <p className="text-sm text-gray-600">{project.projectType}</p>
-                  </div>
-                  <Badge className={getStatusColor(project.status)}>
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(project.status)}
-                      {project.status}
-                    </div>
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-700 line-clamp-2">
-                  {project.description || 'Proyecto generado por el Arquitecto AWS'}
-                </p>
-                
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {new Date(project.createdAt).toLocaleDateString()}
-                  </div>
-                  {project.estimatedCost && (
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" />
-                      ${project.estimatedCost}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-gray-700">Documentos:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {project.documentsGenerated?.slice(0, 2).map((doc, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {doc.replace(/\.(json|csv|md)$/, '')}
-                      </Badge>
-                    ))}
-                    {project.documentsGenerated && project.documentsGenerated.length > 2 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{project.documentsGenerated.length - 2} más
-                      </Badge>
+                  <h4 className="font-medium mb-2">Información del Proyecto</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><strong>Tipo:</strong> {getTypeText(selectedProject.projectType)}</div>
+                    <div><strong>Estado:</strong> {getStatusText(selectedProject.status)}</div>
+                    <div><strong>Creado:</strong> {formatDate(selectedProject.createdAt)}</div>
+                    {selectedProject.updatedAt && (
+                      <div><strong>Actualizado:</strong> {formatDate(selectedProject.updatedAt)}</div>
+                    )}
+                    {selectedProject.estimatedCost && (
+                      <div><strong>Costo Estimado:</strong> ${selectedProject.estimatedCost}</div>
                     )}
                   </div>
                 </div>
-
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handlePreview(project)}
-                    className="flex-1"
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Vista Previa
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleDownload(project)}
-                    className="flex-1"
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Descargar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(project.projectId)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredProjects.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {projects.length === 0 ? 'No hay proyectos' : 'No se encontraron proyectos'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {projects.length === 0 
-                ? 'Comienza creando tu primer proyecto AWS' 
-                : 'Intenta con otros términos de búsqueda'
-              }
-            </p>
-            {projects.length === 0 && (
-              <Button onClick={() => router.push('/arquitecto')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Proyecto
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Preview Modal */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {selectedProject?.projectName}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedProject && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+                
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Tipo</p>
-                  <p className="text-sm">{selectedProject.projectType}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Estado</p>
-                  <Badge className={getStatusColor(selectedProject.status)}>
-                    {selectedProject.status}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Creado</p>
-                  <p className="text-sm">{new Date(selectedProject.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Costo Estimado</p>
-                  <p className="text-sm">${selectedProject.estimatedCost}</p>
+                  <h4 className="font-medium mb-2">Almacenamiento</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><strong>Bucket S3:</strong> {selectedProject.s3Bucket}</div>
+                    <div><strong>Carpeta:</strong> {selectedProject.s3Folder}</div>
+                    <div><strong>Total Documentos:</strong> {selectedProject.totalDocuments || 0}</div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Descripción</p>
-                <p className="text-sm text-gray-600">{selectedProject.description}</p>
-              </div>
+              {/* Description */}
+              {selectedProject.description && (
+                <div>
+                  <h4 className="font-medium mb-2">Descripción</h4>
+                  <p className="text-sm text-muted-foreground">{selectedProject.description}</p>
+                </div>
+              )}
 
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-3">Documentos Generados</p>
-                <div className="space-y-2">
-                  {selectedProject.documentsGenerated?.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">{doc}</span>
+              {/* Documents */}
+              {selectedProject.documentUrls && selectedProject.documentUrls.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Documentos Generados</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {selectedProject.documentUrls.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          <span className="text-sm">{doc.fileName}</span>
+                        </div>
+                        {doc.downloadUrl ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadDocument(doc.downloadUrl!, doc.fileName)}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Badge variant="destructive" className="text-xs">
+                            Error
+                          </Badge>
+                        )}
                       </div>
-                      <Button size="sm" variant="ghost">
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => handleDownload(selectedProject)} className="flex-1">
-                  <Download className="h-4 w-4 mr-2" />
-                  Descargar Todo
-                </Button>
-                <Button variant="outline" onClick={() => setShowPreview(false)}>
-                  Cerrar
-                </Button>
-              </div>
+              )}
             </div>
           )}
         </DialogContent>
