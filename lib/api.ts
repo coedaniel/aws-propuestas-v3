@@ -42,7 +42,12 @@ export interface ArquitectoResponse {
   projectId?: string
   currentStep?: number
   isComplete?: boolean
-  documentsGenerated?: boolean
+  documentsGenerated?: Array<{
+    name: string
+    url: string
+    type: string
+    size?: number
+  }>
   s3Folder?: string
   usage?: {
     inputTokens?: number
@@ -57,6 +62,12 @@ export interface ArquitectoResponse {
   }
   promptUnderstanding?: any
   projectInfo?: any
+  projectState?: {
+    name?: string
+    type?: 'integral' | 'rapido'
+    phase: 'inicio' | 'tipo' | 'recopilacion' | 'generacion' | 'entrega'
+    data: any
+  }
 }
 
 export interface ProjectRequest {

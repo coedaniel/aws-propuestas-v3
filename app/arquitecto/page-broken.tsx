@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import ModelSelector from '@/components/ModelSelector'
+import { ModelSelector } from '@/components/ModelSelector'
 import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download } from 'lucide-react'
 import { sendArquitectoRequest } from '@/lib/api'
+import type { ArquitectoResponse, ProjectState, GeneratedProject } from './types'
 import { generateId, formatDate } from '@/lib/utils'
 
 interface Message {
@@ -35,7 +36,11 @@ export default function ArquitectoPage() {
   const [selectedModel, setSelectedModel] = useState('amazon.nova-pro-v1:0')
   const [mcpServices, setMcpServices] = useState<string[]>([])
   const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [generatedProject, setGeneratedProject] = useState<any>(null)
+  const [generatedProject, setGeneratedProject] = useState<GeneratedProject | null>(null)
+  const [projectState, setProjectState] = useState<ProjectState>({
+    phase: 'inicio',
+    data: {}
+  })
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -85,11 +90,19 @@ export default function ArquitectoPage() {
         setMcpServices(response.mcpServicesUsed)
       }
       
+      // Actualizar estado del proyecto si viene en la respuesta
+      if (response.projectState) {
+        setProjectState(prev => ({
+          ...prev,
+          ...response.projectState
+        }))
+      }
+      
       // Modal solo si REALMENTE generó documentos
-      if (response.documentsGenerated && response.documentsGenerated.length > 0) {
+      if (response.documentsGenerated && Array.isArray(response.documentsGenerated) && response.documentsGenerated.length > 0) {
         setGeneratedProject({
           projectId: response.projectId || generateId(),
-          projectName: response.projectName || 'Proyecto AWS',
+          projectName: projectState.name || 'Proyecto AWS',
           documentsGenerated: response.documentsGenerated
         })
         setShowSuccessModal(true)
@@ -117,7 +130,7 @@ export default function ArquitectoPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header - IGUAL QUE CHAT */}
+      {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -133,13 +146,32 @@ export default function ArquitectoPage() {
         </div>
       </header>
 
+      {/* Project State Indicator */}
+      <div className="bg-blue-50 border-b px-4 py-2">
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-sm text-blue-700">
+                Fase: {projectState.phase} {projectState.name ? `• ${projectState.name}` : ''}
+              </span>
+            </div>
+            {projectState.type && (
+              <span className="text-sm text-blue-700">
+                Tipo: {projectState.type}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* MCP Indicator */}
       {mcpServices.length > 0 && (
-        <div className="bg-blue-50 border-b px-4 py-2">
+        <div className="bg-purple-50 border-b px-4 py-2">
           <div className="container mx-auto">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-blue-700">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-purple-700">
                 🔧 MCP Services: {mcpServices.join(', ')}
               </span>
             </div>
@@ -147,7 +179,7 @@ export default function ArquitectoPage() {
         </div>
       )}
 
-      {/* Messages - IGUAL QUE CHAT */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="container mx-auto max-w-4xl space-y-4">
           {localMessages.map((message) => (
@@ -173,7 +205,7 @@ export default function ArquitectoPage() {
         </div>
       </div>
 
-      {/* Input - IGUAL QUE CHAT */}
+      {/* Input */}
       <div className="border-t bg-white p-4">
         <div className="container mx-auto max-w-4xl">
           <div className="flex gap-2">
@@ -216,10 +248,10 @@ export default function ArquitectoPage() {
             <div className="space-y-2">
               <p className="text-sm font-medium">Documentos generados:</p>
               <ul className="text-sm space-y-1">
-                {generatedProject?.documentsGenerated?.map((doc: string, index: number) => (
+                {generatedProject?.documentsGenerated?.map((doc, index) => (
                   <li key={index} className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-blue-500" />
-                    {doc}
+                    {doc.name}
                   </li>
                 ))}
               </ul>
