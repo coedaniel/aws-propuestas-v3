@@ -35,9 +35,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
-    "tailwind-merge": "^2.4.0",
+    "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.13",

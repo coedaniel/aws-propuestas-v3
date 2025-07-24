@@ -1,0 +1,25 @@
+{
+  "allowHeaders": [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin"
+  ],
+  "allowMethods": [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS"
+  ],
+  "allowOrigins": [
+    "https://main.d2xsphsjdxlk24.amplifyapp.com",
+    "http://localhost:3000"
+  ],
+  "exposeHeaders": [
+    "Content-Length",
+    "Content-Type"
+  ],
+  "maxAge": 86400
+}
