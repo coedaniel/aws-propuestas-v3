@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import uuid
 import os
+from mcp_integration import generate_diagram, generate_cloudformation, generate_costs
 
 # Configuración de logging
 logger = logging.getLogger()
@@ -12,6 +13,21 @@ logger.setLevel(logging.INFO)
 # Inicializar servicios AWS
 dynamodb = boto3.resource('dynamodb')
 s3 = boto3.client('s3')
+bedrock = boto3.client('bedrock-runtime')
+
+# Configuración de modelos
+MODELS = {
+    'nova-pro': {
+        'id': 'amazon.nova-pro-v1:0',
+        'temp': 0.7,
+        'top_p': 0.9
+    },
+    'claude': {
+        'id': 'anthropic.claude-3.5-sonnet-v1',
+        'temp': 0.7,
+        'top_p': 0.9
+    }
+}
 
 def get_cors_headers():
     return {
@@ -29,189 +45,73 @@ def create_response(status_code, body):
         'body': json.dumps(body)
     }
 
-def generate_diagram(project_name, services):
-    """Genera un diagrama usando el MCP de diagramas"""
-    diagram_code = f"""from diagrams import Diagram, Cluster
-from diagrams.aws.compute import Lambda
-from diagrams.aws.storage import S3
-from diagrams.aws.general import Users
+def validate_project_state(project_state):
+    """Validación exhaustiva del estado del proyecto"""
+    required_fields = ['name', 'services', 'requirements']
+    for field in required_fields:
+        if field not in project_state:
+            project_state[field] = []
+    return project_state
 
-with Diagram("{project_name}", show=False, filename="diagrama"):
-    users = Users("Usuarios")
-    
-    with Cluster("AWS Cloud"):
-        lambda_fn = Lambda("Función\\nLambda")
-        storage = S3("Bucket S3\\nAlmacenamiento")
-        
-        users >> lambda_fn >> storage"""
-    
-    # Aquí iría la llamada al MCP de diagramas
-    return {
-        'filename': 'diagrama.png',
-        'title': 'Diagrama de Arquitectura',
-        'type': 'diagram',
-        'url': f'{project_name}/diagrama.png'
-    }
-
-def generate_cloudformation(project_name, services, requirements):
-    """Genera un template CloudFormation"""
-    template = {
-        'AWSTemplateFormatVersion': '2010-09-09',
-        'Description': f'Infraestructura para {project_name}',
-        'Resources': {
-            'ProcessingBucket': {
-                'Type': 'AWS::S3::Bucket',
-                'Properties': {
-                    'BucketName': f'{project_name.lower()}-storage'
-                }
-            },
-            'ProcessingFunction': {
-                'Type': 'AWS::Lambda::Function',
-                'Properties': {
-                    'FunctionName': f'{project_name.lower()}-processor',
-                    'Handler': 'index.handler',
-                    'Role': {'Fn::GetAtt': ['LambdaExecutionRole', 'Arn']},
-                    'Code': {
-                        'ZipFile': 'exports.handler = async (event) => { /* TODO: Implement */ }'
-                    },
-                    'Runtime': 'nodejs18.x'
-                }
-            },
-            'LambdaExecutionRole': {
-                'Type': 'AWS::IAM::Role',
-                'Properties': {
-                    'AssumeRolePolicyDocument': {
-                        'Version': '2012-10-17',
-                        'Statement': [{
-                            'Effect': 'Allow',
-                            'Principal': {'Service': ['lambda.amazonaws.com']},
-                            'Action': ['sts:AssumeRole']
-                        }]
-                    },
-                    'ManagedPolicyArns': [
-                        'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-                    ]
-                }
-            }
-        }
-    }
-    
-    return {
-        'filename': 'template.yaml',
-        'title': 'Template CloudFormation',
-        'type': 'cloudformation',
-        'url': f'{project_name}/template.yaml',
-        'content': json.dumps(template, indent=2)
-    }
-
-def generate_costs(project_name, services):
-    """Genera una estimación de costos"""
-    costs_md = f"""# Estimación de Costos - {project_name}
-
-## Resumen Mensual Estimado
-Total estimado: $30 USD/mes
-
-## Desglose por Servicio
-
-### AWS Lambda
-- 1 millón de invocaciones por mes
-- 128 MB de memoria
-- Tiempo de ejecución promedio: 500ms
-- Costo mensual: $0.20
-
-### Amazon S3
-- Almacenamiento: 50 GB
-- Transferencia saliente: 100 GB
-- Solicitudes PUT/COPY/POST/LIST: 100,000
-- Costo mensual: $2.30
-
-## Notas
-- Precios basados en región us-east-1
-- No incluye Free Tier
-- Precios pueden variar según el uso real"""
-    
-    return {
-        'filename': 'costos.md',
-        'title': 'Estimación de Costos',
-        'type': 'costs',
-        'url': f'{project_name}/costos.md',
-        'content': costs_md
-    }
-
-def get_next_question(messages, project_data):
-    # Si no hay nombre de proyecto
-    if not project_data.get('name') or project_data['name'] == '':
-        return "¿Cuál es el nombre del proyecto?"
-    
-    # Si no hay tipo de proyecto
-    conversation = ' '.join([msg.get('content', '').lower() for msg in messages])
-    if 'solucion integral' not in conversation and 'servicio rapido' not in conversation:
-        return """¿El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.)?
-¿O es un servicio rapido especifico (como EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)?"""
-    
-    # Si es servicio rápido pero no hay servicios específicos
-    if 'servicio rapido' in conversation and not project_data.get('services'):
-        return "¿Qué servicios AWS específicos necesitas para este proyecto?"
-    
-    # Si no hay requerimientos específicos
-    if not project_data.get('requirements'):
-        return "Por favor, describe los requerimientos específicos del proyecto:"
-    
-    # Si ya tenemos toda la información necesaria
-    return None
-
-def lambda_handler(event, context):
-    # Manejar preflight CORS
-    if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': get_cors_headers(),
-            'body': ''
-        }
-
+def analyze_conversation(messages):
+    """Análisis profundo de la conversación usando Bedrock"""
     try:
-        # Extraer body del request
-        body = json.loads(event.get('body', '{}'))
-        messages = body.get('messages', [])
-        project_state = body.get('projectState', {})
-        
-        # Obtener siguiente pregunta
-        next_question = get_next_question(messages, project_state)
-        
-        # Si hay siguiente pregunta, enviarla
-        if next_question:
-            return create_response(200, {
-                'content': next_question,
-                'projectState': project_state,
-                'mcpActivated': True,
-                'mcpUsed': [],
-                'readinessScore': 0.5,
-                'readinessStatus': "⚠️ Recopilando información"
+        # Preparar el prompt para análisis
+        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+        prompt = f"""Analiza esta conversación y extrae:
+1. Nombre del proyecto
+2. Tipo de proyecto (integral/rápido)
+3. Servicios AWS mencionados
+4. Requerimientos específicos
+5. Estado actual de la conversación
+6. Siguiente paso recomendado
+
+Conversación:
+{conversation_text}
+
+Responde en formato JSON."""
+
+        # Llamar a Bedrock con Claude para análisis
+        response = bedrock.invoke_model(
+            modelId=MODELS['claude']['id'],
+            body=json.dumps({
+                'prompt': prompt,
+                'temperature': MODELS['claude']['temp'],
+                'top_p': MODELS['claude']['top_p']
             })
+        )
         
-        # Si no hay más preguntas, generar documentos
-        project_name = project_state['name']
-        services = project_state.get('services', [])
-        requirements = project_state.get('requirements', [])
+        analysis = json.loads(response['body'].read())
+        logger.info(f"Análisis de conversación: {analysis}")
+        return analysis
         
-        # Generar documentos usando MCPs
+    except Exception as e:
+        logger.error(f"Error en análisis de conversación: {str(e)}")
+        return None
+
+def generate_documents(project_data):
+    """Generación de documentos usando MCPs"""
+    try:
         documents = []
         mcp_used = []
         
         # 1. Generar diagrama
-        diagram = generate_diagram(project_name, services)
-        documents.append(diagram)
-        mcp_used.append('generate_diagram')
+        diagram = generate_diagram(project_data)
+        if diagram:
+            documents.append(diagram)
+            mcp_used.append('generate_diagram')
         
         # 2. Generar CloudFormation
-        cloudformation = generate_cloudformation(project_name, services, requirements)
-        documents.append(cloudformation)
-        mcp_used.append('generate_cloudformation')
+        cloudformation = generate_cloudformation(project_data)
+        if cloudformation:
+            documents.append(cloudformation)
+            mcp_used.append('generate_cloudformation')
         
         # 3. Generar costos
-        costs = generate_costs(project_name, services)
-        documents.append(costs)
-        mcp_used.append('generate_costs')
+        costs = generate_costs(project_data)
+        if costs:
+            documents.append(costs)
+            mcp_used.append('generate_costs')
         
         # Guardar documentos en S3
         bucket_name = os.environ['DOCUMENTS_BUCKET']
@@ -229,23 +129,102 @@ def lambda_handler(event, context):
         
         table.put_item(Item={
             'projectId': project_id,
-            'name': project_name,
+            'name': project_data['name'],
             'createdAt': int(datetime.utcnow().timestamp()),
-            'services': services,
-            'requirements': requirements,
+            'services': project_data.get('services', []),
+            'requirements': project_data.get('requirements', []),
             'documentsGenerated': documents,
             'status': 'COMPLETED'
         })
         
-        success_message = f"""✅ DOCUMENTOS GENERADOS EXITOSAMENTE PARA: {project_name}
-🏗️ Servicios AWS: {', '.join(services)}
-📁 Carpeta S3: {project_name}
-📄 Archivos: {len(documents)} documentos específicos
+        return {
+            'documents': documents,
+            'mcp_used': mcp_used
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generando documentos: {str(e)}")
+        return None
+
+def get_next_question(analysis):
+    """Determinar siguiente pregunta basada en el análisis de Bedrock"""
+    try:
+        if not analysis.get('project_name'):
+            return "¿Cuál es el nombre del proyecto?"
+            
+        if not analysis.get('project_type'):
+            return """¿El proyecto es una solucion integral (como migracion, aplicacion nueva, modernizacion, analitica, seguridad, IA, IoT, data lake, networking, DRP, VDI, integracion, etc.)?
+¿O es un servicio rapido especifico (como EC2, RDS, SES, VPN, ELB, S3, VPC, CloudFront, SSO, backup, etc.)?"""
+            
+        if not analysis.get('services'):
+            return "¿Qué servicios AWS específicos necesitas para este proyecto?"
+            
+        if not analysis.get('requirements'):
+            if 'servicio rapido' in analysis.get('project_type', '').lower():
+                services = ', '.join(analysis.get('services', []))
+                return f"Para implementar {services}, necesito saber los requerimientos específicos:"
+            else:
+                return """Para diseñar la solución integral, necesito saber:
+- ¿Cuáles son los objetivos principales del proyecto?
+- ¿Qué sistemas o aplicaciones están involucrados?
+- ¿Tienes requisitos específicos de rendimiento o escalabilidad?
+- ¿Hay consideraciones especiales de seguridad o cumplimiento?"""
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo siguiente pregunta: {str(e)}")
+        return "¿Podrías proporcionar más detalles sobre el proyecto?"
+
+def lambda_handler(event, context):
+    """Handler principal mejorado"""
+    
+    # Manejar preflight CORS
+    if event.get('httpMethod') == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': get_cors_headers(),
+            'body': ''
+        }
+
+    try:
+        # Extraer y validar datos
+        body = json.loads(event.get('body', '{}'))
+        messages = body.get('messages', [])
+        project_state = validate_project_state(body.get('projectState', {}))
+        
+        # Analizar conversación con Bedrock
+        analysis = analyze_conversation(messages)
+        
+        # Obtener siguiente pregunta o generar documentos
+        next_question = get_next_question(analysis) if analysis else None
+        
+        if next_question:
+            return create_response(200, {
+                'content': next_question,
+                'projectState': project_state,
+                'mcpActivated': True,
+                'mcpUsed': [],
+                'readinessScore': 0.5,
+                'readinessStatus': "⚠️ Recopilando información",
+                'analysis': analysis
+            })
+        
+        # Generar documentos
+        generation_result = generate_documents(project_state)
+        
+        if not generation_result:
+            raise Exception("Error generando documentos")
+        
+        success_message = f"""✅ DOCUMENTOS GENERADOS EXITOSAMENTE PARA: {project_state['name']}
+🏗️ Servicios AWS: {', '.join(project_state.get('services', []))}
+📁 Carpeta S3: {project_state['name']}
+📄 Archivos: {len(generation_result['documents'])} documentos específicos
 💾 Proyecto guardado en base de datos
 
 🎯 Documentos incluyen:
    • Diagrama de arquitectura con iconos AWS oficiales
-   • CloudFormation template para {', '.join(services)}
+   • CloudFormation template para {', '.join(project_state.get('services', []))}
    • Estimación de costos específica del proyecto
 
 📱 Puedes revisar todos los archivos en la sección 'Proyectos'."""
@@ -254,9 +233,10 @@ def lambda_handler(event, context):
             'content': success_message,
             'projectState': project_state,
             'mcpActivated': True,
-            'mcpUsed': mcp_used,
+            'mcpUsed': generation_result['mcp_used'],
             'readinessScore': 1.0,
-            'readinessStatus': "✅ Documentos generados"
+            'readinessStatus': "✅ Documentos generados",
+            'analysis': analysis
         })
         
     except Exception as e:
