@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import AppLayout from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -244,30 +245,31 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Proyectos</h1>
-          <p className="text-muted-foreground">Gestiona y descarga todos tus proyectos generados</p>
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Proyectos</h1>
+            <p className="text-muted-foreground">Gestiona y descarga todos tus proyectos generados</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadProjects}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </Button>
+            <Button onClick={() => router.push('/arquitecto')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Proyecto
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadProjects}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-          <Button onClick={() => router.push('/arquitecto')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Proyecto
-          </Button>
-        </div>
-      </div>
 
       {/* Error Message */}
       {error && (
@@ -558,6 +560,7 @@ export default function ProjectsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AppLayout>
   )
 }
