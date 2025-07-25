@@ -43,6 +43,32 @@ def create_response(status_code, body):
         'body': json.dumps(body)
     }
 
+def save_project_to_db(project_data, mcp_results):
+    """Guarda el proyecto en DynamoDB"""
+    try:
+        import boto3
+        from datetime import datetime
+        
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table(os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod-v2'))
+        
+        item = {
+            'project_id': f"proj_{int(datetime.now().timestamp())}",
+            'name': project_data['name'],
+            'type': project_data['type'],
+            'services': project_data['services'],
+            'requirements': project_data['requirements'],
+            'mcp_results': json.dumps(mcp_results),
+            'created_at': datetime.now().isoformat(),
+            'status': 'completed'
+        }
+        
+        table.put_item(Item=item)
+        logger.info(f"✅ Proyecto guardado en DynamoDB: {item['project_id']}")
+        
+    except Exception as e:
+        logger.error(f"❌ Error guardando proyecto: {str(e)}")
+
 def lambda_handler(event, context):
     """Handler principal con logging detallado"""
     
@@ -85,27 +111,64 @@ def lambda_handler(event, context):
                 'readinessStatus': f"⚠️ Falta información: {', '.join(missing)}"
             })
         
-        # Si está completo, generar documentos
+        # Si está completo, activar MCP services inteligentemente como Amazon Q CLI
         project_data = conversation.project_data
-        logger.info(f"Generando documentos para: {json.dumps(project_data)}")
+        logger.info(f"🚀 Activando MCP services inteligentemente para: {project_data['name']}")
+
+        # Importar y usar el caller inteligente
+        from intelligent_mcp_caller import IntelligentMCPCaller
         
-        generation_result = generate_documents(project_data)
+        mcp_caller = IntelligentMCPCaller()
         
-        if not generation_result:
-            raise Exception("Error generando documentos")
+        # Ejecutar orquestación inteligente
+        import asyncio
+        try:
+            # Crear event loop si no existe
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Ejecutar generación inteligente
+            generation_result = loop.run_until_complete(
+                mcp_caller.orchestrate_intelligent_generation(project_data)
+            )
+            
+            if generation_result.get('success'):
+                mcp_results = generation_result['results']
+                mcp_used = generation_result['mcp_services_used']
+                
+                # Guardar proyecto en DynamoDB
+                save_project_to_db(project_data, mcp_results)
+                
+                logger.info(f"✅ MCP services activados exitosamente: {mcp_used}")
+            else:
+                logger.error(f"❌ Error en generación MCP: {generation_result.get('error')}")
+                mcp_results = {}
+                mcp_used = []
+
+        except Exception as e:
+            logger.error(f"💥 Error crítico en orquestación MCP: {str(e)}")
+            mcp_results = {}
+            mcp_used = []
         
         success_message = f"""✅ DOCUMENTOS GENERADOS EXITOSAMENTE PARA: {project_data['name']}
-🏗️ Servicios AWS: {', '.join(project_data.get('services', []))}
-📁 Carpeta S3: {project_data['name']}
-📄 Archivos: {len(generation_result['documents'])} documentos específicos
-💾 Proyecto guardado en base de datos
 
-🎯 Documentos incluyen:
-   • Diagrama de arquitectura con iconos AWS oficiales
-   • CloudFormation template para {', '.join(project_data.get('services', []))}
-   • Estimación de costos específica del proyecto
+🏗️ Tipo: {project_data.get('type', 'N/A').title()}
+🔧 Servicios AWS: {', '.join(project_data.get('services', []))}
+🤖 MCP Services utilizados: {len(mcp_used)} servicios
 
-📱 Puedes revisar todos los archivos en la sección 'Proyectos'."""
+📁 Documentos generados:
+   • Diagrama de arquitectura AWS (PNG/SVG)
+   • Script CloudFormation (YAML)
+   • Estimación de costos (CSV/Excel)
+   • Documentación técnica (Word/PDF)
+   • Tabla de actividades (CSV/Excel)
+
+💾 Proyecto guardado y disponible en la sección 'Proyectos'
+
+🎯 Los documentos están listos para entrega ejecutiva."""
         
         return create_response(200, {
             'content': success_message,

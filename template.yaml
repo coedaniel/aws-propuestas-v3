@@ -184,7 +184,7 @@ Resources:
   ChatSessionsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub 'aws-propuestas-v3-chat-sessions-${Environment}'
+      TableName: !Sub 'aws-propuestas-v3-chat-sessions-${Environment}-v2'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: sessionId
@@ -219,7 +219,7 @@ Resources:
   ProjectsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub 'aws-propuestas-v3-projects-${Environment}'
+      TableName: !Sub 'aws-propuestas-v3-projects-${Environment}-v2'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: projectId
@@ -267,7 +267,7 @@ Resources:
   DocumentsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'aws-propuestas-v3-documents-${Environment}-${AWS::AccountId}'
+      BucketName: !Sub 'aws-propuestas-v3-docs-${Environment}-${AWS::AccountId}-${AWS::Region}'
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
