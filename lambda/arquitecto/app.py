@@ -108,19 +108,54 @@ def lambda_handler(event, context):
         logger.info(f"Estado de conversación: {conversation.current_step}")
         logger.info(f"Campos requeridos: {json.dumps(conversation.required_fields)}")
         
-        # Si no está completo, obtener siguiente pregunta
+        # Si no está completo, verificar si necesita inteligencia MCP
         if not is_complete:
+            # Para requirements_rapido, usar inteligencia MCP para hacer preguntas específicas
+            if conversation.current_step == 'requirements_rapido':
+                logger.info("🧠 Activando inteligencia MCP para preguntas específicas")
+                
+                # Usar MCP Core para generar preguntas inteligentes
+                mcp_caller = IntelligentMCPCaller()
+                try:
+                    # Crear event loop si no existe
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
+                    # Generar preguntas inteligentes basadas en los servicios
+                    intelligent_questions = loop.run_until_complete(
+                        mcp_caller.generate_intelligent_questions(conversation.project_data, messages)
+                    )
+                    
+                    if intelligent_questions:
+                        return create_response(200, {
+                            'message': intelligent_questions,
+                            'projectState': project_state,
+                            'mcpActivated': True,
+                            'mcpUsed': ['core_analysis', 'aws_documentation'],
+                            'conversationComplete': False,
+                            'currentStep': 'requirements_rapido'
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"❌ Error en MCP inteligente: {str(e)}")
+                    # Fallback a pregunta básica
+                    pass
+            
+            # Fallback: obtener siguiente pregunta normal
             next_question = conversation.get_next_question()
             completion = conversation.get_completion_percentage()
             missing = conversation.get_missing_fields()
             
             return create_response(200, {
-                'content': next_question,
+                'message': next_question,
                 'projectState': project_state,
                 'mcpActivated': True,
                 'mcpUsed': [],
-                'readinessScore': completion / 100,
-                'readinessStatus': f"⚠️ Falta información: {', '.join(missing)}"
+                'conversationComplete': False,
+                'currentStep': conversation.current_step
             })
         
         # Si está completo, activar MCP services inteligentemente como Amazon Q CLI

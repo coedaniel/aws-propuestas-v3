@@ -218,14 +218,14 @@ Algunos servicios comunes:
 Puedes escribir los que necesites o describir tu caso de uso."""
             
         elif self.current_step == 'requirements_rapido':
-            services = ', '.join(self.project_data.get('services', []))
-            return f"""Excelente! Para implementar {services}, necesito saber los requerimientos minimos:
+            # En lugar de preguntas hardcodeadas, usar inteligencia contextual
+            services = self.project_data.get('services', [])
+            services_text = ', '.join(services) if services else 'los servicios mencionados'
+            
+            # Retornar un prompt que active la inteligencia del modelo
+            return f"""Perfecto! Para implementar {services_text}, como arquitecto AWS experto necesito hacer preguntas especificas e inteligentes basadas en las mejores practicas.
 
-• ¿Cuantos usuarios aproximadamente?
-• ¿Que region de AWS prefieres?
-• ¿Algun requerimiento especial de seguridad o rendimiento?
-
-Con esta informacion generare todos los documentos automaticamente."""
+Voy a usar mi conocimiento de AWS y los MCP servers disponibles para hacer las preguntas mas relevantes para tu caso especifico."""
             
         elif self.current_step == 'integral_interview':
             return """Perfecto! Para la solucion integral, necesito mas detalles:

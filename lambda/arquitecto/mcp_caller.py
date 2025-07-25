@@ -18,8 +18,107 @@ class IntelligentMCPCaller:
             'cfn': 'https://mcp.danielingram.shop/cfn',
             'docgen': 'https://mcp.danielingram.shop/docgen'
         }
+    async def generate_intelligent_questions(self, project_data: Dict[str, Any], messages: List[Dict]) -> str:
+        """
+        Genera preguntas inteligentes específicas basadas en los servicios AWS mencionados
+        Usa MCP Core para obtener contexto y mejores prácticas
+        """
+        try:
+            services = project_data.get('services', [])
+            project_name = project_data.get('name', 'el proyecto')
+            
+            # Construir contexto para MCP Core
+            context = {
+                'project_name': project_name,
+                'services': services,
+                'conversation_history': messages[-3:] if len(messages) > 3 else messages,  # Últimos 3 mensajes
+                'task': 'generate_intelligent_requirements_questions'
+            }
+            
+            # Llamar a MCP Core para obtener preguntas inteligentes
+            core_response = await self._call_mcp_endpoint('core', {
+                'action': 'generate_service_questions',
+                'context': context
+            })
+            
+            if core_response and 'questions' in core_response:
+                return core_response['questions']
+            
+            # Fallback: usar lógica inteligente local
+            return self._generate_fallback_questions(services, project_name)
+            
+        except Exception as e:
+            logger.error(f"❌ Error generando preguntas inteligentes: {str(e)}")
+            return self._generate_fallback_questions(project_data.get('services', []), project_data.get('name', 'el proyecto'))
+    
+    def _generate_fallback_questions(self, services: List[str], project_name: str) -> str:
+        """
+        Genera preguntas inteligentes como fallback cuando MCP no está disponible
+        """
+        services_text = ', '.join(services) if services else 'los servicios mencionados'
         
-    async def orchestrate_intelligent_generation(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
+        # Detectar servicios específicos y hacer preguntas relevantes
+        questions = []
+        
+        # Análisis inteligente de servicios
+        service_context = ' '.join(services).lower()
+        
+        if any(term in service_context for term in ['vpc', 'red', 'network']):
+            questions.extend([
+                "• ¿Necesitas conectividad híbrida con tu datacenter on-premises?",
+                "• ¿Qué rangos de IP prefieres para las subnets?",
+                "• ¿Requieres NAT Gateway para subnets privadas?"
+            ])
+        
+        if any(term in service_context for term in ['cloudfront', 'cdn', 'distribucion']):
+            questions.extend([
+                "• ¿Qué tipo de contenido vas a distribuir (estático, dinámico, streaming)?",
+                "• ¿Necesitas certificado SSL/TLS personalizado?",
+                "• ¿Qué origins usarás (S3, ALB, EC2, custom)?"
+            ])
+        
+        if any(term in service_context for term in ['elb', 'alb', 'balanceador', 'load balancer']):
+            questions.extend([
+                "• ¿Qué tipo de tráfico balancearás (HTTP/HTTPS, TCP, UDP)?",
+                "• ¿Necesitas SSL termination en el balanceador?",
+                "• ¿Cuántas instancias backend aproximadamente?"
+            ])
+        
+        if any(term in service_context for term in ['rds', 'database', 'base de datos']):
+            questions.extend([
+                "• ¿Qué engine de base de datos prefieres (MySQL, PostgreSQL, Oracle)?",
+                "• ¿Necesitas Multi-AZ para alta disponibilidad?",
+                "• ¿Cuál es el tamaño estimado de datos?"
+            ])
+        
+        if any(term in service_context for term in ['s3', 'storage', 'almacenamiento']):
+            questions.extend([
+                "• ¿Qué tipo de datos almacenarás (documentos, imágenes, backups)?",
+                "• ¿Necesitas versionado o lifecycle policies?",
+                "• ¿Requieres encriptación específica?"
+            ])
+        
+        # Si no hay preguntas específicas, usar preguntas generales inteligentes
+        if not questions:
+            questions = [
+                f"• ¿Cuál es el volumen de tráfico esperado para {services_text}?",
+                "• ¿Qué región de AWS prefieres y por qué?",
+                "• ¿Tienes requisitos específicos de compliance o seguridad?",
+                "• ¿Necesitas alta disponibilidad multi-AZ?"
+            ]
+        
+        # Agregar siempre preguntas de contexto
+        questions.extend([
+            "• ¿Qué región de AWS prefieres?",
+            "• ¿Tienes algún requisito especial de seguridad o compliance?"
+        ])
+        
+        return f"""Excelente! Para implementar {services_text} de manera óptima, necesito entender mejor tu caso específico:
+
+{chr(10).join(questions)}
+
+Como arquitecto AWS, estas preguntas me ayudan a diseñar la solución más eficiente y siguiendo las mejores prácticas."""
+
         """
         Orquesta la generación inteligente de documentos usando MCPs
         Simula el comportamiento de Amazon Q Developer CLI
@@ -303,3 +402,28 @@ with Diagram("{project_name}", show=False, filename="{project_name}_architecture
                 'sections': ['Fases', 'Actividades', 'Cronograma', 'Recursos']
             }
         ]
+    
+    async def _call_mcp_endpoint(self, service: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Llama a un endpoint MCP específico
+        """
+        try:
+            endpoint = self.mcp_endpoints.get(service)
+            if not endpoint:
+                logger.warning(f"⚠️ Endpoint MCP no encontrado para: {service}")
+                return {}
+            
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(endpoint, json=payload) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.info(f"✅ MCP {service} respondió exitosamente")
+                        return result
+                    else:
+                        logger.warning(f"⚠️ MCP {service} respondió con status {response.status}")
+                        return {}
+                        
+        except Exception as e:
+            logger.error(f"❌ Error llamando MCP {service}: {str(e)}")
+            return {}
