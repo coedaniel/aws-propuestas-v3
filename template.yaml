@@ -90,6 +90,19 @@ Resources:
             Path: /chat
             Method: POST
 
+  # MCP Dependencies Layer
+  McpDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub 'mcp-dependencies-${Environment}'
+      Description: MCP dependencies for arquitecto function
+      ContentUri: layers/mcp-dependencies/
+      CompatibleRuntimes:
+        - python3.9
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.9
+
   # Arquitecto Function
   ArquitectoFunction:
     Type: AWS::Serverless::Function
@@ -100,6 +113,8 @@ Resources:
       Description: Modo arquitecto con generación de documentos - Updated
       Timeout: 300
       MemorySize: 2048
+      Layers:
+        - !Ref McpDependenciesLayer
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ProjectsTable

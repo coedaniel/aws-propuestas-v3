@@ -4,11 +4,12 @@ Lambda handler principal con logging detallado
 import json
 import boto3
 import logging
+import asyncio
 from datetime import datetime
 import uuid
 import os
 from conversation_handler import ConversationState
-from mcp_integration import generate_diagram, generate_cloudformation, generate_costs
+from mcp_caller import IntelligentMCPCaller
 
 # Configuración de logging detallado
 logger = logging.getLogger()
@@ -127,12 +128,9 @@ def lambda_handler(event, context):
         logger.info(f"🚀 Activando MCP services inteligentemente para: {project_data['name']}")
 
         # Importar y usar el caller inteligente
-        from intelligent_mcp_caller import IntelligentMCPCaller
-        
         mcp_caller = IntelligentMCPCaller()
         
         # Ejecutar orquestación inteligente
-        import asyncio
         try:
             # Crear event loop si no existe
             try:

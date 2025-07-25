@@ -45,4 +45,11 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["DocumentsFunction"]
 
-[layer_build_definitions]
+[layer_build_definitions.d1052338-c7d4-49d3-9e4c-9f30f3e16bcc]
+layer_name = "McpDependenciesLayer"
+codeuri = "/home/ec2-user/aws-propuestas-v3/layers/mcp-dependencies"
+build_method = "python3.9"
+compatible_runtimes = ["python3.9"]
+architecture = "x86_64"
+manifest_hash = ""
+layer = "McpDependenciesLayer"
