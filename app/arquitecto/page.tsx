@@ -196,6 +196,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
 
       const data = await response.json()
       console.log('✅ Response data:', data)
+      console.log('🔍 Message field check:', { message: data.message, content: data.content, response: data.response })
 
       const assistantMessage: Message = {
         id: generateId(),
