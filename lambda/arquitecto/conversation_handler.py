@@ -72,8 +72,8 @@ class ConversationState:
         logger.info(f"Procesando mensaje: {last_user_message}")
         logger.info(f"Paso actual: {self.current_step}")
         
-        # PASO 1: Validar nombre del proyecto (solo si no está ya establecido)
-        if self.current_step == 'name' and last_user_message and not self.required_fields['name']:
+        # PASO 1: Validar nombre del proyecto
+        if self.current_step == 'name' and last_user_message:
             # Filtrar saludos comunes
             greetings = ['hola', 'hi', 'hello', 'que tal', 'buenas', 'buenos dias', 'buenas tardes']
             if not any(greeting in last_user_message.lower() for greeting in greetings) and len(last_user_message) > 2:
@@ -95,8 +95,9 @@ class ConversationState:
             
             # Detectar si es servicio rápido
             rapido_keywords = [
-                'rapido', 'especifico', 'ec2', 'rds', 'ses', 'vpn', 'elb', 's3', 'vpc', 
-                'cloudfront', 'sso', 'backup', 'simple', 'basico', 'individual'
+                'rapido', 'especifico', 'ec2', 'rds', 'ses', 'vpn', 'elb', 'alb', 's3', 'vpc', 
+                'cloudfront', 'sso', 'backup', 'simple', 'basico', 'individual', 'load balancer',
+                'balanceador'
             ]
             
             message_lower = last_user_message.lower()
