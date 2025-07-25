@@ -42,7 +42,7 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod/projects')
+      const response = await fetch('https://75bl52azoi.execute-api.us-east-1.amazonaws.com/prod/projects')
       const data = await response.json()
       setProjects(data.projects || [])
       setLoading(false)

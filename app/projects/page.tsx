@@ -90,9 +90,7 @@ export default function ProjectsPage() {
       setIsLoading(true)
       setError(null)
       
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
-      
-      console.log('🔍 Loading projects from API...')
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://75bl52azoi.execute-api.us-east-1.amazonaws.com/prod'
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'GET',
         headers: {
@@ -126,9 +124,7 @@ export default function ProjectsPage() {
 
   const loadProjectDetails = async (projectId: string) => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
-      
-      console.log(`🔍 Loading project details for: ${projectId}`)
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://75bl52azoi.execute-api.us-east-1.amazonaws.com/prod'
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: 'GET',
         headers: {
