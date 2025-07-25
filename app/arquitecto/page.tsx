@@ -29,7 +29,7 @@ export default function ArquitectoPage() {
     {
       id: generateId(),
       role: 'assistant',
-      content: '¡Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso.\n\n**PASO 1:** Para comenzar, necesito que me digas únicamente el **nombre del proyecto**.\n\nEjemplos:\n• "E-commerce Platform"\n• "Sistema de Inventario" \n• "Portal de Clientes"\n• "App de Delivery"\n\n¿Cuál es el nombre de tu proyecto?',
+      content: 'Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso. Para comenzar, necesito que me digas únicamente el nombre del proyecto.',
       timestamp: new Date().toISOString()
     }
   ])
@@ -64,78 +64,52 @@ export default function ArquitectoPage() {
     }
 
     setMessages(prev => [...prev, userMessage])
-    const currentMessages = [...messages, userMessage]
-    
     setInput('')
     setIsLoading(true)
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
-      
-      console.log('🚀 Enviando mensaje a:', `${API_BASE_URL}/arquitecto`)
-      
-      const response = await fetch(`${API_BASE_URL}/arquitecto`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: currentMessages.map(m => ({
-            role: m.role,
-            content: m.content
-          })),
-          modelId: selectedModel,
-          projectState: projectState
-        }),
+      const response = await sendArquitectoRequest({
+        messages: [...messages, userMessage].map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        modelId: selectedModel
       })
 
-      console.log('📊 Response status:', response.status)
+      if (response.response) {
+        const assistantMessage: Message = {
+          id: generateId(),
+          role: 'assistant',
+          content: response.response,
+          timestamp: new Date().toISOString()
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Response error:', errorText)
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        setMessages(prev => [...prev, assistantMessage])
+        
+        // Handle project completion
+        if (response.isComplete && response.documentsGenerated) {
+          setGeneratedProject({
+            projectId: response.projectId || 'proyecto-' + Date.now(),
+            projectName: response.projectId || 'Proyecto',
+            documentsGenerated: response.documentsGenerated
+          })
+          setShowSuccessModal(true)
+        }
+      } else {
+        const errorMessage: Message = {
+          id: generateId(),
+          role: 'assistant',
+          content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo.',
+          timestamp: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, errorMessage])
       }
-
-      const data = await response.json()
-      console.log('✅ Response data:', data)
-
-      const assistantMessage: Message = {
-        id: generateId(),
-        role: 'assistant',
-        content: data.content || data.response || 'Lo siento, no pude generar una respuesta.',
-        timestamp: new Date().toISOString(),
-        mcpServices: data.mcpUsed || []
-      }
-
-      setMessages(prev => [...prev, assistantMessage])
-      
-      // Actualizar estado del proyecto si se proporciona
-      if (data.projectState) {
-        setProjectState(prev => ({ ...prev, ...data.projectState }))
-      }
-      
-      // Actualizar servicios MCP
-      if (data.mcpUsed && data.mcpUsed.length > 0) {
-        setMcpServices(data.mcpUsed)
-      }
-
-      // Verificar si se generaron documentos
-      if (data.documentsGenerated && data.documentsGenerated.length > 0) {
-        setGeneratedProject({
-          projectId: generateId(),
-          projectName: projectState.name || 'Proyecto',
-          documentsGenerated: data.documentsGenerated
-        })
-        setShowSuccessModal(true)
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Error completo:', error)
+    } catch (error) {
+      console.error('Error sending message:', error)
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: `Error al procesar la solicitud: ${error?.message || 'Error desconocido'}`,
+        content: 'Lo siento, hubo un error de conexión. Por favor, intenta de nuevo.',
         timestamp: new Date().toISOString()
       }
       
@@ -157,7 +131,7 @@ export default function ArquitectoPage() {
       {
         id: generateId(),
         role: 'assistant',
-        content: '¡Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso.\n\n**PASO 1:** Para comenzar, necesito que me digas únicamente el **nombre del proyecto**.\n\nEjemplos:\n• "E-commerce Platform"\n• "Sistema de Inventario" \n• "Portal de Clientes"\n• "App de Delivery"\n\n¿Cuál es el nombre de tu proyecto?',
+        content: 'Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso. Para comenzar, necesito que me digas únicamente el nombre del proyecto.',
         timestamp: new Date().toISOString()
       }
     ])
@@ -227,9 +201,11 @@ export default function ArquitectoPage() {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                <ReactMarkdown className="prose prose-sm max-w-none">
-                  {message.content}
-                </ReactMarkdown>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
                 {message.mcpServices && message.mcpServices.length > 0 && (
                   <div className="text-xs mt-2 opacity-75">
                     MCP: {message.mcpServices.join(', ')}
@@ -245,8 +221,6 @@ export default function ArquitectoPage() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
           <div ref={messagesEndRef} />
         </div>
 
