@@ -4,11 +4,11 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ModelSelector } from '@/components/ModelSelector'
-import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download, Bot, User } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { sendArquitectoRequest } from '@/lib/api'
 import type { ArquitectoResponse, ProjectState, GeneratedProject } from './types'
 import { generateId, formatDate } from '@/lib/utils'
@@ -44,7 +44,9 @@ export default function ArquitectoPage() {
   })
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
   useEffect(() => {
@@ -199,15 +201,11 @@ export default function ArquitectoPage() {
 
         {/* MCP Services Indicator */}
         {mcpServices.length > 0 && (
-          <div className="bg-gradient-to-r from-purple-100 to-blue-100 border-b border-purple-200/50 px-6 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse shadow-lg"></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse animation-delay-200"></div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse animation-delay-400"></div>
-              </div>
-              <span className="text-sm font-medium text-purple-800">
-                🤖 MCP Services Activos: <span className="font-mono bg-white/50 px-2 py-1 rounded">{mcpServices.join(', ')}</span>
+          <div className="bg-purple-50 border-b px-4 py-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-purple-700">
+                🔧 MCP Services: {mcpServices.join(', ')}
               </span>
             </div>
           </div>
@@ -216,146 +214,63 @@ export default function ArquitectoPage() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex gap-4 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                {/* Avatar */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
-                  message.role === 'user' 
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' 
-                    : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
-                }`}>
-                  {message.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-                </div>
-                
-                {/* Message Bubble */}
-                <div className={`relative ${
-                  message.role === 'user' 
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' 
-                    : 'bg-white border border-slate-200 shadow-md'
-                } rounded-2xl p-5 max-w-full`}>
-                  
-                  {/* Message Content */}
-                  <div className={`whitespace-pre-wrap text-sm leading-relaxed ${
-                    message.role === 'user' ? 'text-white' : 'text-slate-800'
-                  }`}>
-                    {message.content}
+            <div
+              key={message.id}
+              className={`flex ${
+                message.role === 'user' ? 'justify-end' : 'justify-start'
+              }`}
+            >
+              <div
+                className={`max-w-[80%] p-3 rounded-lg ${
+                  message.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                <ReactMarkdown className="prose prose-sm max-w-none">
+                  {message.content}
+                </ReactMarkdown>
+                {message.mcpServices && message.mcpServices.length > 0 && (
+                  <div className="text-xs mt-2 opacity-75">
+                    MCP: {message.mcpServices.join(', ')}
                   </div>
-                  
-                  {/* Message Footer */}
-                  <div className={`flex items-center justify-between mt-3 pt-2 border-t ${
-                    message.role === 'user' 
-                      ? 'border-blue-400/30' 
-                      : 'border-slate-100'
-                  }`}>
-                    <span className={`text-xs ${
-                      message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
-                    }`}>
-                      {formatDate(message.timestamp)}
-                    </span>
-                    
-                    {message.mcpServices && message.mcpServices.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full font-medium">
-                          🔧 {message.mcpServices.join(', ')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Speech Bubble Tail */}
-                  <div className={`absolute top-4 ${
-                    message.role === 'user' 
-                      ? 'right-[-8px] border-l-blue-500' 
-                      : 'left-[-8px] border-r-white'
-                  } w-0 h-0 border-t-8 border-b-8 border-t-transparent border-b-transparent ${
-                    message.role === 'user' ? 'border-l-8' : 'border-r-8'
-                  }`}></div>
-                </div>
+                )}
               </div>
             </div>
           ))}
-          
-          {/* Loading Message */}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="flex gap-4 max-w-[85%]">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white flex items-center justify-center shadow-lg">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div className="bg-white border border-slate-200 shadow-md rounded-2xl p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce animation-delay-200"></div>
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce animation-delay-400"></div>
-                    </div>
-                    <span className="text-sm text-slate-600 font-medium">
-                      Procesando con MCP services...
-                    </span>
-                  </div>
-                </div>
+              <div className="bg-gray-100 p-3 rounded-lg">
+                <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             </div>
           )}
-          
+          <div ref={messagesEndRef} />
+        </div>
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm p-6">
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="💬 Escribe tu mensaje aquí..."
-                className="min-h-[60px] resize-none border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 rounded-xl shadow-sm"
-                disabled={isLoading}
-              />
-            </div>
+        {/* Input */}
+        <div className="border-t p-4">
+          <div className="flex gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Escribe tu mensaje aquí..."
+              className="flex-1 min-h-[60px] resize-none"
+              disabled={isLoading}
+            />
             <Button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="lg"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <>
-                  <Send className="w-5 h-5 mr-2" />
-                  Enviar
-                </>
+                <Send className="w-4 h-4" />
               )}
-            </Button>
-          </div>
-          
-          {/* Quick Actions */}
-          <div className="flex gap-2 mt-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setInput("Quiero crear un proyecto de migración")}
-              className="text-xs hover:bg-blue-50 hover:border-blue-200"
-            >
-              🔄 Migración
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setInput("Necesito una aplicación web")}
-              className="text-xs hover:bg-green-50 hover:border-green-200"
-            >
-              🌐 App Web
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setInput("Quiero implementar analytics")}
-              className="text-xs hover:bg-purple-50 hover:border-purple-200"
-            >
-              📊 Analytics
             </Button>
           </div>
         </div>
