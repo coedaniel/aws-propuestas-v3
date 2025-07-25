@@ -47,7 +47,9 @@ interface ProjectState {
   name?: string
   type?: 'integral' | 'rapido'
   phase: 'inicio' | 'tipo' | 'recopilacion' | 'generacion' | 'entrega'
-  data: any
+  services?: string[]
+  requirements?: string
+  [key: string]: any
 }
 
 interface McpActivity {
@@ -61,6 +63,7 @@ interface McpActivity {
 
 export default function ArquitectoPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const [input, setInput] = useState('')
   const [localMessages, setLocalMessages] = useState<Message[]>([])
   const [localLoading, setLocalLoading] = useState(false)
@@ -69,8 +72,7 @@ export default function ArquitectoPage() {
   
   // Estados específicos del arquitecto
   const [projectState, setProjectState] = useState<ProjectState>({
-    phase: 'inicio',
-    data: {}
+    phase: 'inicio'
   })
   const [mcpActivities, setMcpActivities] = useState<McpActivity[]>([])
   const [showMcpPanel, setShowMcpPanel] = useState(true)
@@ -166,7 +168,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
           content: m.content
         })),
         modelId: selectedModel,
-        projectState: projectState.data || {}
+        projectState: projectState || {}
       })
       
       const response = await fetch(`${API_BASE_URL}/arquitecto`, {
@@ -208,7 +210,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
       
       // Actualizar estado del proyecto si se proporciona
       if (data.projectState) {
-        setProjectState(prev => ({ ...prev, data: data.projectState }))
+        setProjectState(prev => ({ ...prev, ...data.projectState }))
       }
       
       // Simular actividades MCP basadas en la respuesta
@@ -233,6 +235,10 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
       setLocalMessages(prev => [...prev, errorMessage])
     } finally {
       setLocalLoading(false)
+      // Re-focus el input después de enviar
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
     }
   }
 
@@ -245,7 +251,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
 
   const clearChat = () => {
     setLocalMessages([])
-    setProjectState({ phase: 'inicio', data: {} })
+    setProjectState({ phase: 'inicio' })
     setMcpActivities([])
     // Reinicializar con mensaje de bienvenida
     const welcomeMessage: Message = {
@@ -442,12 +448,14 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex-1">
               <Textarea
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={getInputPlaceholder(projectState.phase)}
                 className="min-h-[80px] resize-none focus-ring"
                 disabled={isLoading}
+                autoFocus
               />
             </div>
             <Button

@@ -47,6 +47,7 @@ def save_project_to_db(project_data, mcp_results):
     """Guarda el proyecto en DynamoDB"""
     try:
         import boto3
+        import uuid
         from datetime import datetime
         
         dynamodb = boto3.resource('dynamodb')
