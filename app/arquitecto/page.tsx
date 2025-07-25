@@ -180,7 +180,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
             content: m.content
           })),
           modelId: selectedModel,
-          projectState: projectState.data || {}
+          projectState: projectState || {}
         }),
       })
 

@@ -52,8 +52,11 @@ def save_project_to_db(project_data, mcp_results):
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table(os.environ.get('PROJECTS_TABLE', 'aws-propuestas-v3-projects-prod-v2'))
         
+        # Generar projectId único (clave primaria requerida por DynamoDB)
+        project_id = f"proj_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
         item = {
-            'project_id': f"proj_{int(datetime.now().timestamp())}",
+            'projectId': project_id,  # Clave primaria correcta
             'name': project_data['name'],
             'type': project_data['type'],
             'services': project_data['services'],
@@ -64,10 +67,13 @@ def save_project_to_db(project_data, mcp_results):
         }
         
         table.put_item(Item=item)
-        logger.info(f"✅ Proyecto guardado en DynamoDB: {item['project_id']}")
+        logger.info(f"✅ Proyecto guardado en DynamoDB: {project_id}")
+        
+        return project_id
         
     except Exception as e:
         logger.error(f"❌ Error guardando proyecto: {str(e)}")
+        return None
 
 def lambda_handler(event, context):
     """Handler principal con logging detallado"""
@@ -144,9 +150,13 @@ def lambda_handler(event, context):
                 mcp_used = generation_result['mcp_services_used']
                 
                 # Guardar proyecto en DynamoDB
-                save_project_to_db(project_data, mcp_results)
+                project_id = save_project_to_db(project_data, mcp_results)
                 
-                logger.info(f"✅ MCP services activados exitosamente: {mcp_used}")
+                if project_id:
+                    logger.info(f"✅ MCP services activados exitosamente: {mcp_used}")
+                    logger.info(f"✅ Proyecto guardado con ID: {project_id}")
+                else:
+                    logger.error("❌ Error guardando proyecto en DynamoDB")
             else:
                 logger.error(f"❌ Error en generación MCP: {generation_result.get('error')}")
                 mcp_results = {}
