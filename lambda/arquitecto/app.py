@@ -1,5 +1,5 @@
 """
-Lambda handler principal con logging detallado
+Amazon Q CLI Intelligent Architect - Lambda handler principal
 """
 import json
 import boto3
@@ -44,7 +44,7 @@ def create_response(status_code, body):
         'body': json.dumps(body)
     }
 
-def save_project_to_db(project_data, mcp_results):
+def save_project_to_db(project_data, analysis_results):
     """Guarda el proyecto en DynamoDB"""
     try:
         import boto3
@@ -59,11 +59,9 @@ def save_project_to_db(project_data, mcp_results):
         
         item = {
             'projectId': project_id,  # Clave primaria correcta
-            'name': project_data['name'],
-            'type': project_data['type'],
-            'services': project_data['services'],
-            'requirements': project_data['requirements'],
-            'mcp_results': json.dumps(mcp_results),
+            'name': project_data.get('name', 'Proyecto sin nombre'),
+            'type': 'intelligent_analysis',
+            'analysis_results': json.dumps(analysis_results),
             'created_at': datetime.now().isoformat(),
             'status': 'completed'
         }
@@ -78,7 +76,7 @@ def save_project_to_db(project_data, mcp_results):
         return None
 
 def lambda_handler(event, context):
-    """Handler principal con logging detallado"""
+    """Handler principal con análisis inteligente completo"""
     
     # Manejar preflight CORS
     if event.get('httpMethod') == 'OPTIONS':
@@ -96,76 +94,87 @@ def lambda_handler(event, context):
         messages = body.get('messages', [])
         project_state = body.get('projectState', {})
         
-        # Inicializar manejador de conversación con estado persistente
+        # Inicializar manejador de conversación inteligente
         conversation = ConversationState()
         
         # Restaurar estado desde projectState si existe
         if project_state:
             conversation.restore_from_project_state(project_state)
         
-        # Validar estado actual
-        is_complete = conversation.validate_state(messages, project_state)
-        logger.info(f"Estado de conversación: {conversation.current_step}")
-        logger.info(f"Campos requeridos: {json.dumps(conversation.required_fields)}")
+        # Verificar si debe activar análisis inteligente completo
+        should_analyze = conversation.should_trigger_intelligent_analysis(messages, project_state)
         
-        # Si no está completo, verificar si necesita inteligencia MCP
-        if not is_complete:
-            # Para requirements_rapido, usar inteligencia MCP para hacer preguntas específicas
-            if conversation.current_step == 'requirements_rapido':
-                logger.info("🧠 Activando inteligencia MCP para preguntas específicas")
-                
-                # Usar MCP Core para generar preguntas inteligentes
-                mcp_caller = IntelligentMCPCaller()
+        if should_analyze:
+            logger.info("🧠 ACTIVANDO ANÁLISIS INTELIGENTE COMPLETO")
+            
+            # Mostrar prompt de análisis inteligente
+            analysis_prompt = conversation.get_intelligent_analysis_prompt()
+            
+            # Activar MCP services inteligentemente como Amazon Q CLI
+            mcp_caller = IntelligentMCPCaller()
+            
+            try:
+                # Crear event loop si no existe
                 try:
-                    # Crear event loop si no existe
-                    try:
-                        loop = asyncio.get_event_loop()
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Ejecutar análisis inteligente completo
+                intelligent_results = loop.run_until_complete(
+                    mcp_caller.execute_intelligent_analysis(conversation.project_data, messages, project_state)
+                )
+                
+                if intelligent_results:
+                    # Marcar análisis como completo
+                    conversation.analysis_complete = True
+                    project_state['analysis_complete'] = True
+                    project_state['system_analysis'] = intelligent_results
                     
-                    # Generar preguntas inteligentes basadas en los servicios
-                    intelligent_questions = loop.run_until_complete(
-                        mcp_caller.generate_intelligent_questions(conversation.project_data, messages)
-                    )
+                    # Guardar proyecto en DB
+                    project_id = save_project_to_db(conversation.project_data, intelligent_results)
                     
-                    if intelligent_questions:
-                        return create_response(200, {
-                            'message': intelligent_questions,
-                            'projectState': project_state,
-                            'mcpActivated': True,
-                            'mcpUsed': ['core_analysis', 'aws_documentation'],
-                            'conversationComplete': False,
-                            'currentStep': 'requirements_rapido'
-                        })
-                        
-                except Exception as e:
-                    logger.error(f"❌ Error en MCP inteligente: {str(e)}")
-                    # Fallback a pregunta básica
-                    pass
-            
-            # Fallback: obtener siguiente pregunta normal
-            next_question = conversation.get_next_question()
-            completion = conversation.get_completion_percentage()
-            missing = conversation.get_missing_fields()
-            
+                    return create_response(200, {
+                        'message': intelligent_results.get('final_response', analysis_prompt),
+                        'projectState': project_state,
+                        'mcpActivated': True,
+                        'mcpUsed': intelligent_results.get('mcp_services_used', []),
+                        'conversationComplete': True,
+                        'projectId': project_id,
+                        'systemAnalysis': intelligent_results
+                    })
+                    
+            except Exception as e:
+                logger.error(f"❌ Error en análisis inteligente: {str(e)}")
+                # Fallback: mostrar prompt de análisis
+                return create_response(200, {
+                    'message': analysis_prompt,
+                    'projectState': project_state,
+                    'mcpActivated': True,
+                    'mcpUsed': [],
+                    'conversationComplete': False,
+                    'currentStep': 'intelligent_analysis'
+                })
+        
+        # Si no necesita análisis inteligente, usar flujo básico
+        if not conversation.is_ready_to_generate():
             return create_response(200, {
-                'message': next_question,
+                'message': "¿Cuál es el nombre del proyecto?",
                 'projectState': project_state,
-                'mcpActivated': True,
+                'mcpActivated': False,
                 'mcpUsed': [],
                 'conversationComplete': False,
-                'currentStep': conversation.current_step
+                'currentStep': 'name'
             })
         
-        # Si está completo, activar MCP services inteligentemente como Amazon Q CLI
+        # Si está completo, generar documentos finales
         project_data = conversation.project_data
-        logger.info(f"🚀 Activando MCP services inteligentemente para: {project_data['name']}")
+        logger.info(f"🚀 Generando documentos finales para: {project_data.get('name', 'Proyecto')}")
 
-        # Importar y usar el caller inteligente
+        # Importar y usar el caller inteligente para generación final
         mcp_caller = IntelligentMCPCaller()
         
-        # Ejecutar orquestación inteligente
         try:
             # Crear event loop si no existe
             try:
@@ -174,67 +183,39 @@ def lambda_handler(event, context):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
             
-            # Ejecutar generación inteligente
-            generation_result = loop.run_until_complete(
+            # Ejecutar orquestación inteligente final
+            results = loop.run_until_complete(
                 mcp_caller.orchestrate_intelligent_generation(project_data)
             )
             
-            if generation_result.get('success'):
-                mcp_results = generation_result['results']
-                mcp_used = generation_result['mcp_services_used']
-                
-                # Guardar proyecto en DynamoDB
-                project_id = save_project_to_db(project_data, mcp_results)
-                
-                if project_id:
-                    logger.info(f"✅ MCP services activados exitosamente: {mcp_used}")
-                    logger.info(f"✅ Proyecto guardado con ID: {project_id}")
-                else:
-                    logger.error("❌ Error guardando proyecto en DynamoDB")
-            else:
-                logger.error(f"❌ Error en generación MCP: {generation_result.get('error')}")
-                mcp_results = {}
-                mcp_used = []
-
+            # Guardar proyecto en DB
+            project_id = save_project_to_db(project_data, results)
+            
+            return create_response(200, {
+                'message': results.get('summary', 'Documentos generados exitosamente'),
+                'projectState': project_state,
+                'mcpActivated': True,
+                'mcpUsed': results.get('mcp_services_used', []),
+                'conversationComplete': True,
+                'projectId': project_id,
+                'results': results
+            })
+            
         except Exception as e:
-            logger.error(f"💥 Error crítico en orquestación MCP: {str(e)}")
-            mcp_results = {}
-            mcp_used = []
-        
-        success_message = f"""✅ DOCUMENTOS GENERADOS EXITOSAMENTE PARA: {project_data['name']}
-
-🏗️ Tipo: {project_data.get('type', 'N/A').title()}
-🔧 Servicios AWS: {', '.join(project_data.get('services', []))}
-🤖 MCP Services utilizados: {len(mcp_used)} servicios
-
-📁 Documentos generados:
-   • Diagrama de arquitectura AWS (PNG/SVG)
-   • Script CloudFormation (YAML)
-   • Estimación de costos (CSV/Excel)
-   • Documentación técnica (Word/PDF)
-   • Tabla de actividades (CSV/Excel)
-
-💾 Proyecto guardado y disponible en la sección 'Proyectos'
-
-🎯 Los documentos están listos para entrega ejecutiva."""
-        
-        return create_response(200, {
-            'content': success_message,
-            'projectState': project_state,
-            'mcpActivated': True,
-            'mcpUsed': mcp_used,
-            'readinessScore': 1.0,
-            'readinessStatus': "✅ Documentos generados"
-        })
+            logger.error(f"❌ Error en generación final: {str(e)}")
+            return create_response(500, {
+                'message': f'Error generando documentos: {str(e)}',
+                'projectState': project_state,
+                'mcpActivated': False,
+                'mcpUsed': [],
+                'conversationComplete': False
+            })
         
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        logger.error(f"Stack trace:", exc_info=True)
+        logger.error(f"❌ Error general: {str(e)}")
         return create_response(500, {
-            'content': f"Lo siento, ocurrió un error: {str(e)}",
-            'projectState': project_state,
-            'mcpActivated': True,
+            'message': f'Error interno del servidor: {str(e)}',
+            'mcpActivated': False,
             'mcpUsed': [],
-            'readinessScore': 0,
-            'readinessStatus': "Error en el procesamiento"
+            'conversationComplete': False
         })
