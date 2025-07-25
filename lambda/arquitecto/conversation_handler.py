@@ -50,35 +50,24 @@ class ConversationState:
         
         logger.info(f"Analizando mensaje para inteligencia: {last_user_message}")
         
-        # Detectar si el usuario está pidiendo análisis profundo
-        deep_analysis_keywords = [
-            'analisis profundo', 'buscar como es mi sistema', 'que esta fallando',
-            'hayar la solucion', 'amazon q cli', 'github', 'repo', 'sam', 'ecs', 
-            'task', 'elb', 'services', 'ecr', 'contenedores', 'amplify', 'tecnologias',
-            'lambdas', 'arquitectura', 'sistema', 'infraestructura', 'deployment',
-            'pipeline', 'cloudformation', 'terraform', 'cdk'
-        ]
+        # ACTIVAR ANÁLISIS INTELIGENTE SIEMPRE que el usuario escriba algo sustancial
+        # Como Amazon Q CLI, debe ser proactivo y analizar cualquier consulta
         
-        # Si menciona cualquier keyword de análisis profundo, activar inteligencia
-        if any(keyword in conversation_text for keyword in deep_analysis_keywords):
-            logger.info("🧠 Activando análisis inteligente completo - Keywords detectados")
-            self.current_phase = 'intelligent_analysis'
-            project_state['phase'] = 'intelligent_analysis'
-            project_state['trigger_intelligent_analysis'] = True
-            return True
+        # Filtrar saludos muy básicos
+        basic_greetings = ['hola', 'hi', 'hello', 'hey']
+        if len(last_user_message.strip()) <= 5 and any(greeting in last_user_message.lower() for greeting in basic_greetings):
+            return False
             
-        # Si ya tiene nombre de proyecto, activar análisis
-        if len(user_messages) >= 2 and not self.analysis_complete:
-            # Extraer nombre del proyecto del primer mensaje no-saludo
-            for msg in user_messages:
-                content = msg.get('content', '').strip()
-                greetings = ['hola', 'hi', 'hello', 'que tal', 'buenas', 'buenos dias', 'buenas tardes']
-                if not any(greeting in content.lower() for greeting in greetings) and len(content) > 2:
-                    self.project_data['name'] = content
-                    project_state['name'] = content
-                    break
-                    
-            logger.info("🧠 Activando análisis inteligente - Proyecto identificado")
+        # Si el usuario escribió algo más que un saludo básico, activar análisis
+        if len(last_user_message.strip()) > 2:
+            logger.info("🧠 Activando análisis inteligente - Usuario proporcionó información")
+            
+            # Extraer nombre del proyecto si es posible
+            if not self.project_data.get('name'):
+                # Usar el primer mensaje sustancial como nombre del proyecto
+                self.project_data['name'] = last_user_message.strip()
+                project_state['name'] = last_user_message.strip()
+            
             self.current_phase = 'intelligent_analysis'
             project_state['phase'] = 'intelligent_analysis'
             project_state['trigger_intelligent_analysis'] = True

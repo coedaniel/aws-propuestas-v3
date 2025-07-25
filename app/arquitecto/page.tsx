@@ -108,18 +108,18 @@ export default function ArquitectoPage() {
   }
 
   const getWelcomePrompt = () => {
-    return `¡Hola! Soy tu Arquitecto de Soluciones AWS y consultor experto.
+    return `¡Hola! Soy tu Arquitecto AWS inteligente.
 
-Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva.
+Como Amazon Q CLI, puedo hacer análisis profundo de tu sistema actual, identificar problemas, y proponer soluciones específicas.
 
-**Importante:**
-- No usare acentos ni caracteres especiales en ningun texto, archivo, script ni documento
-- Todos los archivos Word seran funcionales y compatibles: solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado
-- Solo generare scripts CloudFormation como entregable de automatizacion
+**¿En qué puedo ayudarte?**
+- Análisis completo de tu arquitectura AWS
+- Identificación de problemas y optimizaciones  
+- Revisión de código y repositorios
+- Dimensionamiento y estimación de costos
+- Generación de diagramas y documentación
 
-**Para comenzar, necesito saber:**
-
-¿Cual es el nombre del proyecto?`
+Simplemente describe tu proyecto o dime qué necesitas analizar.`
   }
 
   const addMcpActivity = (tool: string, description: string) => {
