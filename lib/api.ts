@@ -1,5 +1,5 @@
 // API configuration for AWS Propuestas v3
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://75bl52azoi.execute-api.us-east-1.amazonaws.com/prod'
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'

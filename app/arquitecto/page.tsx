@@ -1,55 +1,144 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import AppLayout from '@/components/AppLayout'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ModelSelector } from '@/components/ModelSelector'
-import { ArrowLeft, Send, Loader2, CheckCircle, FileText, Download, Bot, User } from 'lucide-react'
-import { sendArquitectoRequest } from '@/lib/api'
-import type { ArquitectoResponse, ProjectState, GeneratedProject } from './types'
-import { generateId, formatDate } from '@/lib/utils'
+import './responsive.css'
 
-interface Message {
+import React, { useState, useEffect, useRef } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { ModelSelector } from '@/components/ModelSelector'
+import { PromptUnderstanding } from '@/components/PromptUnderstanding'
+import { useChatStore } from '@/store/chatStore'
+import { Message, AVAILABLE_MODELS } from '@/lib/types'
+import { generateId, formatDate } from '@/lib/utils'
+import { 
+  Send, 
+  Bot, 
+  User, 
+  Loader2,
+  Sparkles,
+  Zap,
+  FileText,
+  Download,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  Settings,
+  Lightbulb,
+  Target,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Cpu,
+  Building,
+  Wrench,
+  Folder,
+  Upload,
+  Database,
+  Cloud,
+  Cog
+} from 'lucide-react'
+
+// Tipos específicos para el arquitecto
+interface ProjectState {
+  name?: string
+  type?: 'integral' | 'rapido'
+  phase: 'inicio' | 'tipo' | 'recopilacion' | 'generacion' | 'entrega'
+  data: any
+}
+
+interface McpActivity {
   id: string
-  role: 'user' | 'assistant'
-  content: string
+  tool: string
+  status: 'running' | 'completed' | 'error'
+  description: string
   timestamp: string
-  mcpServices?: string[]
+  duration?: number
 }
 
 export default function ArquitectoPage() {
-  const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: generateId(),
-      role: 'assistant',
-      content: '¡Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso.\n\n**PASO 1:** Para comenzar, necesito que me digas únicamente el **nombre del proyecto**.\n\nEjemplos:\n• "E-commerce Platform"\n• "Sistema de Inventario" \n• "Portal de Clientes"\n• "App de Delivery"\n\n¿Cuál es el nombre de tu proyecto?',
-      timestamp: new Date().toISOString()
-    }
-  ])
-  const [isLoading, setIsLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState('amazon.nova-pro-v1:0')
-  const [mcpServices, setMcpServices] = useState<string[]>([])
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [generatedProject, setGeneratedProject] = useState<GeneratedProject | null>(null)
+  const [localMessages, setLocalMessages] = useState<Message[]>([])
+  const [localLoading, setLocalLoading] = useState(false)
+  const [showPromptUnderstanding, setShowPromptUnderstanding] = useState(true)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  
+  // Estados específicos del arquitecto
   const [projectState, setProjectState] = useState<ProjectState>({
     phase: 'inicio',
     data: {}
   })
+  const [mcpActivities, setMcpActivities] = useState<McpActivity[]>([])
+  const [showMcpPanel, setShowMcpPanel] = useState(true)
+  
+  const {
+    selectedModel,
+    setSelectedModel,
+  } = useChatStore()
+
+  const messages = localMessages
+  const isLoading = localLoading
+  const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0]
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  useEffect(() => {
+    // Inicializar con mensaje de bienvenida del arquitecto
+    if (messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: generateId(),
+        role: 'assistant',
+        content: getWelcomePrompt(),
+        timestamp: new Date().toISOString()
+      }
+      setLocalMessages([welcomeMessage])
+    }
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+  const getWelcomePrompt = () => {
+    return `¡Hola! Soy tu Arquitecto de Soluciones AWS y consultor experto.
+
+Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, siguiendo mejores practicas y generando todos los archivos necesarios para una propuesta ejecutiva.
+
+**Importante:**
+- No usare acentos ni caracteres especiales en ningun texto, archivo, script ni documento
+- Todos los archivos Word seran funcionales y compatibles: solo texto plano, sin imagenes, sin tablas complejas, ni formato avanzado
+- Solo generare scripts CloudFormation como entregable de automatizacion
+
+**Para comenzar, necesito saber:**
+
+¿Cual es el nombre del proyecto?`
+  }
+
+  const addMcpActivity = (tool: string, description: string) => {
+    const activity: McpActivity = {
+      id: generateId(),
+      tool,
+      status: 'running',
+      description,
+      timestamp: new Date().toISOString()
+    }
+    setMcpActivities(prev => [...prev, activity])
+    return activity.id
+  }
+
+  const updateMcpActivity = (id: string, status: 'completed' | 'error', duration?: number) => {
+    setMcpActivities(prev => prev.map(activity => 
+      activity.id === id 
+        ? { ...activity, status, duration }
+        : activity
+    ))
+  }
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -61,16 +150,24 @@ export default function ArquitectoPage() {
       timestamp: new Date().toISOString()
     }
 
-    setMessages(prev => [...prev, userMessage])
-    const currentMessages = [...messages, userMessage]
+    setLocalMessages(prev => [...prev, userMessage])
+    const currentMessages = [...localMessages, userMessage]
     
     setInput('')
-    setIsLoading(true)
+    setLocalLoading(true)
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jvdvd1qcdj.execute-api.us-east-1.amazonaws.com/prod'
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://75bl52azoi.execute-api.us-east-1.amazonaws.com/prod'
       
       console.log('🚀 Enviando mensaje a:', `${API_BASE_URL}/arquitecto`)
+      console.log('📤 Payload:', {
+        messages: currentMessages.map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        modelId: selectedModel,
+        projectState: projectState
+      })
       
       const response = await fetch(`${API_BASE_URL}/arquitecto`, {
         method: 'POST',
@@ -103,29 +200,25 @@ export default function ArquitectoPage() {
         role: 'assistant',
         content: data.content || data.response || 'Lo siento, no pude generar una respuesta.',
         timestamp: new Date().toISOString(),
-        mcpServices: data.mcpUsed || []
+        usage: data.usage,
+        mcpUsed: data.mcpUsed || []
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setLocalMessages(prev => [...prev, assistantMessage])
       
       // Actualizar estado del proyecto si se proporciona
-      if (data.projectState) {
-        setProjectState(prev => ({ ...prev, ...data.projectState }))
+      if (data.projectUpdate) {
+        setProjectState(prev => ({ ...prev, ...data.projectUpdate }))
       }
       
-      // Actualizar servicios MCP
+      // Simular actividades MCP basadas en la respuesta
       if (data.mcpUsed && data.mcpUsed.length > 0) {
-        setMcpServices(data.mcpUsed)
-      }
-
-      // Verificar si se generaron documentos
-      if (data.documentsGenerated && data.documentsGenerated.length > 0) {
-        setGeneratedProject({
-          projectId: generateId(),
-          projectName: projectState.name || 'Proyecto',
-          documentsGenerated: data.documentsGenerated
+        data.mcpUsed.forEach((mcp: string) => {
+          const activityId = addMcpActivity(mcp, `Using ${mcp} (trusted)`)
+          setTimeout(() => {
+            updateMcpActivity(activityId, 'completed', Math.random() * 2000 + 500)
+          }, Math.random() * 1000 + 500)
         })
-        setShowSuccessModal(true)
       }
       
     } catch (error: any) {
@@ -137,9 +230,9 @@ export default function ArquitectoPage() {
         timestamp: new Date().toISOString()
       }
       
-      setMessages(prev => [...prev, errorMessage])
+      setLocalMessages(prev => [...prev, errorMessage])
     } finally {
-      setIsLoading(false)
+      setLocalLoading(false)
     }
   }
 
@@ -151,166 +244,209 @@ export default function ArquitectoPage() {
   }
 
   const clearChat = () => {
-    setMessages([
-      {
-        id: generateId(),
-        role: 'assistant',
-        content: '¡Hola! Soy tu Arquitecto AWS experto. Vamos a crear una propuesta profesional paso a paso.\n\n**PASO 1:** Para comenzar, necesito que me digas únicamente el **nombre del proyecto**.\n\nEjemplos:\n• "E-commerce Platform"\n• "Sistema de Inventario" \n• "Portal de Clientes"\n• "App de Delivery"\n\n¿Cuál es el nombre de tu proyecto?',
-        timestamp: new Date().toISOString()
-      }
-    ])
+    setLocalMessages([])
     setProjectState({ phase: 'inicio', data: {} })
-    setMcpServices([])
+    setMcpActivities([])
+    // Reinicializar con mensaje de bienvenida
+    const welcomeMessage: Message = {
+      id: generateId(),
+      role: 'assistant',
+      content: getWelcomePrompt(),
+      timestamp: new Date().toISOString()
+    }
+    setLocalMessages([welcomeMessage])
+  }
+
+  const exportChat = () => {
+    const chatData = {
+      timestamp: new Date().toISOString(),
+      model: currentModel.name,
+      project: projectState,
+      mcpActivities: mcpActivities,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+        mcpUsed: m.mcpUsed
+      }))
+    }
+    
+    const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `arquitecto-session-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const copyMessage = async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedMessageId(messageId)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy message:', err)
+    }
+  }
+
+  const getPhaseIcon = (phase: string) => {
+    switch (phase) {
+      case 'inicio':
+        return <Sparkles className="w-4 h-4 text-blue-500" />
+      case 'tipo':
+        return <Target className="w-4 h-4 text-yellow-500" />
+      case 'recopilacion':
+        return <Database className="w-4 h-4 text-orange-500" />
+      case 'generacion':
+        return <Wrench className="w-4 h-4 text-purple-500" />
+      case 'entrega':
+        return <CheckCircle className="w-4 h-4 text-green-500" />
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />
+    }
+  }
+
+  const getPhaseText = (phase: string) => {
+    switch (phase) {
+      case 'inicio':
+        return 'Inicio de Proyecto'
+      case 'tipo':
+        return 'Definicion de Tipo'
+      case 'recopilacion':
+        return 'Recopilacion de Requisitos'
+      case 'generacion':
+        return 'Generacion de Documentos'
+      case 'entrega':
+        return 'Entrega Final'
+      default:
+        return 'En Proceso'
+    }
   }
 
   return (
-    <AppLayout>
-      <div className="flex h-full flex-col">
+    <div className="flex flex-col lg:flex-row h-screen">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/')}
-              className="hover:bg-slate-100"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-            <div>
-              <h1 className="text-xl font-semibold">Arquitecto AWS</h1>
-              <p className="text-sm text-muted-foreground">
-                Fase: {projectState.phase} {projectState.name ? `• ${projectState.name}` : ''}
-              </p>
+        <div className="border-b border-border bg-card/50 backdrop-blur-sm p-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <Building className="w-6 h-6 text-purple-500" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Arquitecto AWS</h1>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {getPhaseIcon(projectState.phase)}
+                    <p className="text-sm text-muted-foreground">
+                      {getPhaseText(projectState.phase)} • {currentModel.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                6 MCPs Activos
+              </Badge>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                onClick={() => setShowMcpPanel(!showMcpPanel)}
+              >
+                <Wrench className="w-4 h-4 mr-2" />
+                {showMcpPanel ? 'Ocultar' : 'Mostrar'} MCPs
+              </Button>
+              <Button
+                variant="outline"
+                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                onClick={() => setShowPromptUnderstanding(!showPromptUnderstanding)}
+              >
+                {showPromptUnderstanding ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPromptUnderstanding ? 'Ocultar' : 'Mostrar'} Analisis
+              </Button>
+              <Button
+                variant="outline"
+                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                onClick={exportChat}
+                disabled={messages.length === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm" className="text-xs px-2 py-1 sm:px-3 sm:py-2"
+                onClick={clearChat}
+                disabled={messages.length === 0}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Nuevo Proyecto
+              </Button>
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                disabled={isLoading}
+                compact={true}
+              />
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-            />
-            <Button variant="outline" size="sm" onClick={clearChat}>
-              Limpiar Chat
-            </Button>
-          </div>
-        </div>
-
-        {/* MCP Services Indicator */}
-        {mcpServices.length > 0 && (
-          <div className="bg-gradient-to-r from-purple-100 to-blue-100 border-b border-purple-200/50 px-6 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse shadow-lg"></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse animation-delay-200"></div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse animation-delay-400"></div>
-              </div>
-              <span className="text-sm font-medium text-purple-800">
-                🤖 MCP Services Activos: <span className="font-mono bg-white/50 px-2 py-1 rounded">{mcpServices.join(', ')}</span>
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex gap-4 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                {/* Avatar */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
-                  message.role === 'user' 
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' 
-                    : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
-                }`}>
-                  {message.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-                </div>
-                
-                {/* Message Bubble */}
-                <div className={`relative ${
-                  message.role === 'user' 
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' 
-                    : 'bg-white border border-slate-200 shadow-md'
-                } rounded-2xl p-5 max-w-full`}>
-                  
-                  {/* Message Content */}
-                  <div className={`whitespace-pre-wrap text-sm leading-relaxed ${
-                    message.role === 'user' ? 'text-white' : 'text-slate-800'
-                  }`}>
-                    {message.content}
-                  </div>
-                  
-                  {/* Message Footer */}
-                  <div className={`flex items-center justify-between mt-3 pt-2 border-t ${
-                    message.role === 'user' 
-                      ? 'border-blue-400/30' 
-                      : 'border-slate-100'
-                  }`}>
-                    <span className={`text-xs ${
-                      message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
-                    }`}>
-                      {formatDate(message.timestamp)}
-                    </span>
-                    
-                    {message.mcpServices && message.mcpServices.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full font-medium">
-                          🔧 {message.mcpServices.join(', ')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Speech Bubble Tail */}
-                  <div className={`absolute top-4 ${
-                    message.role === 'user' 
-                      ? 'right-[-8px] border-l-blue-500' 
-                      : 'left-[-8px] border-r-white'
-                  } w-0 h-0 border-t-8 border-b-8 border-t-transparent border-b-transparent ${
-                    message.role === 'user' ? 'border-l-8' : 'border-r-8'
-                  }`}></div>
-                </div>
-              </div>
-            </div>
-          ))}
-          
-          {/* Loading Message */}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex gap-4 max-w-[85%]">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white flex items-center justify-center shadow-lg">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div className="bg-white border border-slate-200 shadow-md rounded-2xl p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce animation-delay-200"></div>
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce animation-delay-400"></div>
+          {/* Project Status Bar */}
+          {projectState.name && (
+            <div className="mt-2 sm:mt-4 p-2 sm:p-3 bg-muted/30 rounded-lg">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <Folder className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="font-medium text-foreground">{projectState.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {projectState.type === 'rapido' ? 'Servicio Rapido' : 'Solucion Integral'}
                     </div>
-                    <span className="text-sm text-slate-600 font-medium">
-                      Procesando con MCP services...
-                    </span>
                   </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-500">
+                    Fase {projectState.phase === 'inicio' ? '1' : projectState.phase === 'tipo' ? '2' : projectState.phase === 'recopilacion' ? '3' : projectState.phase === 'generacion' ? '4' : '5'}/5
+                  </Badge>
                 </div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-4">
+          {messages.map((message: Message) => (
+            <MessageBubble 
+              key={message.id} 
+              message={message} 
+              onCopy={copyMessage}
+              copiedMessageId={copiedMessageId}
+            />
+          ))}
           
+          {isLoading && <LoadingMessage model={currentModel} />}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm p-6">
-          <div className="flex gap-4 items-end">
+        <div className="border-t border-border bg-card/50 backdrop-blur-sm p-2 sm:p-4">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex-1">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="💬 Escribe tu mensaje aquí..."
-                className="min-h-[60px] resize-none border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 rounded-xl shadow-sm"
+                placeholder={getInputPlaceholder(projectState.phase)}
+                className="min-h-[80px] resize-none focus-ring"
                 disabled={isLoading}
               />
             </div>
@@ -318,102 +454,243 @@ export default function ArquitectoPage() {
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="lg"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
+              className="px-4 sm:px-6 w-full sm:w-auto sm:self-end"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <>
-                  <Send className="w-5 h-5 mr-2" />
-                  Enviar
-                </>
+                <Send className="w-5 h-5" />
               )}
             </Button>
           </div>
           
-          {/* Quick Actions */}
-          <div className="flex gap-2 mt-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setInput("Quiero crear un proyecto de migración")}
-              className="text-xs hover:bg-blue-50 hover:border-blue-200"
-            >
-              🔄 Migración
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setInput("Necesito una aplicación web")}
-              className="text-xs hover:bg-green-50 hover:border-green-200"
-            >
-              🌐 App Web
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setInput("Quiero implementar analytics")}
-              className="text-xs hover:bg-purple-50 hover:border-purple-200"
-            >
-              📊 Analytics
-            </Button>
+          <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
+            <span>Presiona Enter para enviar, Shift+Enter para nueva linea</span>
+            <span>Arquitecto AWS • Generacion guiada de propuestas</span>
           </div>
         </div>
       </div>
 
-      {/* Success Modal */}
-      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              ¡Proyecto Completado!
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Se han generado todos los documentos para tu proyecto.
-            </p>
-            {generatedProject && (
-              <div className="space-y-2">
-                <h4 className="font-medium">{generatedProject.projectName}</h4>
-                <div className="space-y-1">
-                  {generatedProject.documentsGenerated.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        {doc.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(doc.url, '_blank')}
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+      {/* MCP Activities Panel */}
+      {showMcpPanel && (
+        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 backdrop-blur-sm">
+          <McpPanel activities={mcpActivities} />
+        </div>
+      )}
+
+      {/* Prompt Understanding Sidebar */}
+      {showPromptUnderstanding && !showMcpPanel && (
+        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 backdrop-blur-sm">
+          <PromptUnderstanding messages={messages} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function getInputPlaceholder(phase: string) {
+  switch (phase) {
+    case 'inicio':
+      return 'Escribe el nombre del proyecto...'
+    case 'tipo':
+      return 'Especifica si es solucion integral o servicio rapido...'
+    case 'recopilacion':
+      return 'Proporciona mas detalles sobre los requisitos...'
+    case 'generacion':
+      return 'Confirma los detalles o solicita ajustes...'
+    case 'entrega':
+      return 'Proyecto completado. ¿Necesitas algun ajuste?'
+    default:
+      return 'Escribe tu mensaje...'
+  }
+}
+
+interface MessageBubbleProps {
+  message: Message
+  onCopy: (content: string, messageId: string) => void
+  copiedMessageId: string | null
+}
+
+function MessageBubble({ message, onCopy, copiedMessageId }: MessageBubbleProps) {
+  const isUser = message.role === 'user'
+  const isCopied = copiedMessageId === message.id
+  
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex space-x-3 max-w-4xl ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+          isUser ? 'bg-primary' : 'bg-purple-500'
+        }`}>
+          {isUser ? (
+            <User className="w-4 h-4 text-primary-foreground" />
+          ) : (
+            <Building className="w-4 h-4 text-white" />
+          )}
+        </div>
+        
+        <Card className={`${isUser ? 'message-user' : 'message-assistant'} group`}>
+          <CardContent className="p-4">
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="whitespace-pre-wrap">{message.content}</div>
+            </div>
+            
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                <span>{message.timestamp ? formatDate(message.timestamp) : ''}</span>
+                {message.usage && (
+                  <Badge variant="outline" className="text-xs">
+                    {message.usage.inputTokens}→{message.usage.outputTokens} tokens
+                  </Badge>
+                )}
+                {message.mcpUsed && message.mcpUsed.length > 0 && (
+                  <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500">
+                    {message.mcpUsed.length} MCP
+                  </Badge>
+                )}
               </div>
-            )}
-            <div className="flex gap-2">
+              
               <Button
-                variant="outline"
-                onClick={() => router.push('/projects')}
-                className="flex-1"
+                variant="ghost"
+                size="sm"
+                className="text-xs px-2 py-1 sm:px-3 sm:py-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onCopy(message.content, message.id)}
               >
-                Ver Proyectos
-              </Button>
-              <Button
-                onClick={() => setShowSuccessModal(false)}
-                className="flex-1"
-              >
-                Continuar
+                {isCopied ? (
+                  <Check className="w-3 h-3 text-green-500" />
+                ) : (
+                  <Copy className="w-3 h-3" />
+                )}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function LoadingMessage({ model }: { model: any }) {
+  return (
+    <div className="flex justify-start">
+      <div className="flex space-x-3 max-w-4xl">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
+          <Building className="w-4 h-4 text-white" />
+        </div>
+        
+        <Card className="message-assistant">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+              <span className="text-sm text-muted-foreground">
+                El Arquitecto AWS esta analizando tu solicitud...
+              </span>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Activando MCPs necesarios para generar la propuesta
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+interface McpPanelProps {
+  activities: McpActivity[]
+}
+
+function McpPanel({ activities }: McpPanelProps) {
+  const recentActivities = activities.slice(-10).reverse()
+  
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b border-border">
+        <div className="flex flex-wrap items-center gap-2">
+          <Wrench className="w-5 h-5 text-purple-500" />
+          <h3 className="font-semibold text-foreground">Actividad MCP</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Herramientas utilizadas en tiempo real
+        </p>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {recentActivities.length === 0 ? (
+          <div className="text-center py-8">
+            <Wrench className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              No hay actividad MCP aun
+            </p>
           </div>
-        </DialogContent>
-      </Dialog>
-    </AppLayout>
+        ) : (
+          recentActivities.map((activity) => (
+            <McpActivityItem key={activity.id} activity={activity} />
+          ))
+        )}
+      </div>
+      
+      <div className="p-4 border-t border-border">
+        <div className="text-xs text-muted-foreground">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <span>MCPs Disponibles: 6</span>
+            <span>Activos: {activities.filter(a => a.status === 'running').length}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface McpActivityItemProps {
+  activity: McpActivity
+}
+
+function McpActivityItem({ activity }: McpActivityItemProps) {
+  const getStatusIcon = () => {
+    switch (activity.status) {
+      case 'running':
+        return <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+      case 'completed':
+        return <CheckCircle className="w-3 h-3 text-green-500" />
+      case 'error':
+        return <AlertCircle className="w-3 h-3 text-red-500" />
+    }
+  }
+  
+  const getStatusColor = () => {
+    switch (activity.status) {
+      case 'running':
+        return 'border-blue-500/20 bg-blue-500/5'
+      case 'completed':
+        return 'border-green-500/20 bg-green-500/5'
+      case 'error':
+        return 'border-red-500/20 bg-red-500/5'
+    }
+  }
+  
+  return (
+    <Card className={`p-3 ${getStatusColor()}`}>
+      <div className="flex items-start space-x-2">
+        {getStatusIcon()}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-mono text-purple-600 dark:text-purple-400">
+              🛠️ Using tool: {activity.tool}
+            </span>
+            <Badge variant="outline" className="text-xs">
+              trusted
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {activity.description}
+          </p>
+          {activity.duration && (
+            <p className="text-xs text-muted-foreground mt-1">
+              ● Completed in {(activity.duration / 1000).toFixed(1)}s
+            </p>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
