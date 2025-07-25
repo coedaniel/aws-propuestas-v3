@@ -166,7 +166,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
           content: m.content
         })),
         modelId: selectedModel,
-        projectState: projectState
+        projectState: projectState.data || {}
       })
       
       const response = await fetch(`${API_BASE_URL}/arquitecto`, {
@@ -180,7 +180,7 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
             content: m.content
           })),
           modelId: selectedModel,
-          projectState: projectState
+          projectState: projectState.data || {}
         }),
       })
 
@@ -207,8 +207,8 @@ Vamos a dimensionar, documentar y entregar una solucion profesional en AWS, sigu
       setLocalMessages(prev => [...prev, assistantMessage])
       
       // Actualizar estado del proyecto si se proporciona
-      if (data.projectUpdate) {
-        setProjectState(prev => ({ ...prev, ...data.projectUpdate }))
+      if (data.projectState) {
+        setProjectState(prev => ({ ...prev, data: data.projectState }))
       }
       
       // Simular actividades MCP basadas en la respuesta
