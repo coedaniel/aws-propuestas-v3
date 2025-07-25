@@ -64,8 +64,8 @@ export default function ChatPage() {
       timestamp: new Date().toISOString()
     }
 
-    setLocalMessages(prev => [...prev, userMessage])
     const currentMessages = [...localMessages, userMessage]
+    setLocalMessages(prev => [...prev, userMessage])
     
     setInput('')
     setLocalLoading(true)
@@ -73,25 +73,36 @@ export default function ChatPage() {
     try {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://75bl52azoi.execute-api.us-east-1.amazonaws.com/prod'
       
+      console.log('🚀 Sending request to:', `${API_BASE_URL}/chat`)
+      console.log('📝 Messages to send:', currentMessages.length)
+      console.log('🎯 Current messages:', currentMessages)
+      
+      const requestBody = {
+        messages: currentMessages.map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        modelId: selectedModel
+      }
+      
+      console.log('📦 Request body:', requestBody)
+      
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          messages: currentMessages.map(m => ({
-            role: m.role,
-            content: m.content
-          })),
-          modelId: selectedModel
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error('❌ API Error:', response.status, response.statusText, errorText)
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`)
       }
 
       const data = await response.json()
+      console.log('✅ API Response:', data)
 
       const assistantMessage: Message = {
         id: generateId(),
@@ -105,10 +116,11 @@ export default function ChatPage() {
       setLocalMessages(prev => [...prev, assistantMessage])
       
     } catch (error: any) {
+      console.error('💥 Chat Error:', error)
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: `Error al procesar la solicitud: ${error?.message || 'Error desconocido'}`,
+        content: `Error al procesar la solicitud: ${error?.message || 'Error desconocido'}. Verifica la consola del navegador para más detalles.`,
         timestamp: new Date().toISOString()
       }
       
